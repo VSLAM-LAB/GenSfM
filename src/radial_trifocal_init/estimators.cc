@@ -44,7 +44,7 @@ namespace init {
 
 std::vector<RadialTrifocalTensorEstimator::M_t>
 RadialTrifocalTensorEstimator::Estimate(const std::vector<X_t>& points2D,
-                                        const std::vector<Y_t>& weights) {
+                                        const std::vector<Y_t>& weights, bool initial) {
   Eigen::Matrix<double, 2, 6> x1, x2, x3;
   for (int i = 0; i < 6; ++i) {
     x1.col(i) = points2D[i].x1;
@@ -373,7 +373,7 @@ bool RefineRadialTrifocalTensor(
 
 std::vector<MixedTrifocalTensorEstimator::M_t>
 MixedTrifocalTensorEstimator::Estimate(const std::vector<X_t>& bearingVectors,
-                                        const std::vector<Y_t>& points2D) {
+                                        const std::vector<Y_t>& points2D, bool initial) {
   
   Eigen::Matrix<double, 3, 9> x_pinhole;
   Eigen::Matrix<double, 2, 9> x1, x2;

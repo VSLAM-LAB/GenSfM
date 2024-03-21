@@ -34,11 +34,13 @@
 #include "estimators/utils.h"
 #include "util/logging.h"
 
+#include "base/pose.h"
+
 namespace colmap {
 
 
 std::vector<RadialP5PEstimator::M_t> RadialP5PEstimator::Estimate(
-    const std::vector<X_t>& points2D, const std::vector<Y_t>& points3D) {
+    const std::vector<X_t>& points2D, const std::vector<Y_t>& points3D,bool initial) {
   // We do some normalization on the input
   double focal0 = 0.0;
   for (int i = 0; i < 5; ++i) {
@@ -256,5 +258,25 @@ double EstimateRadialCameraForwardOffset(
   }
   return sol(1);
 }
+
+CameraPose EstimateCameraForwardOffsetImplictDistortion(
+    const Eigen::Matrix3x4d proj_matrix,
+    const std::vector<Eigen::Vector2d> &points2D,
+    const std::vector<Eigen::Vector3d> &points3D,
+    const Eigen::Vector2d pp){
+      // we estimate the forward translation using implicit distortion model
+
+    CostMatrixOptions cm_opt;
+    PoseRefinementOptions refinement_opt;
+    CostMatrix cost_matrix = build_cost_matrix(points2D, cm_opt,pp);
+    CameraPose initial_pose;
+    initial_pose.q_vec = RotationMatrixToQuaternion(proj_matrix.leftCols<3>());
+    initial_pose.t = proj_matrix.rightCols<1>();
+
+    CameraPose pose = pose_refinement(points2D, points3D, cost_matrix, pp, initial_pose, refinement_opt);
+    return pose;
+
+}
+
 
 }  // namespace colmap

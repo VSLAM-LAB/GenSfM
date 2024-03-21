@@ -59,12 +59,13 @@ IncrementalTriangulator::IncrementalTriangulator(
       reconstruction_(reconstruction) {}
 
 size_t IncrementalTriangulator::TriangulateImage(const Options& options,
-                                                 const image_t image_id) {
+                                                 const image_t image_id, bool initial) {
   CHECK(options.Check());
 
   size_t num_tris = 0;
 
   ClearCaches();
+  // std::cout << "Initial in IncrementalTriangulator::Triangulateimage: " << initial << std::endl;
 
   const Image& image = reconstruction_->Image(image_id);
   if (!image.IsRegistered()) {
@@ -103,18 +104,80 @@ size_t IncrementalTriangulator::TriangulateImage(const Options& options,
 
     if (num_triangulated == 0) {
       corrs_data.push_back(ref_corr_data);
-      num_tris += Create(options, corrs_data);
+      num_tris += Create(options, corrs_data, initial);
     } else {
       // Continue correspondences to existing 3D points.
       num_tris += Continue(options, ref_corr_data, corrs_data);
       // Create points from correspondences that are not continued.
       corrs_data.push_back(ref_corr_data);
-      num_tris += Create(options, corrs_data);
+      num_tris += Create(options, corrs_data, initial);
     }
   }
 
   return num_tris;
 }
+
+
+// isolating the initial triangulation
+// size_t IncrementalTriangulator::TriangulateImageInitial(const Options& options,
+//                                                  const image_t image_id) {
+//   CHECK(options.Check());
+
+//   size_t num_tris = 0;
+
+//   ClearCaches();
+
+//   const Image& image = reconstruction_->Image(image_id);
+//   if (!image.IsRegistered()) {
+//     return num_tris;
+//   }
+
+//   const Camera& camera = reconstruction_->Camera(image.CameraId());
+//   if (HasCameraBogusParams(options, camera)) {
+//     return num_tris;
+//   }
+
+//   // Correspondence data for reference observation in given image. We iterate
+//   // over all observations of the image and each observation once becomes
+//   // the reference correspondence.
+//   CorrData ref_corr_data;
+//   ref_corr_data.image_id = image_id;
+//   ref_corr_data.image = &image;
+//   ref_corr_data.camera = &camera;
+
+//   // Container for correspondences from reference observation to other images.
+//   std::vector<CorrData> corrs_data;
+
+//   // Try to triangulate all image observations.
+//   for (point2D_t point2D_idx = 0; point2D_idx < image.NumPoints2D();
+//        ++point2D_idx) {
+//     const size_t num_triangulated =
+//         Find(options, image_id, point2D_idx,
+//              static_cast<size_t>(options.max_transitivity), &corrs_data);
+//     if (corrs_data.empty()) {
+//       continue;
+//     }
+
+//     const Point2D& point2D = image.Point2D(point2D_idx);
+//     ref_corr_data.point2D_idx = point2D_idx;
+//     ref_corr_data.point2D = &point2D;
+
+//     if (num_triangulated == 0) {
+//       corrs_data.push_back(ref_corr_data);
+//       num_tris += CreateInitial(options, corrs_data);
+//     } else {
+//       // Continue correspondences to existing 3D points.
+//       num_tris += Continue(options, ref_corr_data, corrs_data);
+//       // Create points from correspondences that are not continued.
+//       corrs_data.push_back(ref_corr_data);
+//       num_tris += CreateInitial(options, corrs_data);
+//     }
+//   }
+
+//   return num_tris;
+// }
+
+
 
 size_t IncrementalTriangulator::CompleteImage(const Options& options,
                                               const image_t image_id) {
@@ -467,7 +530,7 @@ size_t IncrementalTriangulator::Find(const Options& options,
 }
 
 size_t IncrementalTriangulator::Create(
-    const Options& options, const std::vector<CorrData>& corrs_data) {
+    const Options& options, const std::vector<CorrData>& corrs_data, bool initial) {
   // Extract correspondences without an existing triangulated observation.
   std::vector<CorrData> create_corrs_data;
   create_corrs_data.reserve(corrs_data.size());
@@ -476,6 +539,7 @@ size_t IncrementalTriangulator::Create(
       create_corrs_data.push_back(corr_data);
     }
   }
+  // std::cout << "Initial in IncrementalTriangulator::Create: " << initial << std::endl;
 
   if (create_corrs_data.size() < 2) {
     // Need at least two observations for triangulation.
@@ -524,7 +588,7 @@ size_t IncrementalTriangulator::Create(
   Eigen::Vector3d xyz;
   std::vector<char> inlier_mask;
   if (!EstimateTriangulation(tri_options, point_data, pose_data, &inlier_mask,
-                             &xyz)) {
+                             &xyz, initial)) {
     return 0;
   }
 
@@ -537,8 +601,12 @@ size_t IncrementalTriangulator::Create(
       const CorrData& corr_data = create_corrs_data[i];
       track.AddElement(corr_data.image_id, corr_data.point2D_idx);
       num_constraints += (corr_data.camera->ModelId() == Radial1DCameraModel::model_id) ? 1 : 2;
+      // full triangulation for budle adjustment
+      // num_constraints += (corr_data.camera->ModelId() == Radial1DCameraModel::model_id) ? 2 : 2;
     }
   }
+
+  // constraint trial
 
   if(num_constraints < 4) {
     // this is a underconstrained point, we do not add it to the reconstruction since it will get filtered later anyways
@@ -556,6 +624,99 @@ size_t IncrementalTriangulator::Create(
 
   return track.Length();
 }
+
+// size_t IncrementalTriangulator::CreateInitial(
+//     const Options& options, const std::vector<CorrData>& corrs_data) {
+//   // Extract correspondences without an existing triangulated observation.
+//   std::vector<CorrData> create_corrs_data;
+//   create_corrs_data.reserve(corrs_data.size());
+//   for (const CorrData& corr_data : corrs_data) {
+//     if (!corr_data.point2D->HasPoint3D()) {
+//       create_corrs_data.push_back(corr_data);
+//     }
+//   }
+
+//   if (create_corrs_data.size() < 2) {
+//     // Need at least two observations for triangulation.
+//     return 0;
+//   } else if (options.ignore_two_view_tracks && create_corrs_data.size() == 2) {
+//     const CorrData& corr_data1 = create_corrs_data[0];
+//     if (correspondence_graph_->IsTwoViewObservation(corr_data1.image_id,
+//                                                     corr_data1.point2D_idx)) {
+//       return 0;
+//     }
+//   }
+
+//   // Setup data for triangulation estimation.
+//   std::vector<TriangulationEstimator::PointData> point_data;
+//   point_data.resize(create_corrs_data.size());
+//   std::vector<TriangulationEstimator::PoseData> pose_data;
+//   pose_data.resize(create_corrs_data.size());
+//   for (size_t i = 0; i < create_corrs_data.size(); ++i) {
+//     const CorrData& corr_data = create_corrs_data[i];
+//     point_data[i].point = corr_data.point2D->XY();
+//     point_data[i].point_normalized =
+//         corr_data.camera->ImageToWorld(point_data[i].point);
+//     pose_data[i].proj_matrix = corr_data.image->ProjectionMatrix();
+//     pose_data[i].proj_center = corr_data.image->ProjectionCenter();
+//     pose_data[i].camera = corr_data.camera;
+//   }
+
+//   // Setup estimation options.
+//   EstimateTriangulationOptions tri_options;
+//   tri_options.min_tri_angle = DegToRad(options.min_angle);
+//   tri_options.residual_type =
+//       TriangulationEstimator::ResidualType::ANGULAR_ERROR;
+//   tri_options.ransac_options.max_error =
+//       DegToRad(options.create_max_angle_error);
+//   tri_options.ransac_options.confidence = 0.9999;
+//   tri_options.ransac_options.min_inlier_ratio = 0.02;
+//   tri_options.ransac_options.max_num_trials = 10000;
+
+//   // Enforce exhaustive sampling for small track lengths.
+//   const size_t kExhaustiveSamplingThreshold = 15;
+//   if (point_data.size() <= kExhaustiveSamplingThreshold) {
+//     tri_options.ransac_options.min_num_trials = NChooseK(point_data.size(), 2);
+//   }
+
+//   // Estimate triangulation.
+//   Eigen::Vector3d xyz;
+//   std::vector<char> inlier_mask;
+//   if (!EstimateTriangulationInitial(tri_options, point_data, pose_data, &inlier_mask,
+//                              &xyz)) {
+//     return 0;
+//   }
+
+//   // Add inliers to estimated track.
+//   int num_constraints = 0;
+//   Track track;
+//   track.Reserve(create_corrs_data.size());
+//   for (size_t i = 0; i < inlier_mask.size(); ++i) {
+//     if (inlier_mask[i]) {
+//       const CorrData& corr_data = create_corrs_data[i];
+//       track.AddElement(corr_data.image_id, corr_data.point2D_idx);
+//       num_constraints += (corr_data.camera->ModelId() == Radial1DCameraModel::model_id) ? 1 : 2;
+//       // full triangulation for budle adjustment
+//       // num_constraints += (corr_data.camera->ModelId() == Radial1DCameraModel::model_id) ? 2 : 2;
+//     }
+//   }
+
+//   if(num_constraints < 4) {
+//     // this is a underconstrained point, we do not add it to the reconstruction since it will get filtered later anyways
+//     return 0;
+//   }
+  
+//   // Add estimated point to reconstruction.
+//   const point3D_t point3D_id = reconstruction_->AddPoint3D(xyz, track);
+//   modified_point3D_ids_.insert(point3D_id);
+
+//   const size_t kMinRecursiveTrackLength = 3;
+//   if (create_corrs_data.size() - track.Length() >= kMinRecursiveTrackLength) {
+//     return track.Length() + Create(options, create_corrs_data);
+//   }
+
+//   return track.Length();
+// }
 
 size_t IncrementalTriangulator::Continue(
     const Options& options, const CorrData& ref_corr_data,

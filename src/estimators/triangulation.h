@@ -103,6 +103,9 @@ class TriangulationEstimator {
   //
   // @return                  Triangulated point if successful, otherwise none.
   std::vector<M_t> Estimate(const std::vector<X_t>& point_data,
+                            const std::vector<Y_t>& pose_data, bool initial=false) const;
+
+  std::vector<M_t> EstimateInitial(const std::vector<X_t>& point_data,
                             const std::vector<Y_t>& pose_data) const;
 
   // Calculate residuals in terms of squared reprojection or angular error.
@@ -142,6 +145,12 @@ struct EstimateTriangulationOptions {
 // and a subsequent non-linear refinement using all inliers. Returns true
 // if the estimated number of inliers has more than two views.
 bool EstimateTriangulation(
+    const EstimateTriangulationOptions& options,
+    const std::vector<TriangulationEstimator::PointData>& point_data,
+    const std::vector<TriangulationEstimator::PoseData>& pose_data,
+    std::vector<char>* inlier_mask, Eigen::Vector3d* xyz, bool initial = false);
+
+bool EstimateTriangulationInitial(
     const EstimateTriangulationOptions& options,
     const std::vector<TriangulationEstimator::PointData>& point_data,
     const std::vector<TriangulationEstimator::PoseData>& pose_data,

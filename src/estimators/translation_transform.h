@@ -61,7 +61,7 @@ class TranslationTransformEstimator {
   //
   // @return             Translation vector.
   static std::vector<M_t> Estimate(const std::vector<X_t>& points1,
-                                   const std::vector<Y_t>& points2);
+                                   const std::vector<Y_t>& points2, bool initial = false);
 
   // Calculate the squared translation error.
   //
@@ -81,7 +81,7 @@ class TranslationTransformEstimator {
 template <int kDim>
 std::vector<typename TranslationTransformEstimator<kDim>::M_t>
 TranslationTransformEstimator<kDim>::Estimate(const std::vector<X_t>& points1,
-                                              const std::vector<Y_t>& points2) {
+                                              const std::vector<Y_t>& points2, bool initial) {
   CHECK_EQ(points1.size(), points2.size());
 
   X_t mean_src = X_t::Zero();

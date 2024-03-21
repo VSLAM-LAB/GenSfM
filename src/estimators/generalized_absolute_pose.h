@@ -72,7 +72,7 @@ class GP3PEstimator {
   // Estimate the most probable solution of the GP3P problem from a set of
   // three 2D-3D point correspondences.
   static std::vector<M_t> Estimate(const std::vector<X_t>& points2D,
-                                   const std::vector<Y_t>& points3D);
+                                   const std::vector<Y_t>& points3D, bool initial = false);
 
   // Calculate the squared cosine distance error between the rays given a set of
   // 2D-3D point correspondences and a projection matrix of the generalized

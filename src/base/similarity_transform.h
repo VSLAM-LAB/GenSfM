@@ -61,7 +61,7 @@ class SimilarityTransform3 {
                        const Eigen::Vector3d& tvec);
 
   bool Estimate(const std::vector<Eigen::Vector3d>& src,
-                const std::vector<Eigen::Vector3d>& dst);
+                const std::vector<Eigen::Vector3d>& dst, bool initial = false);
 
   SimilarityTransform3 Inverse() const;
 

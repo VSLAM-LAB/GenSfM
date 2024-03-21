@@ -173,18 +173,18 @@ class BundleAdjuster {
   BundleAdjuster(const BundleAdjustmentOptions& options,
                  const BundleAdjustmentConfig& config);
 
-  bool Solve(Reconstruction* reconstruction);
+  bool Solve(Reconstruction* reconstruction, bool initial = false);
 
   // Get the Ceres solver summary for the last call to `Solve`.
   const ceres::Solver::Summary& Summary() const;
 
  private:
   void SetUp(Reconstruction* reconstruction,
-             ceres::LossFunction* loss_function);
+             ceres::LossFunction* loss_function, bool initial = false);
   void TearDown(Reconstruction* reconstruction);
 
   void AddImageToProblem(const image_t image_id, Reconstruction* reconstruction,
-                         ceres::LossFunction* loss_function);
+                         ceres::LossFunction* loss_function, bool initial = false);
 
   void AddPointToProblem(const point3D_t point3D_id,
                          Reconstruction* reconstruction,
@@ -232,7 +232,7 @@ class ParallelBundleAdjuster {
                          const BundleAdjustmentOptions& ba_options,
                          const BundleAdjustmentConfig& config);
 
-  bool Solve(Reconstruction* reconstruction);
+  bool Solve(Reconstruction* reconstruction, bool initial=false);
 
   // Get the Ceres solver summary for the last call to `Solve`.
   const ceres::Solver::Summary& Summary() const;
@@ -243,10 +243,10 @@ class ParallelBundleAdjuster {
                           const Reconstruction& reconstruction);
 
  private:
-  void SetUp(Reconstruction* reconstruction);
+  void SetUp(Reconstruction* reconstruction, bool initial = false);
   void TearDown(Reconstruction* reconstruction);
 
-  void AddImagesToProblem(Reconstruction* reconstruction);
+  void AddImagesToProblem(Reconstruction* reconstruction, bool initial = false);
   void AddPointsToProblem(Reconstruction* reconstruction);
 
   const Options options_;

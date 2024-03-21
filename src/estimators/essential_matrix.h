@@ -69,7 +69,7 @@ class EssentialMatrixFivePointEstimator {
   //
   // @return         Up to 10 solutions as a vector of 3x3 essential matrices.
   static std::vector<M_t> Estimate(const std::vector<X_t>& points1,
-                                   const std::vector<Y_t>& points2);
+                                   const std::vector<Y_t>& points2, bool initial = false);
 
   // Calculate the residuals of a set of corresponding points and a given
   // essential matrix.
@@ -106,7 +106,7 @@ class EssentialMatrixEightPointEstimator {
   // @param points1  First set of corresponding points.
   // @param points2  Second set of corresponding points.
   static std::vector<M_t> Estimate(const std::vector<X_t>& points1,
-                                   const std::vector<Y_t>& points2);
+                                   const std::vector<Y_t>& points2, bool initial = false);
 
   // Calculate the residuals of a set of corresponding points and a given
   // essential matrix.

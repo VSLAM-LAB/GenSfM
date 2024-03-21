@@ -42,7 +42,7 @@
 namespace colmap {
 
 std::vector<HomographyMatrixEstimator::M_t> HomographyMatrixEstimator::Estimate(
-    const std::vector<X_t>& points1, const std::vector<Y_t>& points2) {
+    const std::vector<X_t>& points1, const std::vector<Y_t>& points2, bool initial) {
   CHECK_EQ(points1.size(), points2.size());
 
   const size_t N = points1.size();

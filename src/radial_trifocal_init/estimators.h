@@ -58,7 +58,7 @@ class RadialTrifocalTensorEstimator {
   //
   // @return           Camera pose as a 3x4 matrix.
   static std::vector<M_t> Estimate(const std::vector<X_t>& points2D,
-                                   const std::vector<Y_t>& weights);
+                                   const std::vector<Y_t>& weights, bool initial = false);
 
   // Calculate the squared reprojection error given a set of 2D-3D point
   // correspondences and a projection matrix.
@@ -115,7 +115,7 @@ class MixedTrifocalTensorEstimator {
   //
   // @return           Camera pose as a 3x4 matrix.
   static std::vector<M_t> Estimate(const std::vector<X_t>& bearingVectors,
-                                   const std::vector<Y_t>& points2D);
+                                   const std::vector<Y_t>& points2D, bool initial = false);
 
   // Calculate the squared reprojection error given a set of 2D-3D point
   // correspondences and a projection matrix.

@@ -255,14 +255,14 @@ BundleAdjuster::BundleAdjuster(const BundleAdjustmentOptions& options,
   CHECK(options_.Check());
 }
 
-bool BundleAdjuster::Solve(Reconstruction* reconstruction) {
+bool BundleAdjuster::Solve(Reconstruction* reconstruction, bool initial) {
   CHECK_NOTNULL(reconstruction);
   CHECK(!problem_) << "Cannot use the same BundleAdjuster multiple times";
 
   problem_.reset(new ceres::Problem());
 
   ceres::LossFunction* loss_function = options_.CreateLossFunction();
-  SetUp(reconstruction, loss_function);
+  SetUp(reconstruction, loss_function, initial);
 
   if (problem_->NumResiduals() == 0) {
     return false;
@@ -322,11 +322,11 @@ const ceres::Solver::Summary& BundleAdjuster::Summary() const {
 }
 
 void BundleAdjuster::SetUp(Reconstruction* reconstruction,
-                           ceres::LossFunction* loss_function) {
+                           ceres::LossFunction* loss_function, bool initial) {
   // Warning: AddPointsToProblem assumes that AddImageToProblem is called first.
   // Do not change order of instructions!
   for (const image_t image_id : config_.Images()) {
-    AddImageToProblem(image_id, reconstruction, loss_function);
+    AddImageToProblem(image_id, reconstruction, loss_function, initial);
   }
   for (const auto point3D_id : config_.VariablePoints()) {
     AddPointToProblem(point3D_id, reconstruction, loss_function);
@@ -345,7 +345,7 @@ void BundleAdjuster::TearDown(Reconstruction*) {
 
 void BundleAdjuster::AddImageToProblem(const image_t image_id,
                                        Reconstruction* reconstruction,
-                                       ceres::LossFunction* loss_function) {
+                                       ceres::LossFunction* loss_function, bool initial) {
   Image& image = reconstruction->Image(image_id);
   Camera& camera = reconstruction->Camera(image.CameraId());
 
@@ -422,7 +422,10 @@ void BundleAdjuster::AddImageToProblem(const image_t image_id,
 
         if (camera.ModelId() == Radial1DCameraModel::model_id) {
           // For radial cameras we fix the third parameter of the translation
-          constant_tvec_idxs.push_back(2);
+          // full bundle adjustment for points except for the initial ones
+          // constant_tvec_idxs.push_back(2);
+          if (initial) {
+          constant_tvec_idxs.push_back(2);}
         }
         ceres::SubsetParameterization* tvec_parameterization =
             new ceres::SubsetParameterization(3, constant_tvec_idxs);
@@ -430,8 +433,12 @@ void BundleAdjuster::AddImageToProblem(const image_t image_id,
       } else {
         // For radial cameras we fix the third parameter of the translation
         if (camera.ModelId() == Radial1DCameraModel::model_id) {
+          // problem_->SetParameterization(
+          //     tvec_data, new ceres::SubsetParameterization(3, {2}));
+          if(initial){
           problem_->SetParameterization(
               tvec_data, new ceres::SubsetParameterization(3, {2}));
+          }
         }
       }
     }
@@ -573,14 +580,14 @@ ParallelBundleAdjuster::ParallelBundleAdjuster(
       << "PBA does not allow to parameterize individual 3D points";
 }
 
-bool ParallelBundleAdjuster::Solve(Reconstruction* reconstruction) {
+bool ParallelBundleAdjuster::Solve(Reconstruction* reconstruction, bool initial) {
   CHECK_NOTNULL(reconstruction);
   CHECK_EQ(num_measurements_, 0)
       << "Cannot use the same ParallelBundleAdjuster multiple times";
   CHECK(!ba_options_.refine_principal_point);
   CHECK_EQ(ba_options_.refine_focal_length, ba_options_.refine_extra_params);
 
-  SetUp(reconstruction);
+  SetUp(reconstruction, initial);
 
   const int num_residuals = static_cast<int>(2 * measurements_.size());
 
@@ -678,14 +685,14 @@ bool ParallelBundleAdjuster::IsSupported(const BundleAdjustmentOptions& options,
   return true;
 }
 
-void ParallelBundleAdjuster::SetUp(Reconstruction* reconstruction) {
+void ParallelBundleAdjuster::SetUp(Reconstruction* reconstruction, bool initial) {
   // Important: PBA requires the track of 3D points to be stored
   // contiguously, i.e. the point3D_idxs_ vector contains consecutive indices.
   cameras_.reserve(config_.NumImages());
   camera_ids_.reserve(config_.NumImages());
   ordered_image_ids_.reserve(config_.NumImages());
   image_id_to_camera_idx_.reserve(config_.NumImages());
-  AddImagesToProblem(reconstruction);
+  AddImagesToProblem(reconstruction, initial);
   AddPointsToProblem(reconstruction);
 }
 
@@ -714,7 +721,7 @@ void ParallelBundleAdjuster::TearDown(Reconstruction* reconstruction) {
 }
 
 void ParallelBundleAdjuster::AddImagesToProblem(
-    Reconstruction* reconstruction) {
+    Reconstruction* reconstruction, bool initial) {
   for (const image_t image_id : config_.Images()) {
     const Image& image = reconstruction->Image(image_id);
     CHECK_EQ(camera_ids_.count(image.CameraId()), 0)

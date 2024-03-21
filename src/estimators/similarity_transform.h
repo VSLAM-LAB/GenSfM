@@ -74,7 +74,7 @@ class SimilarityTransformEstimator {
   //
   // @return         4x4 homogeneous transformation matrix.
   static std::vector<M_t> Estimate(const std::vector<X_t>& src,
-                                   const std::vector<Y_t>& dst);
+                                   const std::vector<Y_t>& dst, bool initial = false);
 
   // Calculate the transformation error for each corresponding point pair.
   //
@@ -99,7 +99,7 @@ class SimilarityTransformEstimator {
 template <int kDim, bool kEstimateScale>
 std::vector<typename SimilarityTransformEstimator<kDim, kEstimateScale>::M_t>
 SimilarityTransformEstimator<kDim, kEstimateScale>::Estimate(
-    const std::vector<X_t>& src, const std::vector<Y_t>& dst) {
+    const std::vector<X_t>& src, const std::vector<Y_t>& dst, bool initial) {
   CHECK_EQ(src.size(), dst.size());
 
   Eigen::Matrix<double, kDim, Eigen::Dynamic> src_mat(kDim, src.size());

@@ -69,7 +69,7 @@ class P3PEstimator {
   //
   // @return           Most probable pose as length-1 vector of a 3x4 matrix.
   static std::vector<M_t> Estimate(const std::vector<X_t>& points2D,
-                                   const std::vector<Y_t>& points3D);
+                                   const std::vector<Y_t>& points3D, bool initial = false);
 
   // Calculate the squared reprojection error given a set of 2D-3D point
   // correspondences and a projection matrix.
@@ -114,7 +114,7 @@ class EPNPEstimator {
   //
   // @return           Most probable pose as length-1 vector of a 3x4 matrix.
   static std::vector<M_t> Estimate(const std::vector<X_t>& points2D,
-                                   const std::vector<Y_t>& points3D);
+                                   const std::vector<Y_t>& points3D, bool initial = false);
 
   // Calculate the squared reprojection error given a set of 2D-3D point
   // correspondences and a projection matrix.

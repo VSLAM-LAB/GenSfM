@@ -47,7 +47,7 @@ size_t TriangulateImage(const IncrementalMapperOptions& options,
 }
 
 void AdjustGlobalBundle(const IncrementalMapperOptions& options,
-                        IncrementalMapper* mapper) {
+                        IncrementalMapper* mapper, bool initial = false) {
   BundleAdjustmentOptions custom_ba_options = options.GlobalBundleAdjustment();
 
   const size_t num_reg_images = mapper->GetReconstruction().NumRegImages();
@@ -68,9 +68,9 @@ void AdjustGlobalBundle(const IncrementalMapperOptions& options,
       ParallelBundleAdjuster::IsSupported(custom_ba_options,
                                           mapper->GetReconstruction())) {
     mapper->AdjustParallelGlobalBundle(
-        custom_ba_options, options.ParallelGlobalBundleAdjustment());
+        custom_ba_options, options.ParallelGlobalBundleAdjustment(),initial);
   } else {
-    mapper->AdjustGlobalBundle(options.Mapper(), custom_ba_options);
+    mapper->AdjustGlobalBundle(options.Mapper(), custom_ba_options, initial);
   }
 }
 
@@ -393,7 +393,7 @@ void IncrementalMapperController::Reconstruct(
                                                   "single reconstruction, but "
                                                   "multiple are given.";
 
-  std::vector<image_tuple_t> init_image_tuples;
+  std::vector<image_tuple_t> init_image_tuples; // image_tuple_t = std::tuple<image_t, image_t, image_t, image_t>
 
   for (int num_trials = 0; num_trials < options_->init_num_trials;
        ++num_trials) {
@@ -445,8 +445,9 @@ void IncrementalMapperController::Reconstruct(
         reconstruction_manager_->Delete(reconstruction_idx);
         continue;
       }
+      bool initial = true;
 
-      AdjustGlobalBundle(*options_, &mapper);
+      AdjustGlobalBundle(*options_, &mapper, initial);
       FilterPoints(*options_, &mapper);
       FilterImages(*options_, &mapper);
 

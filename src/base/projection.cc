@@ -131,6 +131,14 @@ double CalculateSquaredReprojectionError(const Eigen::Vector2d& point2D,
       return std::numeric_limits<double>::max();
     }
     proj_point2D = camera.WorldToImage(dot_product * n);
+
+
+    // using same triangulation:
+    // if (proj_point3D.z() < std::numeric_limits<double>::epsilon()) {
+    //   return std::numeric_limits<double>::max();
+    // }
+    // proj_point2D = camera.WorldToImage(proj_point3D.hnormalized());
+
   } else {
     // Check that point is infront of camera.
     if (proj_point3D.z() < std::numeric_limits<double>::epsilon()) {
@@ -156,7 +164,7 @@ double CalculateSquaredReprojectionError(const Eigen::Vector2d& point2D,
 
     // check that we project onto the correct half-plane
     if(dot_product < std::numeric_limits<double>::epsilon()) {
-      return std::numeric_limits<double>::max();
+    return std::numeric_limits<double>::max();
     }
     proj_point2D = camera.WorldToImage(dot_product * n);
 

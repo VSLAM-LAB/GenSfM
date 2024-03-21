@@ -88,12 +88,12 @@ bool EstimateRadialAbsolutePose(const AbsolutePoseEstimationOptions& options,
   // Subtract principal point
   std::vector<Eigen::Vector2d> points2D_N(points2D.size());
   for (size_t i = 0; i < points2D.size(); ++i) {
-    points2D_N[i] = camera->ImageToWorld(points2D[i]);
+    points2D_N[i] = camera->ImageToWorld(points2D[i]); //normalized 2D points
   }
 
   LORANSAC<RadialP5PEstimator, RadialP5PEstimator, MEstimatorSupportMeasurer>
       ransac(options.ransac_options);
-  auto report = ransac.Estimate(points2D_N, points3D);
+  auto report = ransac.Estimate(points2D_N, points3D); //// The transformation from the world to the camera frame, a 3x4 matrix is stored in report.model
 
   if (!report.success) {
     return false;
@@ -115,17 +115,50 @@ bool EstimateRadialAbsolutePose(const AbsolutePoseEstimationOptions& options,
   inlier_points3D.reserve(*num_inliers);
   for (size_t i = 0; i < inlier_mask->size(); ++i) {
     if ((*inlier_mask)[i]) {
-      inlier_points2D.push_back(points2D_N[i]);
+      // inlier_points2D.push_back(points2D_N[i]); // normalizing 2D points within the implicit distortion model
+      inlier_points2D.push_back(points2D[i]);
       inlier_points3D.push_back(points3D[i]);
     }
   }
+  ;
   double tz = EstimateRadialCameraForwardOffset(report.model, inlier_points2D,
                                                 inlier_points3D, nullptr);
+  // print out tz
+  // std::cout << "tz:   " << tz << std::endl;
+  //append tz into file "tz.txt"
+  // std::ofstream file("/home/ivonne/radialsfm/tz.txt", std::ios_base::app);
+  // file << tz << std::endl;
+  // file.close();
+  
+  //principal point
+  Eigen::Vector2d pp = Eigen::Vector2d(camera->PrincipalPointX(), camera->PrincipalPointY());
+
+  // Estimate the forward translation using implicit distortion model.
+  CameraPose implicit_pose = EstimateCameraForwardOffsetImplictDistortion(report.model, inlier_points2D, 
+                                                inlier_points3D, pp);
+
+  // //print out tz_imp
+  // std::cout << "tz_imp: " << tz_imp << std::endl;
+  // //append tz_imp into file "tz_imp.txt"
+  // std::ofstream file2("/home/ivonne/radialsfm/tz_imp.txt", std::ios_base::app);
+  // file2 << tz_imp << std::endl;
+  // file2.close();
 
   // Extract pose parameters.
-  *qvec = RotationMatrixToQuaternion(report.model.leftCols<3>());
-  *tvec = report.model.rightCols<1>();
-  (*tvec)(2) += tz;
+  // *qvec = RotationMatrixToQuaternion(report.model.leftCols<3>());
+  // *tvec = report.model.rightCols<1>();
+
+  // Extract pose parameters from implicit_pose
+  *qvec = implicit_pose.q_vec;
+  *tvec = implicit_pose.t;
+  // print out report.model
+  std::cout << "Report: " << report.model << std::endl;
+  //print out qvec and tvec
+  std::cout << "qvec: " << *qvec << std::endl;
+  std::cout << "tvec: " << *tvec << std::endl;
+  // (*tvec)(2) += tz;
+  // use implicit distortion model
+  // (*tvec)(2) += tz_imp;
 
   if (IsNaN(*qvec) || IsNaN(*tvec)) {
     return false;

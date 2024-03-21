@@ -99,7 +99,10 @@ class IncrementalTriangulator {
   //
   // Note that the given image must be registered and its pose must be set
   // in the associated reconstruction.
-  size_t TriangulateImage(const Options& options, const image_t image_id);
+  size_t TriangulateImage(const Options& options, const image_t image_id, bool initial = false);
+
+  // size_t TriangulateImageInitial(const Options& options,
+  //                                                const image_t image_id);
 
   // Complete triangulations for image. Tries to create new tracks for not
   // yet triangulated observations and tries to complete existing tracks.
@@ -167,8 +170,9 @@ class IncrementalTriangulator {
 
   // Try to create a new 3D point from the given correspondences.
   size_t Create(const Options& options,
-                const std::vector<CorrData>& corrs_data);
-
+                const std::vector<CorrData>& corrs_data, bool initial = false);
+  // size_t CreateInitial(
+  //   const Options& options, const std::vector<CorrData>& corrs_data);
   // Try to continue the 3D point with the given correspondences.
   size_t Continue(const Options& options, const CorrData& ref_corr_data,
                   const std::vector<CorrData>& corrs_data);

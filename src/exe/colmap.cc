@@ -1028,7 +1028,7 @@ int RunMapper(int argc, char** argv) {
 
   IncrementalMapperController mapper(options.mapper.get(), *options.image_path,
                                      *options.database_path,
-                                     &reconstruction_manager);
+                                     &reconstruction_manager); //initialize a mapper controller
 
   // In case a new reconstruction is started, write results of individual sub-
   // models to as their reconstruction finishes instead of writing all results
@@ -1913,7 +1913,9 @@ int RunRadialTrifocalInitializer(int argc, char** argv) {
     std::cout << "  => Image sees " << num_existing_points3D << " / "
               << image.NumObservations() << " points" << std::endl;
 
-    mapper.TriangulateImage(tri_options, image_id);
+    bool initial = true;
+
+    mapper.TriangulateImage(tri_options, image_id, initial);
 
     std::cout << "  => Triangulated "
               << (image.NumPoints3D() - num_existing_points3D) << " points"

@@ -181,7 +181,7 @@ class IncrementalMapper {
 
   // Triangulate observations of image.
   size_t TriangulateImage(const IncrementalTriangulator::Options& tri_options,
-                          const image_t image_id);
+                          const image_t image_id, bool initial = false);
 
   // Retriangulate image pairs that should have common observations according to
   // the scene graph but don't due to drift, etc. To handle drift, the employed
@@ -213,10 +213,10 @@ class IncrementalMapper {
 
   // Global bundle adjustment using Ceres Solver or PBA.
   bool AdjustGlobalBundle(const Options& options,
-                          const BundleAdjustmentOptions& ba_options);
+                          const BundleAdjustmentOptions& ba_options, bool initial = false);
   bool AdjustParallelGlobalBundle(
       const BundleAdjustmentOptions& ba_options,
-      const ParallelBundleAdjuster::Options& parallel_ba_options);
+      const ParallelBundleAdjuster::Options& parallel_ba_options, bool initial = false);
 
   // Filter images and point observations.
   size_t FilterImages(const Options& options);

@@ -209,7 +209,7 @@ std::vector<Eigen::Vector3d> ComputeDepthsSylvester(
 }  // namespace
 
 std::vector<GP3PEstimator::M_t> GP3PEstimator::Estimate(
-    const std::vector<X_t>& points2D, const std::vector<Y_t>& points3D) {
+    const std::vector<X_t>& points2D, const std::vector<Y_t>& points3D, bool initial) {
   CHECK_EQ(points2D.size(), 3);
   CHECK_EQ(points3D.size(), 3);
 

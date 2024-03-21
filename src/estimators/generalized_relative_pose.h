@@ -79,7 +79,7 @@ class GR6PEstimator {
   // Estimate the most probable solution of the GR6P problem from a set of
   // six 2D-2D point correspondences.
   static std::vector<M_t> Estimate(const std::vector<X_t>& points1,
-                                   const std::vector<Y_t>& points2);
+                                   const std::vector<Y_t>& points2, bool initial= false);
 
   // Calculate the squared Sampson error between corresponding points.
   static void Residuals(const std::vector<X_t>& points1,

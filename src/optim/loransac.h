@@ -64,7 +64,7 @@ class LORANSAC : public RANSAC<Estimator, SupportMeasurer, Sampler> {
   //
   // @return               The report with the results of the estimation.
   Report Estimate(const std::vector<typename Estimator::X_t>& X,
-                  const std::vector<typename Estimator::Y_t>& Y);
+                  const std::vector<typename Estimator::Y_t>& Y, bool initial=false);
 
   // Objects used in RANSAC procedure.
   using RANSAC<Estimator, SupportMeasurer, Sampler>::estimator;
@@ -91,8 +91,9 @@ template <typename Estimator, typename LocalEstimator, typename SupportMeasurer,
 typename LORANSAC<Estimator, LocalEstimator, SupportMeasurer, Sampler>::Report
 LORANSAC<Estimator, LocalEstimator, SupportMeasurer, Sampler>::Estimate(
     const std::vector<typename Estimator::X_t>& X,
-    const std::vector<typename Estimator::Y_t>& Y) {
+    const std::vector<typename Estimator::Y_t>& Y, bool initial) {
   CHECK_EQ(X.size(), Y.size());
+  // std::cout << "Initial in ransac: " << initial << std::endl;
 
   const size_t num_samples = X.size();
 
@@ -138,7 +139,7 @@ LORANSAC<Estimator, LocalEstimator, SupportMeasurer, Sampler>::Estimate(
 
     // Estimate model for current subset.
     const std::vector<typename Estimator::M_t> sample_models =
-        estimator.Estimate(X_rand, Y_rand);
+        estimator.Estimate(X_rand, Y_rand, initial);
 
     // Iterate through all estimated models
     for (const auto& sample_model : sample_models) {
@@ -172,7 +173,7 @@ LORANSAC<Estimator, LocalEstimator, SupportMeasurer, Sampler>::Estimate(
             }
 
             const std::vector<typename LocalEstimator::M_t> local_models =
-                local_estimator.Estimate(X_inlier, Y_inlier);
+                local_estimator.Estimate(X_inlier, Y_inlier, initial);
 
             const size_t prev_best_num_inliers = best_support.num_inliers;
 

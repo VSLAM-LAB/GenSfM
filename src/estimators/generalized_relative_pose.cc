@@ -394,7 +394,7 @@ Eigen::Vector3d ComputeJacobian(
 }  // namespace
 
 std::vector<GR6PEstimator::M_t> GR6PEstimator::Estimate(
-    const std::vector<X_t>& points1, const std::vector<Y_t>& points2) {
+    const std::vector<X_t>& points1, const std::vector<Y_t>& points2, bool initial) {
   CHECK_GE(points1.size(), 6);
   CHECK_EQ(points1.size(), points2.size());
 

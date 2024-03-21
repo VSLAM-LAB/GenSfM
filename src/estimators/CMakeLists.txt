@@ -49,6 +49,13 @@ COLMAP_ADD_SOURCES(
     triangulation.h triangulation.cc
     two_view_geometry.h two_view_geometry.cc
     utils.h utils.cc
+    implicit_camera_pose.h implicit_camera_pose.cc
+    implicit_cost_matrix.h implicit_cost_matrix.cc
+    implicit_cost_functions.h
+    implicit_intrinsic.h implicit_intrinsic.cc
+    implicit_pose_refinement.h implicit_pose_refinement.cc
+    implicit_utils.h implicit_utils.cc
+
 )
 
 COLMAP_ADD_TEST(absolute_pose_test absolute_pose_test.cc)

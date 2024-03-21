@@ -34,6 +34,11 @@
 
 #include <array>
 #include <vector>
+#include "estimators/implicit_cost_matrix.h"
+#include "estimators/implicit_pose_refinement.h"
+#include "estimators/implicit_intrinsic.h"
+#include "estimators/implicit_utils.h"
+#include "estimators/implicit_camera_pose.h"
 
 #include <Eigen/Core>
 
@@ -67,7 +72,7 @@ class RadialP5PEstimator {
   //
   // @return           Camera pose as a 3x4 matrix.
   static std::vector<M_t> Estimate(const std::vector<X_t>& points2D,
-                                   const std::vector<Y_t>& points3D);
+                                   const std::vector<Y_t>& points3D, bool initial = false);
 
   // Calculate the squared reprojection error given a set of 2D-3D point
   // correspondences and a projection matrix.
@@ -89,6 +94,14 @@ double EstimateRadialCameraForwardOffset(
     const std::vector<Eigen::Vector2d> points2D,
     const std::vector<Eigen::Vector3d> points3D,
     bool *negative_focal);
-}  // namespace colmap
+
+// Estimates the foward translation t3 using implicit distortion model
+CameraPose EstimateCameraForwardOffsetImplictDistortion(
+    const Eigen::Matrix3x4d proj_matrix,
+    const std::vector<Eigen::Vector2d> &points2D,
+    const std::vector<Eigen::Vector3d> &points3D,
+    const Eigen::Vector2d pp = Eigen::Vector2d(0.0,0.0));
+    
+    }  // namespace colmap
 
 #endif  // COLMAP_SRC_ESTIMATORS_RADIAL_ABSOLUTE_POSE_H_
