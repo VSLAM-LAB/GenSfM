@@ -49,6 +49,7 @@ COLMAP_ADD_SOURCES(
     triangulation.h triangulation.cc
     two_view_geometry.h two_view_geometry.cc
     utils.h utils.cc
+    implicit_bundle_adjustment.h implicit_bundle_adjustment.cc
     implicit_camera_pose.h implicit_camera_pose.cc
     implicit_cost_matrix.h implicit_cost_matrix.cc
     implicit_cost_functions.h

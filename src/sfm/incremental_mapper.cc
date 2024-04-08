@@ -416,7 +416,7 @@ bool IncrementalMapper::RegisterInitialImages(const Options& options,
 
   // Triangulate 3D points
   size_t triangulated_points = 0;
-  bool initial = true;
+  bool initial = false;
   // print initial
   // std::cout << "Initial in RegisterInitialImages: " << initial << std::endl;
   for(int i = 0; i < 4; ++i) {
@@ -804,6 +804,142 @@ bool IncrementalMapper::AdjustGlobalBundle(
   reconstruction_->Normalize();
 
   return true;
+}
+
+bool IncrementalMapper::ImplicitAdjustGlobalBundle(
+    const Options& options, const BundleAdjustmentOptions& ba_options, const ImplicitBundleAdjustmentOptions& implicit_ba_options, bool initial) {
+  CHECK_NOTNULL(reconstruction_);
+
+  const std::vector<image_t>& reg_image_ids = reconstruction_->RegImageIds();
+
+  CHECK_GE(reg_image_ids.size(), 2) << "At least two images must be "
+                                       "registered for global "
+                                       "bundle-adjustment";
+
+  // Avoid degeneracies in bundle adjustment.
+  reconstruction_->FilterObservationsWithNegativeDepth();
+  reconstruction_->Normalize();
+
+//extracting points3D
+std::vector<Eigen::Vector3d> points3D;
+std::unordered_map<point3D_t, size_t> pointID_to_globalIndex;
+for (const auto& point3D_id : reconstruction_->Point3DIds()) {
+    const Point3D& point3D = reconstruction_->Point3D(point3D_id);
+    pointID_to_globalIndex[point3D_id] = points3D.size();
+    // std::cout << "point3D.XYZ(): " << point3D.XYZ() << std::endl;
+    points3D.push_back(point3D.XYZ());
+}
+
+//populating camera poses
+std::vector<CameraPose> poses;
+for (const image_t image_id : reg_image_ids) {
+    const Image& image = reconstruction_->Image(image_id);
+    Eigen::Vector4d q(image.Qvec());
+    Eigen::Vector3d t(image.Tvec());
+    poses.push_back(CameraPose(q, t));
+}
+
+//populating points2D and pointsInd
+
+  std::vector<std::vector<Eigen::Vector2d>> points2D;
+  std::vector<std::vector<int>> pointsInd;
+
+  for (const image_t image_id : reg_image_ids) {
+    const Image& image = reconstruction_->Image(image_id);
+    std::vector<Eigen::Vector2d> imagePoints2D;
+    std::vector<int> imagePointsInd;
+
+    for (const Point2D& point2D : image.Points2D()) {
+        if (!point2D.HasPoint3D()) {
+            continue;
+        }
+        imagePoints2D.push_back(point2D.XY());
+        // convert point3D_id to global index
+        point3D_t point3D_id = point2D.Point3DId();
+        if (pointID_to_globalIndex.find(point3D_id) != pointID_to_globalIndex.end()) {
+            int globalIndex = pointID_to_globalIndex[point3D_id];
+            imagePointsInd.push_back(globalIndex);
+        }
+        // imagePointsInd.push_back(point2D.Point3DId());
+    }
+
+    points2D.push_back(imagePoints2D);
+    pointsInd.push_back(imagePointsInd);
+}
+
+
+// principal point from a random camera
+camera_t camera_id = reconstruction_->Image(reg_image_ids[0]).CameraId();
+Eigen::Vector2d principal_point(reconstruction_->Camera(camera_id).PrincipalPointX(),
+                                 reconstruction_->Camera(camera_id).PrincipalPointY());
+// cost matrix options
+CostMatrixOptions cm_opt;
+// build up cost matrix
+CostMatrix costMatrix =build_cost_matrix_multi(points2D,cm_opt,principal_point);
+// print out the dimension of points2D, points3D, pointsInd, and poses
+std::cout << "points2D size: " << points2D.size() << std::endl;
+std::cout << "points3D size: " << points3D.size() << std::endl;
+std::cout << "pointsInd size: " << pointsInd.size() << std::endl;
+std::cout << "poses size: " << poses.size() << std::endl;
+
+
+
+// run bundle adjustment
+bundle_adjustment(points2D, points3D,pointsInd, costMatrix, cm_opt, poses, principal_point, implicit_ba_options);
+
+// update 3D points
+// std::unordered_set<int> referencedPointIndices;
+// for (const auto& imagePointsInd : pointsInd) {
+//     referencedPointIndices.insert(imagePointsInd.begin(), imagePointsInd.end());
+// }
+// std::vector<point3D_t> indexToPoint3DID;
+
+// for (const auto& point3D_id : reconstruction_->Point3DIds()) {
+//     if (referencedPointIndices.find(point3D_id) != referencedPointIndices.end()) {
+//         indexToPoint3DID.push_back(point3D_id);
+//     }
+// }
+
+// for (size_t i = 0; i < points3D.size(); ++i) {
+//     // Find the original ID of the point at this index
+//     point3D_t originalID = indexToPoint3DID[i];
+
+//     // Get the updated position
+//     const Eigen::Vector3d& updatedPosition = points3D[i];
+
+//     // Update the position of the point in the main dataset
+//     reconstruction_->Point3D(originalID).SetXYZ(updatedPosition);
+// }
+
+for (const auto& pair : pointID_to_globalIndex) {
+    point3D_t point3D_id = pair.first;
+    size_t globalIndex = pair.second;
+
+    // Fetch the updated position
+    const Eigen::Vector3d& updatedPosition = points3D[globalIndex];
+
+    // Update the position of the point in the main dataset
+    Point3D& point3D = reconstruction_->Point3D(point3D_id);
+    point3D.SetXYZ(updatedPosition);
+}
+  
+
+//update image poses
+for (size_t i = 0; i < poses.size(); ++i) {
+    // Find the original ID of the point at this index
+    image_t image_id = reg_image_ids[i];
+
+    // Get the updated position
+    const CameraPose& updatedPose = poses[i];
+
+    // Update the position of the point in the main dataset
+    // reconstruction_->Image(image_id).Qvec() = updatedPose.q_vec;
+    // reconstruction_->Image(image_id).Tvec() = updatedPose.t;
+    reconstruction_->Image(image_id).SetQvec(updatedPose.q_vec);
+    reconstruction_->Image(image_id).SetTvec(updatedPose.t);
+}
+// reconstruction_->Normalize();
+return true;
 }
 
 bool IncrementalMapper::AdjustParallelGlobalBundle(

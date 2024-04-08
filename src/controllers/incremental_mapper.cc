@@ -30,6 +30,7 @@
 // Author: Johannes L. Schoenberger (jsch-at-demuc-dot-de)
 
 #include "controllers/incremental_mapper.h"
+#include "estimators/implicit_bundle_adjustment.h"
 
 #include "util/misc.h"
 
@@ -103,6 +104,67 @@ void IterativeLocalRefinement(const IncrementalMapperOptions& options,
   }
   mapper->ClearModifiedPoints3D();
 }
+
+void ImplicitAdjustGlobalBundle(const IncrementalMapperOptions& options,
+                        IncrementalMapper* mapper, bool initial = false) {
+  BundleAdjustmentOptions custom_ba_options = options.GlobalBundleAdjustment();
+  ImplicitBundleAdjustmentOptions implicit_ba_options;
+  const size_t num_reg_images = mapper->GetReconstruction().NumRegImages();
+
+  // Use stricter convergence criteria for first registered images.
+  const size_t kMinNumRegImagesForFastBA = 10;
+  if (num_reg_images < kMinNumRegImagesForFastBA) {
+    custom_ba_options.solver_options.function_tolerance /= 10;
+    custom_ba_options.solver_options.gradient_tolerance /= 10;
+    custom_ba_options.solver_options.parameter_tolerance /= 10;
+    custom_ba_options.solver_options.max_num_iterations *= 2;
+    custom_ba_options.solver_options.max_linear_solver_iterations = 200;
+  }
+
+  PrintHeading1("Global bundle adjustment");
+  if (options.ba_global_use_pba && !options.fix_existing_images &&
+      num_reg_images >= kMinNumRegImagesForFastBA &&
+      ParallelBundleAdjuster::IsSupported(custom_ba_options,
+                                          mapper->GetReconstruction())) {
+    mapper->AdjustParallelGlobalBundle(
+        custom_ba_options, options.ParallelGlobalBundleAdjustment(),initial);
+  } else {
+    mapper->ImplicitAdjustGlobalBundle(options.Mapper(), custom_ba_options, implicit_ba_options, initial);
+  }
+}
+
+
+
+void ImplicitIterativeGlobalBA(const IncrementalMapperOptions& options,
+                        IncrementalMapper* mapper){
+  PrintHeading1("Retriangulation");
+  CompleteAndMergeTracks(options, mapper);
+  std::cout << "  => Retriangulated observations: "
+            << mapper->Retriangulate(options.Triangulation()) << std::endl;
+
+  for (int i = 0; i < options.ba_global_max_refinements; ++i) {
+    const size_t num_observations =
+        mapper->GetReconstruction().ComputeNumObservations();
+    size_t num_changed_observations = 0;
+    ImplicitAdjustGlobalBundle(options, mapper);
+    num_changed_observations += CompleteAndMergeTracks(options, mapper);
+    num_changed_observations += FilterPoints(options, mapper);
+    const double changed =
+        static_cast<double>(num_changed_observations) / num_observations;
+    std::cout << StringPrintf("  => Changed observations: %.6f", changed)
+              << std::endl;
+    if (changed < options.ba_global_max_refinement_change) {
+      break;
+    }
+  }
+
+  FilterImages(options, mapper);
+}
+
+
+
+
+
 
 void IterativeGlobalRefinement(const IncrementalMapperOptions& options,
                                IncrementalMapper* mapper) {
@@ -510,6 +572,8 @@ void IncrementalMapperController::Reconstruct(
 
         if (reg_next_success) {
           TriangulateImage(*options_, next_image, &mapper);
+
+          // Comment out below for implicit distortion bundle adjustment
           IterativeLocalRefinement(*options_, next_image_id, &mapper);
 
           if (reconstruction.NumRegImages() >=
@@ -521,9 +585,15 @@ void IncrementalMapperController::Reconstruct(
               reconstruction.NumPoints3D() >=
                   options_->ba_global_points_freq + ba_prev_num_points) {
             IterativeGlobalRefinement(*options_, &mapper);
+            // ImplicitIterativeGlobalBA(*options_, &mapper);
             ba_prev_num_points = reconstruction.NumPoints3D();
             ba_prev_num_reg_images = reconstruction.NumRegImages();
           }
+
+
+          // //////// preparing for implicit distortion bundle adjustment
+          // ImplicitIterativeGlobalBA(*options_, &mapper);
+          // ImplicitAdjustGlobalBundle(*options_, &mapper);
 
           if (options_->extract_colors) {
             ExtractColors(image_path_, next_image_id, &reconstruction);
@@ -568,6 +638,8 @@ void IncrementalMapperController::Reconstruct(
         reg_next_success = true;
         prev_reg_next_success = false;
         IterativeGlobalRefinement(*options_, &mapper);
+        // ImplicitIterativeGlobalBA(*options_, &mapper);
+        ImplicitAdjustGlobalBundle(*options_, &mapper);
       } else {
         prev_reg_next_success = reg_next_success;
       }
@@ -584,7 +656,10 @@ void IncrementalMapperController::Reconstruct(
         reconstruction.NumRegImages() != ba_prev_num_reg_images &&
         reconstruction.NumPoints3D() != ba_prev_num_points) {
       IterativeGlobalRefinement(*options_, &mapper);
+      // ImplicitIterativeGlobalBA(*options_, &mapper);
+      ImplicitAdjustGlobalBundle(*options_, &mapper);
     }
+    // ImplicitAdjustGlobalBundle(*options_, &mapper);
 
     // If the total number of images is small then do not enforce the minimum
     // model size so that we can reconstruct small image collections.

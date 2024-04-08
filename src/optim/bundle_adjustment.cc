@@ -423,9 +423,9 @@ void BundleAdjuster::AddImageToProblem(const image_t image_id,
         if (camera.ModelId() == Radial1DCameraModel::model_id) {
           // For radial cameras we fix the third parameter of the translation
           // full bundle adjustment for points except for the initial ones
-          // constant_tvec_idxs.push_back(2);
-          if (initial) {
-          constant_tvec_idxs.push_back(2);}
+          constant_tvec_idxs.push_back(2);
+          // if (initial) {
+          // constant_tvec_idxs.push_back(2);}
         }
         ceres::SubsetParameterization* tvec_parameterization =
             new ceres::SubsetParameterization(3, constant_tvec_idxs);
@@ -433,12 +433,12 @@ void BundleAdjuster::AddImageToProblem(const image_t image_id,
       } else {
         // For radial cameras we fix the third parameter of the translation
         if (camera.ModelId() == Radial1DCameraModel::model_id) {
-          // problem_->SetParameterization(
-          //     tvec_data, new ceres::SubsetParameterization(3, {2}));
-          if(initial){
           problem_->SetParameterization(
               tvec_data, new ceres::SubsetParameterization(3, {2}));
-          }
+          // if(initial){
+          // problem_->SetParameterization(
+          //     tvec_data, new ceres::SubsetParameterization(3, {2}));
+          // }
         }
       }
     }

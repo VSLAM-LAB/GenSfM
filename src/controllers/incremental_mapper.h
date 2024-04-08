@@ -35,6 +35,7 @@
 #include "base/reconstruction_manager.h"
 #include "sfm/incremental_mapper.h"
 #include "util/threading.h"
+#include "estimators/implicit_bundle_adjustment.h"
 
 namespace colmap {
 

@@ -1913,7 +1913,8 @@ int RunRadialTrifocalInitializer(int argc, char** argv) {
     std::cout << "  => Image sees " << num_existing_points3D << " / "
               << image.NumObservations() << " points" << std::endl;
 
-    bool initial = true;
+    // bool initial = true;
+    bool initial = false; //isolate full triangulation part
 
     mapper.TriangulateImage(tri_options, image_id, initial);
 
@@ -1942,10 +1943,12 @@ int RunRadialTrifocalInitializer(int argc, char** argv) {
     reconstruction.FilterObservationsWithNegativeDepth();
 
     const size_t num_observations = reconstruction.ComputeNumObservations();
+    // bool initial = true;
+    bool initial = false; //isolate full triangulation part
 
     PrintHeading1("Bundle adjustment");
     BundleAdjuster bundle_adjuster(ba_options, ba_config);
-    CHECK(bundle_adjuster.Solve(&reconstruction));
+    CHECK(bundle_adjuster.Solve(&reconstruction, initial));
 
     size_t num_changed_observations = 0;
     num_changed_observations += CompleteAndMergeTracks(mapper_options, &mapper);

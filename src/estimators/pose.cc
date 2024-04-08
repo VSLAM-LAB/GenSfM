@@ -144,7 +144,7 @@ bool EstimateRadialAbsolutePose(const AbsolutePoseEstimationOptions& options,
   // file2 << tz_imp << std::endl;
   // file2.close();
 
-  // Extract pose parameters.
+  // // Extract pose parameters.
   // *qvec = RotationMatrixToQuaternion(report.model.leftCols<3>());
   // *tvec = report.model.rightCols<1>();
 

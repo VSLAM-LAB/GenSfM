@@ -38,6 +38,7 @@
 #include "optim/bundle_adjustment.h"
 #include "sfm/incremental_triangulator.h"
 #include "util/alignment.h"
+#include "estimators/implicit_bundle_adjustment.h"
 
 namespace colmap {
 
@@ -214,6 +215,8 @@ class IncrementalMapper {
   // Global bundle adjustment using Ceres Solver or PBA.
   bool AdjustGlobalBundle(const Options& options,
                           const BundleAdjustmentOptions& ba_options, bool initial = false);
+  bool ImplicitAdjustGlobalBundle(const Options& options,
+                          const BundleAdjustmentOptions& ba_options, const ImplicitBundleAdjustmentOptions& implicit_ba_options, bool initial = false);
   bool AdjustParallelGlobalBundle(
       const BundleAdjustmentOptions& ba_options,
       const ParallelBundleAdjuster::Options& parallel_ba_options, bool initial = false);
