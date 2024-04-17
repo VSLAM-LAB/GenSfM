@@ -8,7 +8,6 @@
 #include "implicit_bundle_adjustment.h"
 #include "implicit_intrinsic.h"
 #include "implicit_utils.h"
-#include "implicit_bundle_adjustment.h"
 
 namespace colmap {
     

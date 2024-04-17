@@ -3,19 +3,21 @@
 
 #include <vector>
 #include <Eigen/Dense>
+
 #include "implicit_camera_pose.h"
 #include "implicit_pose_refinement.h"
 
 namespace colmap {
 
     struct ImplicitBundleAdjustmentOptions : PoseRefinementOptions {
-        int max_ite_num = 10;
+        int max_ite_num = 12;
         int min_curr_num = 5;
         double stop_ratio = 1e-3;
         double filter_thres = 10;
         
         bool upgrade_result = false;
-        bool filter_result = true; // filter before BA starts
+        // bool filter_result = true; // filter before BA starts
+        bool filter_result = true; // disable filtering for now
 
         ImplicitBundleAdjustmentOptions clone() const {
             ImplicitBundleAdjustmentOptions copy = *this;

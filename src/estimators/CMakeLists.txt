@@ -54,6 +54,7 @@ COLMAP_ADD_SOURCES(
     implicit_cost_matrix.h implicit_cost_matrix.cc
     implicit_cost_functions.h
     implicit_intrinsic.h implicit_intrinsic.cc
+    implicit_local_bundle_adjustment.h implicit_local_bundle_adjustment.cc
     implicit_pose_refinement.h implicit_pose_refinement.cc
     implicit_utils.h implicit_utils.cc
 

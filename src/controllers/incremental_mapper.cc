@@ -105,6 +105,43 @@ void IterativeLocalRefinement(const IncrementalMapperOptions& options,
   mapper->ClearModifiedPoints3D();
 }
 
+
+void IterativeImplicitLocalRefinement(const IncrementalMapperOptions& options,
+                              const image_t image_id,
+                              IncrementalMapper* mapper) {
+  auto ba_options = options.LocalBundleAdjustment();
+  ImplicitBundleAdjustmentOptions implicit_ba_options;
+  const auto report = mapper->ImplicitAdjustLocalBundle(
+        options.Mapper(), ba_options, options.Triangulation(), image_id,
+        mapper->GetModifiedPoints3D(), implicit_ba_options);
+  // for (int i = 0; i < options.ba_local_max_refinements; ++i) {
+    
+  //   const auto report = mapper->ImplicitAdjustLocalBundle(
+  //       options.Mapper(), ba_options, options.Triangulation(), image_id,
+  //       mapper->GetModifiedPoints3D(), implicit_ba_options);
+        
+  //   std::cout << "  => Merged observations: " << report.num_merged_observations
+  //             << std::endl;
+  //   std::cout << "  => Completed observations: "
+  //             << report.num_completed_observations << std::endl;
+  //   std::cout << "  => Filtered observations: "
+  //             << report.num_filtered_observations << std::endl;
+  //   const double changed =
+  //       (report.num_merged_observations + report.num_completed_observations +
+  //        report.num_filtered_observations) /
+  //       static_cast<double>(report.num_adjusted_observations);
+  //   std::cout << StringPrintf("  => Changed observations: %.6f", changed)
+  //             << std::endl;
+  //   if (changed < options.ba_local_max_refinement_change) {
+  //     break;
+  //   }
+  //   // Only use robust cost function for first iteration.
+  //   ba_options.loss_function_type =
+  //       BundleAdjustmentOptions::LossFunctionType::TRIVIAL;
+  // }
+  mapper->ClearModifiedPoints3D();
+}
+
 void ImplicitAdjustGlobalBundle(const IncrementalMapperOptions& options,
                         IncrementalMapper* mapper, bool initial = false) {
   BundleAdjustmentOptions custom_ba_options = options.GlobalBundleAdjustment();
@@ -507,9 +544,9 @@ void IncrementalMapperController::Reconstruct(
         reconstruction_manager_->Delete(reconstruction_idx);
         continue;
       }
-      bool initial = true;
+      // bool initial = true;
 
-      AdjustGlobalBundle(*options_, &mapper, initial);
+      AdjustGlobalBundle(*options_, &mapper);
       FilterPoints(*options_, &mapper);
       FilterImages(*options_, &mapper);
 
@@ -574,7 +611,10 @@ void IncrementalMapperController::Reconstruct(
           TriangulateImage(*options_, next_image, &mapper);
 
           // Comment out below for implicit distortion bundle adjustment
+          
+          IterativeImplicitLocalRefinement(*options_, next_image_id, &mapper);
           IterativeLocalRefinement(*options_, next_image_id, &mapper);
+          
 
           if (reconstruction.NumRegImages() >=
                   options_->ba_global_images_ratio * ba_prev_num_reg_images ||
@@ -584,8 +624,10 @@ void IncrementalMapperController::Reconstruct(
                   options_->ba_global_points_ratio * ba_prev_num_points ||
               reconstruction.NumPoints3D() >=
                   options_->ba_global_points_freq + ba_prev_num_points) {
-            IterativeGlobalRefinement(*options_, &mapper);
+            // IterativeGlobalRefinement(*options_, &mapper);
             // ImplicitIterativeGlobalBA(*options_, &mapper);
+            // AdjustGlobalBundle(*options_, &mapper);
+            IterativeGlobalRefinement(*options_, &mapper);
             ba_prev_num_points = reconstruction.NumPoints3D();
             ba_prev_num_reg_images = reconstruction.NumRegImages();
           }

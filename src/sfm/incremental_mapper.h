@@ -39,6 +39,7 @@
 #include "sfm/incremental_triangulator.h"
 #include "util/alignment.h"
 #include "estimators/implicit_bundle_adjustment.h"
+#include "estimators/implicit_local_bundle_adjustment.h"
 
 namespace colmap {
 
@@ -217,6 +218,12 @@ class IncrementalMapper {
                           const BundleAdjustmentOptions& ba_options, bool initial = false);
   bool ImplicitAdjustGlobalBundle(const Options& options,
                           const BundleAdjustmentOptions& ba_options, const ImplicitBundleAdjustmentOptions& implicit_ba_options, bool initial = false);
+  LocalBundleAdjustmentReport ImplicitAdjustLocalBundle(
+      const Options& options, const BundleAdjustmentOptions& ba_options,
+      const IncrementalTriangulator::Options& tri_options,
+      const image_t image_id, const std::unordered_set<point3D_t>& point3D_ids,
+      const ImplicitBundleAdjustmentOptions& implicit_ba_options, bool initial = false);
+      
   bool AdjustParallelGlobalBundle(
       const BundleAdjustmentOptions& ba_options,
       const ParallelBundleAdjuster::Options& parallel_ba_options, bool initial = false);
