@@ -32,9 +32,11 @@ void local_bundle_adjustment(std::vector<std::vector<Eigen::Vector2d>> &points2D
                                 std::vector<CameraPose> &poses, Eigen::Vector2d &pp, 
                                 BundleAdjustmentConfig ba_config,
                                 ImplicitBundleAdjustmentOptions ba_opt,
-                                std::unordered_map<point3D_t, size_t> pointID_to_globalIndex) {
+                                std::unordered_map<point3D_t, size_t> pointID_to_globalIndex,
+                                std::unordered_map<point3D_t, int> totalObservations) {
 
     if (ba_opt.upgrade_result) {
+    // if (true){
         std::cout << "pose upgrade for " << points2D.size() << " images" << std::endl;
         // First, upgrade the pose estimation
         int num_cams = points2D.size();
@@ -49,7 +51,7 @@ void local_bundle_adjustment(std::vector<std::vector<Eigen::Vector2d>> &points2D
         // print points3D dimensions before the pose refinement
         // std::cout << "before pose refinement points3D_sep size: " << points3D_sep.size() << std::endl;
 
-        // poses = pose_refinement_multi(points2D, points3D_sep, cost_matrix, pp, poses, ba_opt);
+        poses = pose_refinement_multi(points2D, points3D_sep, cost_matrix, pp, poses, ba_opt);
         // std::cout << "after pose refinement points3D_sep size: " << points3D_sep.size() << std::endl;
     }
     // print points2D dimensions after the pose refinement
@@ -78,7 +80,7 @@ void local_bundle_adjustment(std::vector<std::vector<Eigen::Vector2d>> &points2D
         auto ite_ind = pointsInd[i].begin();
         while (ite_ind != pointsInd[i].end()) {
             // if (occur_count[*ite_ind] < ba_opt.min_curr_num) {
-            if (occur_count[*ite_ind] < 1) {
+            if (occur_count[*ite_ind] < 2) {
                 points2D[i].erase(ite_2D);
                 pointsInd[i].erase(ite_ind);
                 counter++;
@@ -89,7 +91,7 @@ void local_bundle_adjustment(std::vector<std::vector<Eigen::Vector2d>> &points2D
         }
         for (int j = 0; j < pointsInd[i].size(); j++) {
             // if (occur_count[pointsInd[i][j]] < ba_opt.min_curr_num)
-            if (occur_count[pointsInd[i][j]] < 1)
+            if (occur_count[pointsInd[i][j]] < 2)
                 std::cout << "exlusion error!" << std::endl;
         }
     }
@@ -112,15 +114,16 @@ void local_bundle_adjustment(std::vector<std::vector<Eigen::Vector2d>> &points2D
         }
     }
 
-    // std::cout << "excluded point number: " << counter << std::endl;
+    std::cout << "excluded point number: " << counter << std::endl;
 
     std::cout << "start bundle adjustment for " << points2D.size() << " images" << std::endl;
     // Then, do bundle adjustment
     int ite = 0;
     while (ite < ba_opt.max_ite_num) {
+    // while (ite < 0) {
         
         std::cout << "ite number: " << ite << std::endl;
-        double ratio = local_bundle_adjustment_inner(points2D_center, points3D, pointsInd, image_ids, cost_matrix, qs, ts, ba_config, ba_opt, pointID_to_globalIndex);
+        double ratio = local_bundle_adjustment_inner(points2D_center, points3D, pointsInd, image_ids, cost_matrix, qs, ts, ba_config, ba_opt, pointID_to_globalIndex, totalObservations);
         ite++;
 
         std::cout << "optimize_projection done, decrease ratio: " << ratio << std::endl;
@@ -154,11 +157,13 @@ double local_bundle_adjustment_inner(const std::vector<std::vector<Eigen::Vector
                                 std::vector<Eigen::Quaterniond> &qs, std::vector<Eigen::Vector3d> &ts,
                                 BundleAdjustmentConfig ba_config,
                                 ImplicitBundleAdjustmentOptions ba_opt,
-                                std::unordered_map<point3D_t, size_t> pointID_to_globalIndex) {
+                                std::unordered_map<point3D_t, size_t> pointID_to_globalIndex,
+                                std::unordered_map<point3D_t, int> totalObservations) {
 
     size_t n_img = points2D_center.size();
     std::cout << "n_img: " << n_img << std::endl;
     std::vector<Eigen::Vector3d> points3D_new = points3D;
+    std::unordered_map<point3D_t, int> observedCount;
 
 
     ceres::Problem problem;
@@ -181,19 +186,13 @@ double local_bundle_adjustment_inner(const std::vector<std::vector<Eigen::Vector
     for (size_t cam_k = 0; cam_k < n_img; ++cam_k) {
         for (size_t i = 0; i < points2D_center[cam_k].size(); ++i) {
             int global_index = pointsInd[cam_k][i];
+            point3D_t point3D_id = std::find_if(pointID_to_globalIndex.begin(), pointID_to_globalIndex.end(),
+                                        [global_index](const std::pair<point3D_t, size_t>& pair) {
+                                            return pair.second == global_index;
+                                        })->first; // Access the point3D_id from the iterator returned by find_if
+            observedCount[point3D_id] += 1;
             ceres::CostFunction* reg_cost = BARadialReprojError::CreateCost(points2D_center[cam_k][i]);
-    //         if(global_index == 1400){
-    //             std::cout << "global_index is 0" << std::endl;
-    //             // find the point3D_id as the index of pointsInd for which the global_index is 0
-    
-    //             point3D_t point3D_id = std::find_if(pointID_to_globalIndex.begin(), pointID_to_globalIndex.end(),
-    //                                     [](const std::pair<point3D_t, size_t>& pair) {
-    //                                         return pair.second == 1400;
-    //                                     })->first; // Access the point3D_id from the iterator returned by find_if
 
-    // std::cout << "point3D_id for global_index 0: " << point3D_id << std::endl;
-    //         }   
-            // std::cout << "Adding global_index: " << global_index << std::endl;
             
             problem.AddResidualBlock(reg_cost, loss_function_radial, qs[cam_k].coeffs().data(), ts[cam_k].data(), points3D_new[pointsInd[cam_k][i]].data());
         }
@@ -201,23 +200,32 @@ double local_bundle_adjustment_inner(const std::vector<std::vector<Eigen::Vector
     std::cout << "Total point in point3D_new: " << points3D_new.size() << std::endl;
     std::cout << "Total point in pointsInd: " << pointsInd.size() << std::endl;
 
-    // // Set constant points based on ba_config
-    // for (auto& [point3D_id, index] : pointID_to_globalIndex) {
-    //     if (!ba_config.HasVariablePoint(point3D_id)) {
-    //         // if (problem.HasParameterBlock(points3D[index].data())) {
-    //         //     problem.SetParameterBlockConstant(points3D[index].data());
-    //         // }
-    //         std::cout << "index: " << index << std::endl;
-    //         std::cout << "point3D_id not variable: " << point3D_id << std::endl;
-    //         // check if has the parameter block
-    //         if(problem.HasParameterBlock(points3D_new[index].data())){
-    //             std::cout << "has the parameter block"  << std::endl;
-    //             problem.SetParameterBlockConstant(points3D_new[index].data());            
-    //         }else{
-    //         std::cout << "doesn't have the parameter block"  << std::endl;
-    //         }
-    //     }
-    // }
+    // Set constant points based on ba_config
+    for (auto& [point3D_id, index] : pointID_to_globalIndex) {
+        if (ba_config.HasConstantPoint(point3D_id)) {
+        // if (true) {
+            
+            if(problem.HasParameterBlock(points3D_new[index].data())){
+                // std::cout << "has the parameter block"  << std::endl;
+                problem.SetParameterBlockConstant(points3D_new[index].data());            
+            }else{
+            // std::cout << "doesn't have the parameter block"  << std::endl;
+            // add the parameter block
+            // problem.AddParameterBlock(points3D_new[index].data(), 3);
+            // // set the parameter block constant
+            // problem.SetParameterBlockConstant(points3D_new[index].data());
+            }
+        }
+    }
+
+    for (const auto& [point3D_id, count] : observedCount) {
+        std::cout << "point3D_id: " << point3D_id << " count: " << count << std::endl;
+        std::cout << "totalObservations: " << totalObservations.at(point3D_id) << std::endl;
+        
+        if (count < totalObservations.at(point3D_id)) {
+            problem.SetParameterBlockConstant(points3D_new[pointID_to_globalIndex[point3D_id]].data());
+        }
+    }
 
 
     // // ////////////// original code //////////////
@@ -245,7 +253,8 @@ double local_bundle_adjustment_inner(const std::vector<std::vector<Eigen::Vector
 
     std::vector<std::vector<double*>> params(cost_matrix.pt_index.size());
     
-    ceres::LossFunction* loss_function_dist = setup_loss_function_ba_local(ba_opt.loss_dist, ba_opt.loss_scale_dist);        
+    ceres::LossFunction* loss_function_dist = setup_loss_function_ba_local(ba_opt.loss_dist, ba_opt.loss_scale_dist); 
+    // ceres::LossFunction* loss_function_dist = setup_loss_function_ba_local(ba_opt.loss_local, ba_opt.loss_scale_dist);        
 
     // Implicit distortion cost (the cost matrix, regularization)
     for (size_t i = 0; i < cost_matrix.pt_index.size(); ++i) {
@@ -255,25 +264,48 @@ double local_bundle_adjustment_inner(const std::vector<std::vector<Eigen::Vector
         problem.AddResidualBlock(reg_cost, loss_function_dist, params[i]);
     }
 
+    // check num_observations per image
+    std::vector<size_t> num_observations(n_img, 0);
+    for (size_t k = 0; k < n_img; ++k) {
+        image_t img_id = image_ids[k];
+        size_t num_obs=0;
+        for (size_t i = 0; i < points2D_center[k].size(); ++i) {
+            num_obs += 1;
+        }
+        num_observations[k] = num_obs;
+    }
+
     // Setup parameterizations and constant parameter blocks
     for (size_t k = 0; k < n_img; ++k) {
         image_t img_id = image_ids[k];
         bool is_constant_pose = ba_config.HasConstantPose(img_id);
+        // bool is_constant_pose = false;
         double *q = qs[k].coeffs().data();
+        if (num_observations[k] > 0) {
+           
         if (!is_constant_pose) {
+            
             // check if has parameter block
             // std::cout<<"has parameter block q?"<<problem.HasParameterBlock(q)<<std::endl;
             // std::cout<<"has parameter block ts?"<<problem.HasParameterBlock(ts[k].data())<<std::endl;
         
             problem.SetParameterization(q, new ceres::EigenQuaternionParameterization());
+            if(ba_config.HasConstantTvec(img_id)){
+                problem.SetParameterBlockConstant(ts[k].data());
+            }
         } else {
             // std::cout << "has parameter block q? "<<problem.HasParameterBlock(q) << std::endl;
             // std::cout << "has parameter block ts? "<<problem.HasParameterBlock(ts[k].data()) << std::endl;
             problem.SetParameterBlockConstant(q);
             problem.SetParameterBlockConstant(ts[k].data());
         }
+        }else{
+            std::cout << "no observations for image " << k << std::endl;
+            problem.SetParameterBlockConstant(q);
+            problem.SetParameterBlockConstant(ts[k].data());
+        }
 
-        problem.SetParameterization(q, new ceres::EigenQuaternionParameterization());
+        // problem.SetParameterization(q, new ceres::EigenQuaternionParameterization());
 
         if (pointsInd[k].size() != points2D_center[k].size()) {
             std::cout << "size error" << std::endl;

@@ -22,6 +22,7 @@ struct PoseRefinementOptions {
         double loss_scale_radial = 1.0;
         LossFunction loss_dist = HUBER;
         double loss_scale_dist = 1.0;
+        LossFunction loss_local = TRIVIAL;
 
         // threshold for filtering
         double filter_thres = 10.0;

@@ -10,14 +10,14 @@
 namespace colmap {
 
     struct ImplicitBundleAdjustmentOptions : PoseRefinementOptions {
-        int max_ite_num = 12;
+        int max_ite_num = 10;
         int min_curr_num = 5;
         double stop_ratio = 1e-3;
         double filter_thres = 10;
         
         bool upgrade_result = false;
         // bool filter_result = true; // filter before BA starts
-        bool filter_result = true; // disable filtering for now
+        bool filter_result = false; // disable filtering for now
 
         ImplicitBundleAdjustmentOptions clone() const {
             ImplicitBundleAdjustmentOptions copy = *this;

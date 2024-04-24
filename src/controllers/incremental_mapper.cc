@@ -41,6 +41,8 @@ size_t TriangulateImage(const IncrementalMapperOptions& options,
                         const Image& image, IncrementalMapper* mapper) {
   std::cout << "  => Continued observations: " << image.NumPoints3D()
             << std::endl;
+  // const size_t num_reg_images = mapper->GetReconstruction().NumRegImages();
+  // bool standard_triangulation = num_reg_images >= options.Triangulation().min_num_reg_images;
   const size_t num_tris =
       mapper->TriangulateImage(options.Triangulation(), image.ImageId());
   std::cout << "  => Added observations: " << num_tris << std::endl;
@@ -305,6 +307,7 @@ IncrementalTriangulator::Options IncrementalMapperOptions::Triangulation()
   options.min_focal_length_ratio = min_focal_length_ratio;
   options.max_focal_length_ratio = max_focal_length_ratio;
   options.max_extra_param = max_extra_param;
+  options.min_num_reg_images = 8;
   return options;
 }
 
@@ -611,9 +614,14 @@ void IncrementalMapperController::Reconstruct(
           TriangulateImage(*options_, next_image, &mapper);
 
           // Comment out below for implicit distortion bundle adjustment
-          
+          // if (reconstruction.NumRegImages() >= 8){
+          // // IterativeLocalRefinement(*options_, next_image_id, &mapper);
+          // IterativeImplicitLocalRefinement(*options_, next_image_id, &mapper);
+          // ImplicitAdjustGlobalBundle(*options_,&mapper);
+          // }
+          // IterativeLocalRefinement(*options_, next_image_id, &mapper);
           IterativeImplicitLocalRefinement(*options_, next_image_id, &mapper);
-          IterativeLocalRefinement(*options_, next_image_id, &mapper);
+          // IterativeLocalRefinement(*options_, next_image_id, &mapper);
           
 
           if (reconstruction.NumRegImages() >=
@@ -625,9 +633,9 @@ void IncrementalMapperController::Reconstruct(
               reconstruction.NumPoints3D() >=
                   options_->ba_global_points_freq + ba_prev_num_points) {
             // IterativeGlobalRefinement(*options_, &mapper);
-            // ImplicitIterativeGlobalBA(*options_, &mapper);
+            ImplicitIterativeGlobalBA(*options_, &mapper);
             // AdjustGlobalBundle(*options_, &mapper);
-            IterativeGlobalRefinement(*options_, &mapper);
+            // IterativeGlobalRefinement(*options_, &mapper);
             ba_prev_num_points = reconstruction.NumPoints3D();
             ba_prev_num_reg_images = reconstruction.NumRegImages();
           }
@@ -679,7 +687,7 @@ void IncrementalMapperController::Reconstruct(
       if (!reg_next_success && prev_reg_next_success) {
         reg_next_success = true;
         prev_reg_next_success = false;
-        IterativeGlobalRefinement(*options_, &mapper);
+        // IterativeGlobalRefinement(*options_, &mapper);
         // ImplicitIterativeGlobalBA(*options_, &mapper);
         ImplicitAdjustGlobalBundle(*options_, &mapper);
       } else {
@@ -697,7 +705,7 @@ void IncrementalMapperController::Reconstruct(
     if (reconstruction.NumRegImages() >= 2 &&
         reconstruction.NumRegImages() != ba_prev_num_reg_images &&
         reconstruction.NumPoints3D() != ba_prev_num_points) {
-      IterativeGlobalRefinement(*options_, &mapper);
+      // IterativeGlobalRefinement(*options_, &mapper);
       // ImplicitIterativeGlobalBA(*options_, &mapper);
       ImplicitAdjustGlobalBundle(*options_, &mapper);
     }

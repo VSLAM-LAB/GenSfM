@@ -38,7 +38,8 @@ namespace colmap {
                             std::vector<CameraPose> &poses, Eigen::Vector2d &pp, 
                             BundleAdjustmentConfig ba_config,
                             ImplicitBundleAdjustmentOptions ba_opt,
-                            std::unordered_map<point3D_t, size_t> pointID_to_globalIndex);
+                            std::unordered_map<point3D_t, size_t> pointID_to_globalIndex,
+                            std::unordered_map<point3D_t, int> totalObservations);
 
     double local_bundle_adjustment_inner(const std::vector<std::vector<Eigen::Vector2d>> &points2D_center,
                             std::vector<Eigen::Vector3d> &points3D,
@@ -48,7 +49,8 @@ namespace colmap {
                             std::vector<Eigen::Quaterniond> &qs, std::vector<Eigen::Vector3d> &ts, 
                             BundleAdjustmentConfig ba_config,
                             ImplicitBundleAdjustmentOptions ba_opt,
-                            std::unordered_map<point3D_t, size_t> pointID_to_globalIndex);
+                            std::unordered_map<point3D_t, size_t> pointID_to_globalIndex,
+                            std::unordered_map<point3D_t, int> totalObservations);
 
     void filter_result_ba_local(std::vector<std::vector<Eigen::Vector2d>> &points2D,
                             std::vector<Eigen::Vector3d> &points3D,
