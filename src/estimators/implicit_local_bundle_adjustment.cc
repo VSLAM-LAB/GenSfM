@@ -161,7 +161,7 @@ double local_bundle_adjustment_inner(const std::vector<std::vector<Eigen::Vector
                                 std::unordered_map<point3D_t, int> totalObservations) {
 
     size_t n_img = points2D_center.size();
-    std::cout << "n_img: " << n_img << std::endl;
+    // std::cout << "n_img: " << n_img << std::endl;
     std::vector<Eigen::Vector3d> points3D_new = points3D;
     std::unordered_map<point3D_t, int> observedCount;
 
@@ -197,8 +197,8 @@ double local_bundle_adjustment_inner(const std::vector<std::vector<Eigen::Vector
             problem.AddResidualBlock(reg_cost, loss_function_radial, qs[cam_k].coeffs().data(), ts[cam_k].data(), points3D_new[pointsInd[cam_k][i]].data());
         }
     }
-    std::cout << "Total point in point3D_new: " << points3D_new.size() << std::endl;
-    std::cout << "Total point in pointsInd: " << pointsInd.size() << std::endl;
+    // std::cout << "Total point in point3D_new: " << points3D_new.size() << std::endl;
+    // std::cout << "Total point in pointsInd: " << pointsInd.size() << std::endl;
 
     // Set constant points based on ba_config
     for (auto& [point3D_id, index] : pointID_to_globalIndex) {
@@ -219,8 +219,8 @@ double local_bundle_adjustment_inner(const std::vector<std::vector<Eigen::Vector
     }
 
     for (const auto& [point3D_id, count] : observedCount) {
-        std::cout << "point3D_id: " << point3D_id << " count: " << count << std::endl;
-        std::cout << "totalObservations: " << totalObservations.at(point3D_id) << std::endl;
+        // std::cout << "point3D_id: " << point3D_id << " count: " << count << std::endl;
+        // std::cout << "totalObservations: " << totalObservations.at(point3D_id) << std::endl;
         
         if (count < totalObservations.at(point3D_id)) {
             problem.SetParameterBlockConstant(points3D_new[pointID_to_globalIndex[point3D_id]].data());

@@ -629,7 +629,10 @@ size_t IncrementalMapper::TriangulateImage(
     const IncrementalTriangulator::Options& tri_options,
     const image_t image_id, bool initial) {
   CHECK_NOTNULL(reconstruction_);
-  return triangulator_->TriangulateImage(tri_options, image_id, initial);
+  size_t num_registrations = reconstruction_->NumRegImages();
+  bool standard_triangulation = (num_registrations >= tri_options.min_num_reg_images);
+  // bool standard_triangulation = false;
+  return triangulator_->TriangulateImage(tri_options, image_id, initial, standard_triangulation);
 }
 
 size_t IncrementalMapper::Retriangulate(
@@ -890,6 +893,7 @@ std::cout << "poses size: " << poses.size() << std::endl;
 
 
 // run bundle adjustment
+
 bundle_adjustment(points2D, points3D,pointsInd, costMatrix, cm_opt, poses, principal_point, implicit_ba_options);
 
 
@@ -919,6 +923,17 @@ for (size_t i = 0; i < poses.size(); ++i) {
 }
 // reconstruction_->Normalize();
 return true;
+}
+
+void calculateExpectedObservations(
+    const std::unordered_set<point3D_t>& point3D_ids,
+    Reconstruction* reconstruction,
+    std::unordered_map<point3D_t, int>& totalObservations) {
+    for (const point3D_t& point_id : point3D_ids) {
+        const Point3D& point = reconstruction->Point3D(point_id);
+        // Assuming Point3D has a method to get the number of images it appears in
+        totalObservations[point_id] = point.Track().Length();
+    }
 }
 
 IncrementalMapper::LocalBundleAdjustmentReport 
@@ -998,7 +1013,13 @@ IncrementalMapper::ImplicitAdjustLocalBundle(const Options& options,
         ba_config.AddVariablePoint(point3D_id);
         variable_point3D_ids.insert(point3D_id);
       }
+      else if (point3D.Track().Length() > kMaxTrackLength){
+        ba_config.AddConstantPoint(point3D_id);
+
+      }
+      
     }
+   
 
 
     // Adjust the local bundle using implicit_local_bundle_adjustment
@@ -1014,6 +1035,10 @@ IncrementalMapper::ImplicitAdjustLocalBundle(const Options& options,
 
     //extracting points3D
     // reconstruction_->Normalize();
+
+    // Preparing total observations map
+    std::unordered_map<point3D_t, int> totalObservations;
+    calculateExpectedObservations(point3D_ids, reconstruction_, totalObservations);
   
     for (const auto& local_image_id : ba_config.Images()) {
     const Image& image = reconstruction_->Image(local_image_id);
@@ -1024,6 +1049,10 @@ IncrementalMapper::ImplicitAdjustLocalBundle(const Options& options,
         if (!point2D.HasPoint3D()) continue;
 
         point3D_t point3D_id = point2D.Point3DId();
+        // check if point3D_id is within constant point or variable point list
+        if(!ba_config.HasConstantPoint(point3D_id)&&!ba_config.HasVariablePoint(point3D_id)){
+            continue;
+        }
         if (pointID_to_globalIndex.find(point3D_id) == pointID_to_globalIndex.end()) {
             // Point has not been added yet, so add to points3D and index map
             const Point3D& point3D = reconstruction_->Point3D(point3D_id);
@@ -1044,7 +1073,9 @@ IncrementalMapper::ImplicitAdjustLocalBundle(const Options& options,
     //     bundle_adjuster.Summary().num_residuals / 2;
 
     for (const image_t local_image_id : ba_config.Images()) {
-        const Image& image = reconstruction_->Image(local_image_id);
+        Image& image = reconstruction_->Image(local_image_id);
+        // image.NormalizeQvec();
+
         Eigen::Vector4d q(image.Qvec());
         Eigen::Vector3d t(image.Tvec());
         poses.push_back(CameraPose(q, t));
@@ -1058,10 +1089,15 @@ IncrementalMapper::ImplicitAdjustLocalBundle(const Options& options,
     CostMatrix costMatrix = build_cost_matrix_multi(points2D, cm_opt, pp);
     std::cout << "points2D size: " << points2D.size() << std::endl;
     std::cout << "points3D size: " << points3D.size() << std::endl;
+    std::cout<<"points3d_ids size: "<<point3D_ids.size()<<std::endl;
     std::cout << "pointsInd size: " << pointsInd.size() << std::endl;
     std::cout << "poses size: " << poses.size() << std::endl;
-    local_bundle_adjustment(points2D, points3D, pointsInd,image_ids, costMatrix, cm_opt, poses, pp,ba_config, ba_opt, pointID_to_globalIndex);
-    
+    local_bundle_adjustment(points2D, points3D, pointsInd,image_ids, costMatrix, cm_opt, poses, pp,ba_config, ba_opt, pointID_to_globalIndex, totalObservations);
+    // bundle_adjustment(points2D, points3D, pointsInd, costMatrix, cm_opt, poses, pp, implicit_ba_options);
+
+    // BundleAdjuster bundle_adjuster(ba_options, ba_config);
+    // bundle_adjuster.Solve(reconstruction_);
+
     //update 3D points
     for (const auto& pair : pointID_to_globalIndex) {
         point3D_t point3D_id = pair.first;
@@ -1069,8 +1105,10 @@ IncrementalMapper::ImplicitAdjustLocalBundle(const Options& options,
         const Eigen::Vector3d& updatedPosition = points3D[globalIndex];
 
         // Update the position of the point in the main dataset
+        // if(!ba_config.HasConstantPoint(point3D_id)){
         Point3D& point3D = reconstruction_->Point3D(point3D_id);
         point3D.SetXYZ(updatedPosition);
+        // }
     }
     std::cout << "updating 3D points ended successfully" << std::endl;
     //update image poses
@@ -1080,42 +1118,47 @@ IncrementalMapper::ImplicitAdjustLocalBundle(const Options& options,
 
         // Get the updated position
         const CameraPose& updatedPose = poses[i];
+        // if(!ba_config.HasConstantPose(local_image_id)){
 
         // Update the position of the point in the main dataset
         reconstruction_->Image(local_image_id).SetQvec(updatedPose.q_vec);
         reconstruction_->Image(local_image_id).SetTvec(updatedPose.t);
+        // reconstruction_->Image(local_image_id).NormalizeQvec();
+        // }
     }
     std::cout << "updating image pose ended successfully" << std::endl;
-
+     // Adjust the local bundle.
+    
   
     
-    // Merge refined tracks with other existing points.
-    report.num_merged_observations =
-        triangulator_->MergeTracks(tri_options, variable_point3D_ids);
-    std::cout << "Merging tracks ended successfully" << std::endl;
-    // Complete tracks that may have failed to triangulate before refinement
-    // of camera pose and calibration in bundle-adjustment. This may avoid
-    // that some points are filtered and it helps for subsequent image
-    // registrations.
-    report.num_completed_observations =
-        triangulator_->CompleteTracks(tri_options, variable_point3D_ids);
-    report.num_completed_observations +=
-        triangulator_->CompleteImage(tri_options, image_id);
+  //   // Merge refined tracks with other existing points.
+  //   report.num_merged_observations =
+  //       triangulator_->MergeTracks(tri_options, variable_point3D_ids);
+  //   std::cout << "Merging tracks ended successfully" << std::endl;
+  //   // Complete tracks that may have failed to triangulate before refinement
+  //   // of camera pose and calibration in bundle-adjustment. This may avoid
+  //   // that some points are filtered and it helps for subsequent image
+  //   // registrations.
+  //   report.num_completed_observations =
+  //       triangulator_->CompleteTracks(tri_options, variable_point3D_ids);
+  //   report.num_completed_observations +=
+  //       triangulator_->CompleteImage(tri_options, image_id);
 
   }
-  std::cout << "Complete ended successfully" << std::endl;
-  std::unordered_set<image_t> filter_image_ids;
-  filter_image_ids.insert(image_id);
-  filter_image_ids.insert(local_bundle.begin(), local_bundle.end());
-  report.num_filtered_observations = reconstruction_->FilterPoints3DInImages(
-      options.filter_max_reproj_error, options.filter_min_tri_angle,
-      filter_image_ids);
-  std::cout << "Filtering points in images ended successfully" << std::endl;
-  report.num_filtered_observations += reconstruction_->FilterPoints3D(
-      options.filter_max_reproj_error, options.filter_min_tri_angle,
-      point3D_ids);
+  // std::cout << "Complete ended successfully" << std::endl;
+  // std::unordered_set<image_t> filter_image_ids;
+  // filter_image_ids.insert(image_id);
+  // filter_image_ids.insert(local_bundle.begin(), local_bundle.end());
+  // report.num_filtered_observations = reconstruction_->FilterPoints3DInImages(
+  //     options.filter_max_reproj_error, options.filter_min_tri_angle,
+  //     filter_image_ids);
+  // std::cout << "Filtering points in images ended successfully" << std::endl;
+  // report.num_filtered_observations += reconstruction_->FilterPoints3D(
+  //     options.filter_max_reproj_error, options.filter_min_tri_angle,
+  //     point3D_ids);
 
-  std::cout << "Filtering points in 3D ended successfully" << std::endl;
+  // std::cout << "Filtering points in 3D ended successfully" << std::endl;
+  
   return report;
 
 }

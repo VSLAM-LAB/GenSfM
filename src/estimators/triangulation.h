@@ -33,6 +33,7 @@
 #define COLMAP_SRC_ESTIMATORS_TRIANGULATION_H_
 
 #include "base/camera.h"
+#include "base/image.h"
 
 #include <vector>
 
@@ -68,6 +69,9 @@ class TriangulationEstimator {
     Eigen::Vector2d point;
     // Normalized image observation. Must always be set.
     Eigen::Vector2d point_normalized;
+    double focal_length = 1;
+    // Normalized image observation for standard triangulation
+    Eigen::Vector2d point_normalized_standard;
   };
 
   struct PoseData {
@@ -80,8 +84,11 @@ class TriangulationEstimator {
     Eigen::Matrix3x4d proj_matrix;
     // The projection center for the image of the observation.
     Eigen::Vector3d proj_center;
+    // The projection matrix for the standard triangulation
+    Eigen::Matrix3x4d proj_matrix_standard;
     // The camera for the image of the observation.
     const Camera* camera;
+    const Image* image;
   };
 
   typedef PointData X_t;
@@ -103,6 +110,9 @@ class TriangulationEstimator {
   //
   // @return                  Triangulated point if successful, otherwise none.
   std::vector<M_t> Estimate(const std::vector<X_t>& point_data,
+                            const std::vector<Y_t>& pose_data, bool initial=false) const;
+  
+  std::vector<M_t> EstimateStandard(const std::vector<X_t>& point_data,
                             const std::vector<Y_t>& pose_data, bool initial=false) const;
 
   std::vector<M_t> EstimateInitial(const std::vector<X_t>& point_data,
@@ -148,7 +158,7 @@ bool EstimateTriangulation(
     const EstimateTriangulationOptions& options,
     const std::vector<TriangulationEstimator::PointData>& point_data,
     const std::vector<TriangulationEstimator::PoseData>& pose_data,
-    std::vector<char>* inlier_mask, Eigen::Vector3d* xyz, bool initial = false);
+    std::vector<char>* inlier_mask, Eigen::Vector3d* xyz, bool initial = false, bool standard_triangulation = false);
 
 bool EstimateTriangulationInitial(
     const EstimateTriangulationOptions& options,

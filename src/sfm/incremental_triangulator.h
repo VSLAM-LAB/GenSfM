@@ -78,6 +78,10 @@ class IncrementalTriangulator {
     // Whether to ignore two-view tracks.
     bool ignore_two_view_tracks = true;
 
+    //Minimum number of registered images to start standard triangulation
+    int min_num_reg_images = 18;
+
+
     // Thresholds for bogus camera parameters. Images with bogus camera
     // parameters are ignored in triangulation.
     double min_focal_length_ratio = 0.1;
@@ -99,7 +103,7 @@ class IncrementalTriangulator {
   //
   // Note that the given image must be registered and its pose must be set
   // in the associated reconstruction.
-  size_t TriangulateImage(const Options& options, const image_t image_id, bool initial = false);
+  size_t TriangulateImage(const Options& options, const image_t image_id, bool initial = false, bool standard_triangulation = false);
 
   // size_t TriangulateImageInitial(const Options& options,
   //                                                const image_t image_id);
@@ -170,7 +174,7 @@ class IncrementalTriangulator {
 
   // Try to create a new 3D point from the given correspondences.
   size_t Create(const Options& options,
-                const std::vector<CorrData>& corrs_data, bool initial = false);
+                const std::vector<CorrData>& corrs_data, bool initial = false, bool standard_triangulation = false);
   // size_t CreateInitial(
   //   const Options& options, const std::vector<CorrData>& corrs_data);
   // Try to continue the 3D point with the given correspondences.

@@ -176,6 +176,92 @@ std::vector<TriangulationEstimator::M_t> TriangulationEstimator::Estimate(
   return output;
 }
 
+std::vector<TriangulationEstimator::M_t> TriangulationEstimator::EstimateStandard(
+  
+    const std::vector<X_t>& point_data,
+    const std::vector<Y_t>& pose_data, bool initial) const {
+  CHECK_GE(point_data.size(), 2);
+  CHECK_EQ(point_data.size(), pose_data.size());
+  std::cout << "==============================Starting standard triangulation ===============================" << std::endl;
+
+  
+
+  std::vector<Eigen::Vector3d> candidates;
+   // standard point-based triangulation
+
+  if(point_data.size() == 3) {
+    // This is a minimal sample and not LO-step in RANSAC
+    // We run all possible combinations of three points
+
+    candidates.push_back(TriangulatePoint(
+      pose_data[0].proj_matrix_standard, pose_data[1].proj_matrix_standard,
+      point_data[0].point, point_data[1].point));  
+    candidates.push_back(TriangulatePoint(
+      pose_data[0].proj_matrix_standard, pose_data[2].proj_matrix_standard,
+      point_data[0].point, point_data[2].point));
+    candidates.push_back(TriangulatePoint(
+      pose_data[1].proj_matrix_standard, pose_data[2].proj_matrix_standard,
+      point_data[1].point, point_data[2].point));
+  
+  } else {
+    // This is a non-minimal sample (for refinement in RANSAC)
+    std::vector<Eigen::Matrix3x4d> proj_matrices;
+    proj_matrices.reserve(point_data.size());
+    std::vector<Eigen::Vector2d> points;
+    points.reserve(point_data.size());
+    for (size_t i = 0; i < point_data.size(); ++i) {
+      proj_matrices.push_back(pose_data[i].proj_matrix_standard);
+      points.push_back(point_data[i].point);
+    }
+    candidates.push_back(TriangulateMultiViewPoint(proj_matrices, points));
+  }
+
+
+
+  std::vector<Eigen::Vector3d> output;
+
+  for(Eigen::Vector3d &xyz : candidates) {
+    // check cheirality for each camera (or half-plane constraint for radial cameras)
+    bool cheiral_ok = true;
+    for (size_t i = 0; i < pose_data.size(); ++i) {
+      // if(pose_data[i].camera->ModelId() == Radial1DCameraModel::model_id) {
+      //   Eigen::Vector2d n = pose_data[i].proj_matrix.topRows<2>() * xyz.homogeneous();
+      //   cheiral_ok &= n.dot(point_data[i].point_normalized_standard) > 0;
+      // } else {
+      cheiral_ok &= HasPointPositiveDepth(pose_data[i].proj_matrix_standard, xyz);
+      // }
+    }
+
+    if(!cheiral_ok)
+      continue;
+
+    bool tri_angle_ok = false;
+    // check point-based triangulation angle
+    for (size_t i = 0; i < pose_data.size(); ++i) {
+      if(pose_data[i].camera->ModelId() == Radial1DCameraModel::model_id) {
+        continue;
+      }
+      for (size_t j = 0; j < i; ++j) {
+        if(pose_data[j].camera->ModelId() == Radial1DCameraModel::model_id) {
+          continue;
+        }
+        const double tri_angle = CalculateTriangulationAngle(
+            pose_data[i].proj_center, pose_data[j].proj_center, xyz);
+        tri_angle_ok |= (tri_angle >= min_tri_angle_);
+      }
+    }
+    if(!tri_angle_ok) {
+      // we have only pinhole-like cameras and poor triangulatiopn angle
+      continue;
+    }
+    // TODO: triangulation angle equivalent for radial cameras
+    output.push_back(xyz);
+  }
+
+  return output;
+}
+
+
 
 
 
@@ -320,7 +406,7 @@ bool EstimateTriangulation(
     const EstimateTriangulationOptions& options,
     const std::vector<TriangulationEstimator::PointData>& point_data,
     const std::vector<TriangulationEstimator::PoseData>& pose_data,
-    std::vector<char>* inlier_mask, Eigen::Vector3d* xyz, bool initial) {
+    std::vector<char>* inlier_mask, Eigen::Vector3d* xyz, bool initial, bool standard_triangulation) {
   CHECK_NOTNULL(inlier_mask);
   CHECK_NOTNULL(xyz);
   CHECK_GE(point_data.size(), 2);
@@ -336,7 +422,14 @@ bool EstimateTriangulation(
   ransac.estimator.SetResidualType(options.residual_type);
   ransac.local_estimator.SetMinTriAngle(options.min_tri_angle);
   ransac.local_estimator.SetResidualType(options.residual_type);
+  decltype(auto) report = standard_triangulation ?
+                        ransac.EstimateStandard(point_data, pose_data, initial) :
+                        ransac.Estimate(point_data, pose_data, initial);
+  if(!standard_triangulation){
   const auto report = ransac.Estimate(point_data, pose_data, initial);
+  }else{
+    const auto report = ransac.EstimateStandard(point_data, pose_data, initial);
+  }
   if (!report.success) {
     return false;
   }

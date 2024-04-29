@@ -633,8 +633,9 @@ void IncrementalMapperController::Reconstruct(
               reconstruction.NumPoints3D() >=
                   options_->ba_global_points_freq + ba_prev_num_points) {
             // IterativeGlobalRefinement(*options_, &mapper);
-            ImplicitIterativeGlobalBA(*options_, &mapper);
-            // AdjustGlobalBundle(*options_, &mapper);
+            // ImplicitIterativeGlobalBA(*options_, &mapper);
+            AdjustGlobalBundle(*options_, &mapper);
+            ImplicitAdjustGlobalBundle(*options_, &mapper);
             // IterativeGlobalRefinement(*options_, &mapper);
             ba_prev_num_points = reconstruction.NumPoints3D();
             ba_prev_num_reg_images = reconstruction.NumRegImages();
@@ -681,6 +682,7 @@ void IncrementalMapperController::Reconstruct(
         break;
       }
 
+      // ======================================================================
       // If no image could be registered, try a single final global iterative
       // bundle adjustment and try again to register one image. If this fails
       // once, then exit the incremental mapping.
@@ -694,18 +696,19 @@ void IncrementalMapperController::Reconstruct(
         prev_reg_next_success = reg_next_success;
       }
     }
+    // ======================================================================
 
     if (IsStopped()) {
       const bool kDiscardReconstruction = false;
       mapper.EndReconstruction(kDiscardReconstruction);
       break;
     }
-
+// ======================================================================
     // Only run final global BA, if last incremental BA was not global.
     if (reconstruction.NumRegImages() >= 2 &&
         reconstruction.NumRegImages() != ba_prev_num_reg_images &&
         reconstruction.NumPoints3D() != ba_prev_num_points) {
-      // IterativeGlobalRefinement(*options_, &mapper);
+      IterativeGlobalRefinement(*options_, &mapper);
       // ImplicitIterativeGlobalBA(*options_, &mapper);
       ImplicitAdjustGlobalBundle(*options_, &mapper);
     }

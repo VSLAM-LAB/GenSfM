@@ -109,6 +109,12 @@ class Image {
   // uniform distribution of observations results in more robust registration.
   inline size_t Point3DVisibilityScore() const;
 
+  // Parameters for retrieving point-wise focal length from implicit_distortion.
+  inline std::vector<double> GetFocalLengthParams() const;
+  inline void SetFocalLengthParams(const std::vector<double>& focal_length_params) const;
+  inline std::vector<double> GetRawRadii() const; 
+  inline void SetRawRadii(const std::vector<double>& raw_radii) const;
+
   // Access quaternion vector as (qw, qx, qy, qz) specifying the rotation of the
   // pose which is defined as the transformation from world to image space.
   inline const Eigen::Vector4d& Qvec() const;
@@ -233,6 +239,10 @@ class Image {
   Eigen::Vector4d qvec_prior_;
   Eigen::Vector3d tvec_prior_;
 
+  // Parameters for retrieving point-wise focal length from implicit_distortion.
+  mutable std::vector<double> focal_length_params_;
+  mutable std::vector<double> raw_radii_;
+
   // All image points, including points that are not part of a 3D point track.
   std::vector<class Point2D> points2D_;
 
@@ -302,6 +312,22 @@ Eigen::Vector4d& Image::Qvec() { return qvec_; }
 inline double Image::Qvec(const size_t idx) const { return qvec_(idx); }
 
 inline double& Image::Qvec(const size_t idx) { return qvec_(idx); }
+
+inline std::vector<double> Image::GetFocalLengthParams() const {
+  return focal_length_params_;
+}
+
+inline void Image::SetFocalLengthParams(const std::vector<double>& focal_length_params) const {
+  focal_length_params_ = focal_length_params;
+}
+
+inline std::vector<double> Image::GetRawRadii() const {
+  return raw_radii_;
+}
+
+inline void Image::SetRawRadii(const std::vector<double>& raw_radii) const {
+  raw_radii_ = raw_radii;
+}
 
 void Image::SetQvec(const Eigen::Vector4d& qvec) { qvec_ = qvec; }
 
