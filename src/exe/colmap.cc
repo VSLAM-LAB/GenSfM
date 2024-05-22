@@ -1034,32 +1034,32 @@ int RunMapper(int argc, char** argv) {
   // models to as their reconstruction finishes instead of writing all results
   // after all reconstructions finished.
   size_t prev_num_reconstructions = 0;
-  if (input_path == "") {
-    mapper.AddCallback(
-        IncrementalMapperController::LAST_IMAGE_REG_CALLBACK, [&]() {
-          // If the number of reconstructions has not changed, the last model
-          // was discarded for some reason.
-          if (reconstruction_manager.Size() > prev_num_reconstructions) {
-            const std::string reconstruction_path = JoinPaths(
-                output_path, std::to_string(prev_num_reconstructions));
-            const auto& reconstruction =
-                reconstruction_manager.Get(prev_num_reconstructions);
-            CreateDirIfNotExists(reconstruction_path);
-            reconstruction.Write(reconstruction_path);
-            options.Write(JoinPaths(reconstruction_path, "project.ini"));
-            prev_num_reconstructions = reconstruction_manager.Size();
-          }
-        });
-  }
+  // if (input_path == "") {
+  mapper.AddCallback(
+      IncrementalMapperController::LAST_IMAGE_REG_CALLBACK, [&]() {
+        // If the number of reconstructions has not changed, the last model
+        // was discarded for some reason.
+        if (reconstruction_manager.Size() > prev_num_reconstructions) {
+          const std::string reconstruction_path = JoinPaths(
+              output_path, std::to_string(prev_num_reconstructions));
+          const auto& reconstruction =
+              reconstruction_manager.Get(prev_num_reconstructions);
+          CreateDirIfNotExists(reconstruction_path);
+          reconstruction.Write(reconstruction_path);
+          options.Write(JoinPaths(reconstruction_path, "project.ini"));
+          prev_num_reconstructions = reconstruction_manager.Size();
+        }
+      });
+  // }
 
   mapper.Start();
   mapper.Wait();
 
   // In case the reconstruction is continued from an existing reconstruction, do
   // not create sub-folders but directly write the results.
-  if (input_path != "" && reconstruction_manager.Size() > 0) {
-    reconstruction_manager.Get(0).Write(output_path);
-  }
+  // if (input_path != "" && reconstruction_manager.Size() > 0) {
+  //   reconstruction_manager.Get(0).Write(output_path);
+  // }
 
   return EXIT_SUCCESS;
 }

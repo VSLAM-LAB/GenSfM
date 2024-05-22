@@ -132,6 +132,6 @@ void filter_result_pose_refinement_multi(std::vector<std::vector<Eigen::Vector2d
         exclude_outliers(fs_diff[i], points2D[i], points3D[i], true, refinement_opt.filter_thres);
         counter += ori_size - points2D[i].size();
     }
-    std::cout << "filtered number of entries: " << counter << std::endl;
+    // std::cout << "filtered number of entries: " << counter << std::endl;
 }
 } // namespace colmap

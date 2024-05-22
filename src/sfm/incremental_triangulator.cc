@@ -30,9 +30,17 @@
 // Author: Johannes L. Schoenberger (jsch-at-demuc-dot-de)
 
 #include "sfm/incremental_triangulator.h"
+#include <fstream>
+#include <chrono>
+#include <iomanip>
+#include <sstream>
+
 
 #include "base/projection.h"
 #include "estimators/triangulation.h"
+#include "estimators/implicit_camera_pose.h"
+#include "estimators/implicit_cost_matrix.h"
+#include "estimators/implicit_pose_refinement.h"
 #include "util/misc.h"
 
 namespace colmap {
@@ -104,12 +112,18 @@ size_t IncrementalTriangulator::TriangulateImage(const Options& options,
 
     if (num_triangulated == 0) {
       corrs_data.push_back(ref_corr_data);
+      // if(standard_triangulation){
+      //   num_tris += Create(options, corrs_data, initial, false);
+      // } 
       num_tris += Create(options, corrs_data, initial, standard_triangulation);
     } else {
       // Continue correspondences to existing 3D points.
       num_tris += Continue(options, ref_corr_data, corrs_data);
       // Create points from correspondences that are not continued.
       corrs_data.push_back(ref_corr_data);
+      // if(standard_triangulation){
+      //   num_tris += Create(options, corrs_data, initial, false);
+      // }
       num_tris += Create(options, corrs_data, initial, standard_triangulation);
     }
   }
@@ -180,7 +194,7 @@ size_t IncrementalTriangulator::TriangulateImage(const Options& options,
 
 
 size_t IncrementalTriangulator::CompleteImage(const Options& options,
-                                              const image_t image_id) {
+                                              const image_t image_id, bool standard_triangulation) {
   CHECK(options.Check());
 
   size_t num_tris = 0;
@@ -269,7 +283,7 @@ size_t IncrementalTriangulator::CompleteImage(const Options& options,
     Eigen::Vector3d xyz;
     std::vector<char> inlier_mask;
     if (!EstimateTriangulation(tri_options, point_data, pose_data, &inlier_mask,
-                               &xyz)) {
+                               &xyz, false, standard_triangulation)) {
       continue;
     }
 
@@ -281,7 +295,12 @@ size_t IncrementalTriangulator::CompleteImage(const Options& options,
       if (inlier_mask[i]) {
         const CorrData& corr_data = corrs_data[i];
         track.AddElement(corr_data.image_id, corr_data.point2D_idx);
-        num_constraints += (corr_data.camera->ModelId() == Radial1DCameraModel::model_id) ? 1 : 2;
+        if (standard_triangulation){
+          num_constraints += (corr_data.camera->ModelId() == Radial1DCameraModel::model_id) ? 2 : 2;
+        }else{
+          num_constraints += (corr_data.camera->ModelId() == Radial1DCameraModel::model_id) ? 1 : 2;
+        }
+        // num_constraints += (corr_data.camera->ModelId() == Radial1DCameraModel::model_id) ? 1 : 2;
       }
     }
 
@@ -361,6 +380,9 @@ size_t IncrementalTriangulator::Retriangulate(const Options& options) {
   CHECK(options.Check());
 
   size_t num_tris = 0;
+  size_t num_registrations = reconstruction_->NumRegImages();
+  bool standard_triangulation = (num_registrations >= options.min_num_reg_images);
+  // bool standard_triangulation = reconstruction_->NumPoints3D() == 0;
 
   ClearCaches();
 
@@ -450,7 +472,8 @@ size_t IncrementalTriangulator::Retriangulate(const Options& options) {
         const std::vector<CorrData> corrs_data = {corr_data1, corr_data2};
         // Do not use larger triangulation threshold as this causes
         // significant drift when creating points (options vs. re_options).
-        num_tris += Create(options, corrs_data);
+        std::cout << "=============================Retriangulating===========================" << std::endl;
+        num_tris += Create(options, corrs_data, false, standard_triangulation);
       }
       // Else both points have a 3D point, but we do not want to
       // merge points in retriangulation.
@@ -554,6 +577,40 @@ void sortRadiiAndFocalLengths(std::vector<double>& raw_radii, std::vector<double
     }
 }
 
+std::vector<double> movingAverage(const std::vector<double>& data, int window_size) {
+    std::vector<double> result;
+    int n = data.size();
+    if (n == 0 || window_size <= 0) return result;
+
+    double window_sum = 0;
+    int window_start = 0, window_end = 0;
+
+    // Initialize the sum with the first 'window_size' elements
+    for (window_end = 0; window_end < window_size && window_end < n; ++window_end) {
+        window_sum += data[window_end];
+    }
+
+    // Store the first average
+    result.push_back(window_sum / window_size);
+
+    // Slide the window; add a new element and remove the old element
+    for (; window_end < n; ++window_end) {
+        window_sum += data[window_end] - data[window_start++];
+        result.push_back(window_sum / window_size);
+    }
+
+    return result;
+}
+
+std::string currentDateTime() {
+    auto now = std::chrono::system_clock::now();
+    auto in_time_t = std::chrono::system_clock::to_time_t(now);
+
+    std::stringstream ss;
+    ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d_%H-%M-%S");
+    return ss.str();
+}
+
 
 size_t IncrementalTriangulator::Create(
     const Options& options, const std::vector<CorrData>& corrs_data, bool initial, bool standard_triangulation) {
@@ -562,59 +619,86 @@ size_t IncrementalTriangulator::Create(
   // Construct raw_radii and focal lengths for the images in corrs_data
   // std::cout << "================== Starting Standard Triangulation =======================" << std::endl;
 
-  std::vector<double> raw_radiis;
-  std::vector<double> focal_lengths;
+  
   for (const CorrData& corr_data : corrs_data) {
     const Image& image = *corr_data.image;
     // check if the image has already been set a radii and focal_lengths
-    // if (image.GetRawRadii().size() != 0) {
-    //   continue;
-    // }
+    if (image.GetRawRadii().size() != 0) {
+      continue;
+    }
+
     const Camera& camera = *corr_data.camera;
     // Retrieve the points2D in this image
     std::vector<class Point2D> points2D_exist = image.Points2D();
     std::vector<class Point2D> points2D;
+    std::vector<Eigen::Vector2d> points2D_xy;
+    std::vector<class Point3D> points3D;
+    std::vector<Eigen::Vector3d> points3D_xyz;
     for (const class Point2D& point2D : points2D_exist) {
       if (point2D.HasPoint3D()) {
         points2D.push_back(point2D);
+        points2D_xy.push_back(point2D.XY());
+        points3D.push_back(reconstruction_->Point3D(point2D.Point3DId()));
+        points3D_xyz.push_back(Eigen::Vector3d(points3D.back().X(), points3D.back().Y(), points3D.back().Z()));
       }
     }
+
+    CameraPose pose(image.Qvec(), image.Tvec());
+
+    // filter the outliers
+    PoseRefinementOptions pose_refinement_options;
+    CostMatrixOptions cm_options;
+    CostMatrix cost_matrix = build_cost_matrix(points2D_xy, cm_options, Eigen::Vector2d(camera.PrincipalPointX(), camera.PrincipalPointY()));
+    Eigen::Vector2d pp = Eigen::Vector2d(camera.PrincipalPointX(), camera.PrincipalPointY());
+    CameraPose pose_refined = pose_refinement(points2D_xy, points3D_xyz, cost_matrix, pp,pose, pose_refinement_options);
+    // filter_result_pose_refinement(points2D_xy, points3D_xyz, pose_refined, pp, pose_refinement_options);
+    std::vector<Eigen::Vector2d> points2D_xy_filtered = points2D_xy;
+    std::vector<Eigen::Vector3d> points3D_xyz_filtered = points3D_xyz;
+    
+    // recover the intrinsic calibration parameters
+    
+    CostMatrix cost_matrix_2;
+    cost_matrix_2=build_cost_matrix(points2D_xy_filtered, cm_options, pp);
+    IntrinsicCalib intrinsic_calib = calibrate(points2D_xy_filtered, points3D_xyz_filtered, cost_matrix_2, pp, pose_refined);
+    
     // Retrieve the distance from the principal point to the point2D
     std::vector<double> radii;
-    for (const class Point2D& point2D : points2D) {
-      if (point2D.HasPoint3D()) {
-        radii.push_back((point2D.XY() - Eigen::Vector2d(camera.PrincipalPointX(),camera.PrincipalPointY())).norm());
-      }
+    for (const auto& pair : intrinsic_calib.r_f) {
+        radii.push_back(pair.first); // Extract the first element of each pair (r)
     }
+    // Eigen::Matrix3d R = image.RotationMatrix();
+    // Eigen::Vector3d t = image.Tvec();
+    // for (int i = 0; i < points2D_xy.size(); i++) {
+    //   radii.push_back((points2D_xy[i] - Eigen::Vector2d(camera.PrincipalPointX(),camera.PrincipalPointY())).norm());
+    // }
     image.SetRawRadii(radii);
     // Retrieve rotation matrix 
-    Eigen::Matrix3d R = image.RotationMatrix();
-    Eigen::Vector3d t = image.Tvec();
+   
+    // std::vector<Eigen::Vector3d> X_cam;
 
-    std::vector<Eigen::Vector3d> X_cam;
-    for (const Point2D& point2D : points2D) {
-      if (point2D.HasPoint3D()) {
-        const Point3D& point3D = reconstruction_->Point3D(point2D.Point3DId());
-        // Convert 3D point to camera coordinates
-        Eigen::Vector3d Z(point3D.X(), point3D.Y(), point3D.Z());
-        Eigen::Vector3d Xcam = R * Z + t;
-        X_cam.push_back(Xcam);}
-    }
+    // for (int i = 0; i < points3D_xyz.size(); i++) {
+    //   Eigen::Vector3d Z = points3D_xyz[i];
+    //   Eigen::Vector3d Xcam = R * Z + t;
+    //   X_cam.push_back(Xcam);
+    // }
     // Retrieve the focal length
     std::vector<double> focal_lengths;
-    for (int i = 0; i < radii.size(); i++) {
-    Eigen::Vector2d offset = points2D[i].XY() - Eigen::Vector2d(camera.PrincipalPointX(), camera.PrincipalPointY());
-    double dot_product = offset.x() * X_cam[i].x() + offset.y() * X_cam[i].y(); // Calculate dot product of the projection
-
-    // Make sure to handle division by zero or very small dot_product values to avoid instability
-    if (std::abs(dot_product) > std::numeric_limits<double>::epsilon()) {
-        double focal_length = radii[i] * radii[i] * X_cam[i].z() / dot_product;
-        // std::cout << "Calculated Focal length: " << focal_length <<"for radii: " << radii[i] << std::endl;
-        focal_lengths.push_back(focal_length);
-    } else {
-        focal_lengths.push_back(1); // or some form of error value or handling
-      }
+    for (const auto& pair : intrinsic_calib.r_f) {
+        focal_lengths.push_back(pair.second); // Extract the first element of each pair (r)
     }
+    // for (int i = 0; i < radii.size(); i++) {
+    // Eigen::Vector2d offset = points2D_xy[i] - Eigen::Vector2d(camera.PrincipalPointX(), camera.PrincipalPointY());
+    // double dot_product = offset.x() * X_cam[i].x() + offset.y() * X_cam[i].y(); // Calculate dot product of the projection
+
+    // // Make sure to handle division by zero or very small dot_product values to avoid instability
+    // if (std::abs(dot_product) > std::numeric_limits<double>::epsilon()) {
+    //     double focal_length = radii[i] * radii[i] * X_cam[i].z() / dot_product;
+    //     // std::cout << "Calculated Focal length: " << focal_length <<"for radii: " << radii[i] << std::endl;
+    //     focal_lengths.push_back(focal_length);
+    // } else {
+    //     focal_lengths.push_back(1); // or some form of error value or handling
+    //   }
+    // }
     image.SetFocalLengthParams(focal_lengths);
   }
   }
@@ -662,11 +746,26 @@ size_t IncrementalTriangulator::Create(
     std::vector<double> raw_radii = corr_data.image->GetRawRadii();
     std::vector<double> focal_lengths = corr_data.image->GetFocalLengthParams();
     double radius = point_data[i].point_normalized.norm();
-    std::cout << "Radius: " << radius << std::endl;
+    // std::cout << "Radius: " << radius << std::endl;
 
     // calculate the focal length by interpolating the focal_lengths
     // sort the radii and focal lengths
-    sortRadiiAndFocalLengths(raw_radii, focal_lengths);
+    // sortRadiiAndFocalLengths(raw_radii, focal_lengths);
+    // std::vector<double> smoothed_focal_lengths = movingAverage(focal_lengths, 10);
+    
+    
+    // save the sorted radii and focal lengths as txt file
+    std::string timestamp = currentDateTime();
+    std::string filename ="radii_focal_lengths_" + std::to_string(corr_data.image_id) + "_" + timestamp + ".txt";
+
+    if(corr_data.image_id == 2){
+    std::ofstream file(filename);
+    for (int i = 0; i < raw_radii.size(); i++) {
+      file << raw_radii[i] << " " << focal_lengths[i] << std::endl;
+    }
+    file.close();
+    }
+    
     // find the two radii that the current radius is between
     double focal_length = 0;
     for (int i = 0; i < raw_radii.size() - 1; i++) {
@@ -684,14 +783,21 @@ size_t IncrementalTriangulator::Create(
     if (radius > raw_radii[raw_radii.size() - 1]) {
       focal_length = focal_lengths[raw_radii.size() - 1];
     }
+    // save the interpolated focal length to the previous txt file
+    if(corr_data.image_id == 2){
+    std::ofstream file2(filename, std::ios_base::app);
+    file2 << "Interpolated Focal Length: " << focal_length << std::endl;
+    file2 <<"radii: " << radius << std::endl;
+    file2.close();
+    }
     // set the focal length
-    std::cout << "Interpolated Point wise Focal length: " << focal_length << std::endl;
+    // std::cout << "Interpolated Point wise Focal length: " << focal_length << std::endl;
     if (focal_length > 0) {
     point_data[i].focal_length = focal_length;
     }else{
       point_data[i].focal_length = focal_length;
       count++;
-      standard_triangulation = false;
+      // standard_triangulation = false;
     }
     
     point_data[i].point_normalized_standard = point_data[i].point_normalized / point_data[i].focal_length;

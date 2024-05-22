@@ -111,7 +111,7 @@ class IncrementalTriangulator {
   // Complete triangulations for image. Tries to create new tracks for not
   // yet triangulated observations and tries to complete existing tracks.
   // Returns the number of completed observations.
-  size_t CompleteImage(const Options& options, const image_t image_id);
+  size_t CompleteImage(const Options& options, const image_t image_id, bool standard_triangulation = false);
 
   // Complete tracks for specific 3D points.
   //

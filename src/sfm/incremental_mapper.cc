@@ -632,6 +632,10 @@ size_t IncrementalMapper::TriangulateImage(
   size_t num_registrations = reconstruction_->NumRegImages();
   bool standard_triangulation = (num_registrations >= tri_options.min_num_reg_images);
   // bool standard_triangulation = false;
+  if(standard_triangulation) {
+    std::cout << "Standard Triangulation Condition meeted, with num_registrations: " << num_registrations<<" min_num_reg_images:"<< tri_options.min_num_reg_images<< std::endl;
+
+  }
   return triangulator_->TriangulateImage(tri_options, image_id, initial, standard_triangulation);
 }
 
@@ -946,6 +950,12 @@ IncrementalMapper::ImplicitAdjustLocalBundle(const Options& options,
                                                   bool initial) {
   CHECK_NOTNULL(reconstruction_);
   CHECK(options.Check());
+  size_t num_reg_images = reconstruction_->NumRegImages();
+  bool standard_triangulation = false;
+  if (num_reg_images >=18) {
+    bool standard_triangulation = true;
+  }
+  
 
   LocalBundleAdjustmentReport report;
 
@@ -1132,30 +1142,30 @@ IncrementalMapper::ImplicitAdjustLocalBundle(const Options& options,
   
     
   //   // Merge refined tracks with other existing points.
-  //   report.num_merged_observations =
-  //       triangulator_->MergeTracks(tri_options, variable_point3D_ids);
-  //   std::cout << "Merging tracks ended successfully" << std::endl;
-  //   // Complete tracks that may have failed to triangulate before refinement
-  //   // of camera pose and calibration in bundle-adjustment. This may avoid
-  //   // that some points are filtered and it helps for subsequent image
-  //   // registrations.
-  //   report.num_completed_observations =
-  //       triangulator_->CompleteTracks(tri_options, variable_point3D_ids);
-  //   report.num_completed_observations +=
-  //       triangulator_->CompleteImage(tri_options, image_id);
+    report.num_merged_observations =
+        triangulator_->MergeTracks(tri_options, variable_point3D_ids);
+  // //   std::cout << "Merging tracks ended successfully" << std::endl;
+  // //   // Complete tracks that may have failed to triangulate before refinement
+  // //   // of camera pose and calibration in bundle-adjustment. This may avoid
+  // //   // that some points are filtered and it helps for subsequent image
+  // //   // registrations.
+    report.num_completed_observations =
+        triangulator_->CompleteTracks(tri_options, variable_point3D_ids);
+    report.num_completed_observations +=
+        triangulator_->CompleteImage(tri_options, image_id, standard_triangulation);
 
   }
   // std::cout << "Complete ended successfully" << std::endl;
-  // std::unordered_set<image_t> filter_image_ids;
-  // filter_image_ids.insert(image_id);
-  // filter_image_ids.insert(local_bundle.begin(), local_bundle.end());
+  std::unordered_set<image_t> filter_image_ids;
+  filter_image_ids.insert(image_id);
+  filter_image_ids.insert(local_bundle.begin(), local_bundle.end());
   // report.num_filtered_observations = reconstruction_->FilterPoints3DInImages(
   //     options.filter_max_reproj_error, options.filter_min_tri_angle,
   //     filter_image_ids);
   // std::cout << "Filtering points in images ended successfully" << std::endl;
   // report.num_filtered_observations += reconstruction_->FilterPoints3D(
-  //     options.filter_max_reproj_error, options.filter_min_tri_angle,
-  //     point3D_ids);
+      // options.filter_max_reproj_error, options.filter_min_tri_angle,
+      // point3D_ids);
 
   // std::cout << "Filtering points in 3D ended successfully" << std::endl;
   
@@ -1226,6 +1236,13 @@ size_t IncrementalMapper::FilterPoints(const Options& options) {
   CHECK_NOTNULL(reconstruction_);
   CHECK(options.Check());
   return reconstruction_->FilterAllPoints3D(options.filter_max_reproj_error,
+                                            options.filter_min_tri_angle);
+}
+
+size_t IncrementalMapper::FilterPointsFinal(const Options& options) {
+  CHECK_NOTNULL(reconstruction_);
+  CHECK(options.Check());
+  return reconstruction_->FilterAllPoints3DFinal(options.filter_max_reproj_error,
                                             options.filter_min_tri_angle);
 }
 

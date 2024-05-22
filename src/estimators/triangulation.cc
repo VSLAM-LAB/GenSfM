@@ -238,13 +238,13 @@ std::vector<TriangulationEstimator::M_t> TriangulationEstimator::EstimateStandar
     bool tri_angle_ok = false;
     // check point-based triangulation angle
     for (size_t i = 0; i < pose_data.size(); ++i) {
-      if(pose_data[i].camera->ModelId() == Radial1DCameraModel::model_id) {
-        continue;
-      }
+      // if(pose_data[i].camera->ModelId() == Radial1DCameraModel::model_id) {
+      //   continue;
+      // }
       for (size_t j = 0; j < i; ++j) {
-        if(pose_data[j].camera->ModelId() == Radial1DCameraModel::model_id) {
-          continue;
-        }
+        // if(pose_data[j].camera->ModelId() == Radial1DCameraModel::model_id) {
+        //   continue;
+        // }
         const double tri_angle = CalculateTriangulationAngle(
             pose_data[i].proj_center, pose_data[j].proj_center, xyz);
         tri_angle_ok |= (tri_angle >= min_tri_angle_);
@@ -258,7 +258,8 @@ std::vector<TriangulationEstimator::M_t> TriangulationEstimator::EstimateStandar
     output.push_back(xyz);
   }
 
-  return output;
+
+return output;
 }
 
 
@@ -425,11 +426,11 @@ bool EstimateTriangulation(
   decltype(auto) report = standard_triangulation ?
                         ransac.EstimateStandard(point_data, pose_data, initial) :
                         ransac.Estimate(point_data, pose_data, initial);
-  if(!standard_triangulation){
-  const auto report = ransac.Estimate(point_data, pose_data, initial);
-  }else{
-    const auto report = ransac.EstimateStandard(point_data, pose_data, initial);
-  }
+  // if(!standard_triangulation){
+  // const auto report = ransac.Estimate(point_data, pose_data, initial);
+  // }else{
+  //   const auto report = ransac.EstimateStandard(point_data, pose_data, initial);
+  // }
   if (!report.success) {
     return false;
   }

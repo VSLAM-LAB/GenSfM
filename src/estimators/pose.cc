@@ -121,8 +121,8 @@ bool EstimateRadialAbsolutePose(const AbsolutePoseEstimationOptions& options,
     }
   }
   ;
-  double tz = EstimateRadialCameraForwardOffset(report.model, inlier_points2D,
-                                                inlier_points3D, nullptr);
+  // double tz = EstimateRadialCameraForwardOffset(report.model, inlier_points2D,
+                                                // inlier_points3D, nullptr);
   // print out tz
   // std::cout << "tz:   " << tz << std::endl;
   //append tz into file "tz.txt"

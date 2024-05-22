@@ -28,27 +28,49 @@ IntrinsicCalib calibrate_fix_lambda_multi_w_initial_guess(const std::vector<std:
     ceres::Problem problem;
     ceres::LossFunction *loss_function_data = new ceres::HuberLoss(1e-4);
 
+    // To track used parameter blocks and prevent duplicates
+    std::set<double*> used_parameter_blocks;
+    // std::set<std::vector<double*>> unique_parameter_blocks;
+
+
     // Compute pointwise focal lengths and add data cost
     size_t num_pts = 0;
-    bool initialize_fvec = fvec.size() == 0;
-    if (initialize_fvec) {
+    // bool initialize_fvec = fvec.size() == 0;
+    // if (initialize_fvec) {
+    //     fvec.resize(points2D.size());
+    // }
+    if (fvec.empty()) {
         fvec.resize(points2D.size());
+        for (size_t i = 0; i < points2D.size(); ++i) {
+            fvec[i].resize(points2D[i].size(), 0);
+        }
     }
     for (size_t cam_ind = 0; cam_ind < points2D.size(); ++cam_ind) {
-        if (initialize_fvec) {
-            fvec[cam_ind].resize(points2D[cam_ind].size());
-        }
+        // if (initialize_fvec) {
+        //     fvec[cam_ind].resize(points2D[cam_ind].size());
+        // }
         for (size_t pt_ind = 0; pt_ind < points2D[cam_ind].size(); ++pt_ind) {
+            // Eigen::Vector2d z = points2D[cam_ind][pt_ind] - pp;
+            // Eigen::Vector3d Z = poses[cam_ind].apply(points3D[cam_ind][pt_ind]);
+            
+            // double f = (z.squaredNorm() * Z[2]) / (Z.topRows<2>().dot(z));
+            // if (f==0) {
+            //     fvec[cam_ind][pt_ind] = f;
+            // } 
+            double& f = fvec[cam_ind][pt_ind];
+            if (f == 0) { // Initialize if not yet initialized
             Eigen::Vector2d z = points2D[cam_ind][pt_ind] - pp;
             Eigen::Vector3d Z = poses[cam_ind].apply(points3D[cam_ind][pt_ind]);
-            
-            double f = (z.squaredNorm() * Z[2]) / (Z.topRows<2>().dot(z));
-            if (initialize_fvec) {
-                fvec[cam_ind][pt_ind] = f;
-            } 
+            f = (z.squaredNorm() * Z[2]) / (Z.topRows<2>().dot(z));
+            }
             ceres::CostFunction *data_term = FocalDataCost::CreateCost(f);
-            problem.AddResidualBlock(data_term, loss_function_data, &(fvec[cam_ind][pt_ind]));
-            num_pts++;
+            // std::cout << "Adding residual for point " << pt_ind << " at address " << &(fvec[cam_ind][pt_ind]) << std::endl;
+             if (used_parameter_blocks.insert(&(fvec[cam_ind][pt_ind])).second) {  // Only add if not already used
+                problem.AddResidualBlock(data_term, loss_function_data, &(fvec[cam_ind][pt_ind]));
+                num_pts++;
+            }
+            // problem.AddResidualBlock(data_term, loss_function_data, &(fvec[cam_ind][pt_ind]));
+            // num_pts++;
         }
     }
 
@@ -57,11 +79,32 @@ IntrinsicCalib calibrate_fix_lambda_multi_w_initial_guess(const std::vector<std:
     ceres::LossFunction *scaled_loss = new ceres::ScaledLoss(new ceres::TrivialLoss(), lambda, ceres::TAKE_OWNERSHIP);
     std::vector<std::vector<double*>> params;
     params.resize(cost_matrix.pt_index.size());
+    std::set<std::vector<double*>> unique_parameter_blocks;
     for (size_t i = 0; i < cost_matrix.pt_index.size(); ++i) {
         ceres::CostFunction* reg_cost = FocalCostMatrixRowCost::CreateCost(
                 cost_matrix.pt_index[i], cost_matrix.cam_index[i], cost_matrix.values[i], fvec, params[i]);
 
-        problem.AddResidualBlock(reg_cost, scaled_loss, params[i]);
+        // std::cout << "Adding residual for cost matrix row " << i << std::endl;
+        std::set<double*> local_unique_params;
+        if (unique_parameter_blocks.insert(params[i]).second) {
+            bool has_duplicate = false;
+            for (size_t j = 0; j < cost_matrix.pt_index[i].size(); ++j) {
+                if (!local_unique_params.insert(params[i][j]).second) {
+                    std::cerr << "Warning: Duplicate parameter block detected and skipped at address: " << params[i][j] << std::endl;
+                    has_duplicate = true;
+                    break;
+                }
+                // std::cout << "Adding residual for point " << cost_matrix.pt_index[i][j] << " at address " << params[i][j] << std::endl;
+                // problem.AddResidualBlock(reg_cost, scaled_loss, params[i]);
+            }
+            if(!has_duplicate) {
+              problem.AddResidualBlock(reg_cost, scaled_loss, params[i]);
+            }
+            else {
+              std::cerr << "Warning: Duplicate parameter block detected and skipped for cost matrix row " << i << std::endl;
+            }
+        }
+        // problem.AddResidualBlock(reg_cost, scaled_loss, params[i]);
     }
 
     ceres::Solver::Options options; 
@@ -90,6 +133,78 @@ IntrinsicCalib calibrate_fix_lambda_multi_w_initial_guess(const std::vector<std:
     return calib;
 }
 
+
+
+
+
+// IntrinsicCalib  calibrate_fix_lambda_multi_w_initial_guess(
+//     const std::vector<std::vector<Eigen::Vector2d>>& points2D, 
+//     const std::vector<std::vector<Eigen::Vector3d>>& points3D,
+//     const CostMatrix& cost_matrix, 
+//     const Eigen::Vector2d& pp,
+//     const std::vector<CameraPose>& poses, 
+//     std::vector<std::vector<double>>& fvec, 
+//     double lambda) {
+
+//     IntrinsicCalib calib;
+//     calib.pp = pp;
+
+//     ceres::Problem problem;
+//     ceres::LossFunction* loss_function_data = new ceres::HuberLoss(1e-4);
+
+//     if (fvec.empty()) {
+//         fvec.resize(points2D.size());
+//         for (size_t i = 0; i < points2D.size(); ++i) {
+//             fvec[i].resize(points2D[i].size(), 0);
+//         }
+//     }
+
+//     // Add data cost
+//     for (size_t cam_ind = 0; cam_ind < points2D.size(); ++cam_ind) {
+//         for (size_t pt_ind = 0; pt_ind < points2D[cam_ind].size(); ++pt_ind) {
+//             Eigen::Vector2d z = points2D[cam_ind][pt_ind] - pp;
+//             Eigen::Vector3d Z = poses[cam_ind].apply(points3D[cam_ind][pt_ind]);
+
+//             double& f = fvec[cam_ind][pt_ind];
+//             if (f == 0) { // Initialize if not yet initialized
+//                 f = (z.squaredNorm() * Z[2]) / (Z.topRows<2>().dot(z));
+//             }
+
+//             ceres::CostFunction* data_term = FocalDataCost::CreateCost(f);
+//             problem.AddResidualBlock(data_term, loss_function_data, &(fvec[cam_ind][pt_ind]));
+//         }
+//     }
+
+//     // Add regularization with handling parameter uniqueness
+//     ceres::LossFunction* scaled_loss = new ceres::ScaledLoss(new ceres::TrivialLoss(), lambda, ceres::TAKE_OWNERSHIP);
+
+//     for (size_t i = 0; i < cost_matrix.pt_index.size(); ++i) {
+//         std::vector<double*> params_for_cost;
+//         for (size_t j = 0; j < cost_matrix.pt_index[i].size(); ++j) {
+//             int cam_idx = cost_matrix.cam_index[i][j];
+//             int pt_idx = cost_matrix.pt_index[i][j];
+//             params_for_cost.push_back(&fvec[cam_idx][pt_idx]);
+//         }
+
+//         ceres::CostFunction* reg_cost = FocalCostMatrixRowCost::CreateCost(
+//             cost_matrix.pt_index[i], cost_matrix.cam_index[i], cost_matrix.values[i], fvec, params_for_cost);
+
+//         problem.AddResidualBlock(reg_cost, scaled_loss, params_for_cost);
+//     }
+
+//     // Solve the problem
+//     ceres::Solver::Options options;
+//     options.max_num_iterations = 100;
+//     options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
+//     options.minimizer_progress_to_stdout = true;
+//     ceres::Solver::Summary summary;
+//     ceres::Solve(options, &problem, &summary);
+
+//     // Output the result
+//     std::cout << summary.FullReport() << "\n";
+
+//     return calib;
+// }
 
 IntrinsicCalib calibrate_fix_lambda_multi(const std::vector<std::vector<Eigen::Vector2d>> &points2D, 
                                 const std::vector<std::vector<Eigen::Vector3d>> &points3D,
