@@ -109,6 +109,13 @@ double CalculateSquaredReprojectionError(const Eigen::Vector2d& point2D,
                                          const Eigen::Vector4d& qvec,
                                          const Eigen::Vector3d& tvec,
                                          const Camera& camera);
+double CalculateSquaredReprojectionErrorFinal(const Eigen::Vector2d& point2D,
+                                         const Eigen::Vector3d& point3D,
+                                         const Eigen::Vector4d& qvec,
+                                         const Eigen::Vector3d& tvec,
+                                         const std::vector<double>& radii,
+                                         const std::vector<double>& focal_lengths,
+                                         const Camera& camera);
 double CalculateSquaredReprojectionError(const Eigen::Vector2d& point2D,
                                          const Eigen::Vector3d& point3D,
                                          const Eigen::Matrix3x4d& proj_matrix,

@@ -231,6 +231,7 @@ class IncrementalMapper {
   // Filter images and point observations.
   size_t FilterImages(const Options& options);
   size_t FilterPoints(const Options& options);
+  size_t FilterPointsFinal(const Options& options);
 
   const Reconstruction& GetReconstruction() const;
 

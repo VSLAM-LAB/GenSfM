@@ -767,6 +767,21 @@ size_t Reconstruction::FilterAllPoints3D(const double max_reproj_error,
   return num_filtered;
 }
 
+size_t Reconstruction::FilterAllPoints3DFinal(const double max_reproj_error,
+                                         const double min_tri_angle) {
+  // Important: First filter observations and points with large reprojection
+  // error, so that observations with large reprojection error do not make
+  // a point stable through a large triangulation angle.
+  const std::unordered_set<point3D_t>& point3D_ids = Point3DIds();
+  size_t num_filtered = 0;
+  num_filtered +=
+      FilterPoints3DWithLargeReprojectionErrorFinal(max_reproj_error, point3D_ids);
+  std::cout << StringPrintf("(Filtered due to reproj: %d)\n", num_filtered);
+  // num_filtered +=
+  //     FilterPoints3DWithSmallTriangulationAngle(min_tri_angle, point3D_ids);
+  return num_filtered;
+}
+
 size_t Reconstruction::FilterObservationsWithNegativeDepth() {
   size_t num_filtered = 0;
   for (const auto image_id : reg_image_ids_) {
@@ -1478,7 +1493,8 @@ size_t Reconstruction::FilterPoints3DWithLargeReprojectionError(
       const class Image& image = Image(track_el.image_id);
       const class Camera& camera = Camera(image.CameraId());
       if (camera.ModelId() == Radial1DCameraModel::model_id) {
-        num_constraints += 1;
+        // num_constraints += 1;
+        num_constraints += 2;
       } else {
         num_constraints += 2;
       }
@@ -1504,7 +1520,77 @@ size_t Reconstruction::FilterPoints3DWithLargeReprojectionError(
         track_els_to_delete.push_back(track_el);
 
         num_constraints -=
-            (camera.ModelId() == Radial1DCameraModel::model_id) ? 1 : 2;
+            // (camera.ModelId() == Radial1DCameraModel::model_id) ? 1 : 2;
+            (camera.ModelId() == Radial1DCameraModel::model_id) ? 2 : 2;
+      } else {
+        reproj_error_sum += std::sqrt(squared_reproj_error);
+      }
+    }
+
+    if (num_constraints < 4) {
+      num_filtered += point3D.Track().Length();
+      DeletePoint3D(point3D_id);
+    } else {
+      num_filtered += track_els_to_delete.size();
+      for (const auto& track_el : track_els_to_delete) {
+        DeleteObservation(track_el.image_id, track_el.point2D_idx);
+      }
+      point3D.SetError(reproj_error_sum / point3D.Track().Length());
+    }
+  }
+
+  return num_filtered;
+}
+
+size_t Reconstruction::FilterPoints3DWithLargeReprojectionErrorFinal(
+    const double max_reproj_error,
+    const std::unordered_set<point3D_t>& point3D_ids) {
+  const double max_squared_reproj_error = max_reproj_error * max_reproj_error;
+
+  // Number of filtered points.
+  size_t num_filtered = 0;
+
+  for (const auto point3D_id : point3D_ids) {
+    if (!ExistsPoint3D(point3D_id)) {
+      continue;
+    }
+
+    class Point3D& point3D = Point3D(point3D_id);
+
+    int num_constraints = 0;
+    for (const auto& track_el : point3D.Track().Elements()) {
+      const class Image& image = Image(track_el.image_id);
+      const class Camera& camera = Camera(image.CameraId());
+      if (camera.ModelId() == Radial1DCameraModel::model_id) {
+        // num_constraints += 1;
+        num_constraints += 2;
+      } else {
+        num_constraints += 2;
+      }
+    }
+    // Remove underconstrained points
+    if (num_constraints < 4) {
+      DeletePoint3D(point3D_id);
+      num_filtered += point3D.Track().Length();
+      continue;
+    }
+
+    double reproj_error_sum = 0.0;
+
+    std::vector<TrackElement> track_els_to_delete;
+
+    for (const auto& track_el : point3D.Track().Elements()) {
+      const class Image& image = Image(track_el.image_id);
+      const class Camera& camera = Camera(image.CameraId());
+      const Point2D& point2D = image.Point2D(track_el.point2D_idx);
+      const double squared_reproj_error = CalculateSquaredReprojectionErrorFinal(
+          point2D.XY(), point3D.XYZ(), image.Qvec(), image.Tvec(), image.GetRawRadii(), image.GetFocalLengthParams(), camera);
+      if (squared_reproj_error > max_squared_reproj_error) {
+        track_els_to_delete.push_back(track_el);
+
+        num_constraints -=
+            // (camera.ModelId() == Radial1DCameraModel::model_id) ? 1 : 2;
+            (camera.ModelId() == Radial1DCameraModel::model_id) ? 2 : 2;
       } else {
         reproj_error_sum += std::sqrt(squared_reproj_error);
       }

@@ -952,7 +952,7 @@ IncrementalMapper::ImplicitAdjustLocalBundle(const Options& options,
   CHECK(options.Check());
   size_t num_reg_images = reconstruction_->NumRegImages();
   bool standard_triangulation = false;
-  if (num_reg_images >=18) {
+  if (num_reg_images >=10) {
     bool standard_triangulation = true;
   }
   

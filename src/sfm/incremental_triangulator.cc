@@ -270,6 +270,35 @@ size_t IncrementalTriangulator::CompleteImage(const Options& options,
       pose_data[i].proj_matrix = corr_data.image->ProjectionMatrix();
       pose_data[i].proj_center = corr_data.image->ProjectionCenter();
       pose_data[i].camera = corr_data.camera;
+      if(standard_triangulation){
+        std::vector<double> raw_radii = corr_data.image->GetRawRadii();
+        std::vector<double> focal_lengths = corr_data.image->GetFocalLengthParams();
+        double radius = point_data[i].point_normalized.norm();
+        double focal_length = 0;
+    for (int i = 0; i < raw_radii.size() - 1; i++) {
+      if (radius >= raw_radii[i] && radius <= raw_radii[i+1]) {
+        // interpolate the focal length
+        focal_length = focal_lengths[i] + (focal_lengths[i+1] - focal_lengths[i]) * (radius - raw_radii[i]) / (raw_radii[i+1] - raw_radii[i]+1e-6);
+        break;
+      }
+    }
+    // if the radius is smaller than the smallest radius, set the focal length to the smallest focal length
+    if (radius < raw_radii[0]) {
+      focal_length = focal_lengths[0];
+    }
+    // if the radius is larger than the largest radius, set the focal length to the largest focal length
+    if (radius > raw_radii[raw_radii.size() - 1]) {
+      focal_length = focal_lengths[raw_radii.size() - 1];
+    }
+    point_data[i].focal_length = focal_length;
+    point_data[i].point_normalized_standard = point_data[i].point_normalized / point_data[i].focal_length;
+    Eigen::Matrix3d K;
+    K << focal_length, 0, pose_data[i].camera->PrincipalPointX(),
+         0, focal_length, pose_data[i].camera->PrincipalPointY(),
+         0, 0, 1;
+    pose_data[i].proj_matrix_standard = K * pose_data[i].proj_matrix;
+
+      }
     }
 
     // Enforce exhaustive sampling for small track lengths.
@@ -771,7 +800,7 @@ size_t IncrementalTriangulator::Create(
     for (int i = 0; i < raw_radii.size() - 1; i++) {
       if (radius >= raw_radii[i] && radius <= raw_radii[i+1]) {
         // interpolate the focal length
-        focal_length = focal_lengths[i] + (focal_lengths[i+1] - focal_lengths[i]) * (radius - raw_radii[i]) / (raw_radii[i+1] - raw_radii[i]);
+        focal_length = focal_lengths[i] + (focal_lengths[i+1] - focal_lengths[i]) * (radius - raw_radii[i]) / (raw_radii[i+1] - raw_radii[i] + 1e-6);
         break;
       }
     }
@@ -977,6 +1006,12 @@ size_t IncrementalTriangulator::Merge(const Options& options,
             merge_success = false;
             break;
           }
+          // if (CalculateSquaredReprojectionErrorFinal(
+          //         test_point2D.XY(), merged_xyz, test_image.Qvec(),
+          //         test_image.Tvec(), test_image.GetRawRadii(),test_image.GetFocalLengthParams(),test_camera) > max_squared_reproj_error) {
+          //   merge_success = false;
+          //   break;
+          // }
         }
         if (!merge_success) {
           break;
@@ -1059,6 +1094,11 @@ size_t IncrementalTriangulator::Complete(const Options& options,
                 camera) > max_squared_reproj_error) {
           continue;
         }
+        // if (CalculateSquaredReprojectionErrorFinal(
+        //         point2D.XY(), point3D.XYZ(), image.Qvec(), image.Tvec(), image.GetRawRadii(), image.GetFocalLengthParams(),
+        //         camera) > max_squared_reproj_error) {
+        //   continue;
+        // }
 
         // Success, add observation to point track.
         const TrackElement track_el(corr.image_id, corr.point2D_idx);

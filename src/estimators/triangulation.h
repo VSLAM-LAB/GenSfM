@@ -141,6 +141,7 @@ struct EstimateTriangulationOptions {
   // The employed residual type.
   TriangulationEstimator::ResidualType residual_type =
       TriangulationEstimator::ResidualType::ANGULAR_ERROR;
+      // TriangulationEstimator::ResidualType::REPROJECTION_ERROR;
 
   // RANSAC options for TriangulationEstimator.
   RANSACOptions ransac_options;

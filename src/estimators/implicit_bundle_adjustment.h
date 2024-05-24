@@ -11,7 +11,8 @@ namespace colmap {
 
     struct ImplicitBundleAdjustmentOptions : PoseRefinementOptions {
         int max_ite_num = 10;
-        int min_curr_num = 5;
+        // int max_ite_num = 5;
+        int min_curr_num = 3;
         double stop_ratio = 1e-3;
         double filter_thres = 10;
         
