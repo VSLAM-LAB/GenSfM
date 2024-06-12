@@ -83,7 +83,9 @@ void Reconstruction::Load(const DatabaseCache& database_cache) {
       if (existing_image.NumPoints2D() == 0) {
         existing_image.SetPoints2D(image.second.Points2D());
       } else {
+        // Commented out for point_triangulator (and add the following line)
         CHECK_EQ(image.second.NumPoints2D(), existing_image.NumPoints2D());
+        //  existing_image.SetPoints2D(image.second.Points2D());
       }
       existing_image.SetNumObservations(image.second.NumObservations());
       existing_image.SetNumCorrespondences(image.second.NumCorrespondences());
@@ -776,7 +778,7 @@ size_t Reconstruction::FilterAllPoints3DFinal(const double max_reproj_error,
   size_t num_filtered = 0;
   num_filtered +=
       FilterPoints3DWithLargeReprojectionErrorFinal(max_reproj_error, point3D_ids);
-  std::cout << StringPrintf("(Filtered due to reproj: %d)\n", num_filtered);
+  std::cout << StringPrintf("(Filtered due to reproj in final error: %d)\n", num_filtered);
   // num_filtered +=
   //     FilterPoints3DWithSmallTriangulationAngle(min_tri_angle, point3D_ids);
   return num_filtered;
@@ -1546,6 +1548,7 @@ size_t Reconstruction::FilterPoints3DWithLargeReprojectionErrorFinal(
     const double max_reproj_error,
     const std::unordered_set<point3D_t>& point3D_ids) {
   const double max_squared_reproj_error = max_reproj_error * max_reproj_error;
+  // const double max_squared_reproj_error = 4 * 4;
 
   // Number of filtered points.
   size_t num_filtered = 0;
@@ -1563,19 +1566,25 @@ size_t Reconstruction::FilterPoints3DWithLargeReprojectionErrorFinal(
       const class Camera& camera = Camera(image.CameraId());
       if (camera.ModelId() == Radial1DCameraModel::model_id) {
         // num_constraints += 1;
-        num_constraints += 2;
+        if (image.GetRawRadii().size() > 0) {
+          num_constraints += 2;
+        } else {
+          num_constraints += 2;
+        }
+       
       } else {
         num_constraints += 2;
       }
     }
     // Remove underconstrained points
     if (num_constraints < 4) {
-      DeletePoint3D(point3D_id);
+      // DeletePoint3D(point3D_id);
       num_filtered += point3D.Track().Length();
       continue;
     }
 
     double reproj_error_sum = 0.0;
+    double original_error_sum = 0.0;
 
     std::vector<TrackElement> track_els_to_delete;
 
@@ -1584,31 +1593,43 @@ size_t Reconstruction::FilterPoints3DWithLargeReprojectionErrorFinal(
       const class Camera& camera = Camera(image.CameraId());
       const Point2D& point2D = image.Point2D(track_el.point2D_idx);
       const double squared_reproj_error = CalculateSquaredReprojectionErrorFinal(
-          point2D.XY(), point3D.XYZ(), image.Qvec(), image.Tvec(), image.GetRawRadii(), image.GetFocalLengthParams(), camera);
-      if (squared_reproj_error > max_squared_reproj_error) {
-        track_els_to_delete.push_back(track_el);
-
-        num_constraints -=
-            // (camera.ModelId() == Radial1DCameraModel::model_id) ? 1 : 2;
-            (camera.ModelId() == Radial1DCameraModel::model_id) ? 2 : 2;
-      } else {
+          point2D.XY(), point3D.XYZ(), image.Qvec(), image.Tvec(), image.GetRawRadii(), image.GetFocalLengthParams(), image.GetTheta(), camera);
+      original_error_sum += std::sqrt(squared_reproj_error);
+      if (squared_reproj_error > max_squared_reproj_error ) {
+        // track_els_to_delete.push_back(track_el);
+        if (image.GetRawRadii().size() > 0) {
+           num_constraints -= (camera.ModelId() == Radial1DCameraModel::model_id) ? 2 : 2;
+        } else {
+          num_constraints -=
+            (camera.ModelId() == Radial1DCameraModel::model_id) ? 1 : 2;
+        }
+        
+      } 
+      // else {
+      //   reproj_error_sum += std::sqrt(squared_reproj_error);
+      // }
+      if (squared_reproj_error <10000) {
         reproj_error_sum += std::sqrt(squared_reproj_error);
+      }else{
+        track_els_to_delete.push_back(track_el);
       }
     }
+    // std::cout << "/// ========== Original error sum: ========== /// " << original_error_sum << std::endl;
 
     if (num_constraints < 4) {
-      num_filtered += point3D.Track().Length();
-      DeletePoint3D(point3D_id);
+      // num_filtered += point3D.Track().Length();
+      // DeletePoint3D(point3D_id);
     } else {
       num_filtered += track_els_to_delete.size();
       for (const auto& track_el : track_els_to_delete) {
-        DeleteObservation(track_el.image_id, track_el.point2D_idx);
+        // DeleteObservation(track_el.image_id, track_el.point2D_idx);
       }
       point3D.SetError(reproj_error_sum / point3D.Track().Length());
     }
   }
 
   return num_filtered;
+  // return track_els_to_delete.size()
 }
 
 void Reconstruction::ReadCamerasText(const std::string& path) {
@@ -1668,6 +1689,7 @@ void Reconstruction::ReadImagesText(const std::string& path) {
 
   std::string line;
   std::string item;
+  int count = 0;
 
   while (std::getline(file, line)) {
     StringTrim(&line);
@@ -1684,6 +1706,11 @@ void Reconstruction::ReadImagesText(const std::string& path) {
 
     class Image image;
     image.SetImageId(image_id);
+    // Commented out for point_triangulator
+    // if (count>=24){
+    //   image.SetRegistered(true);
+    //   reg_image_ids_.push_back(image_id);
+    // }
 
     image.SetRegistered(true);
     reg_image_ids_.push_back(image_id);
@@ -1764,6 +1791,7 @@ void Reconstruction::ReadImagesText(const std::string& path) {
     }
 
     images_.emplace(image.ImageId(), image);
+    count += 1;
   }
 }
 

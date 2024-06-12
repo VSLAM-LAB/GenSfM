@@ -1601,6 +1601,8 @@ int RunPointTriangulator(int argc, char** argv) {
     size_t num_changed_observations = 0;
     num_changed_observations += CompleteAndMergeTracks(mapper_options, &mapper);
     num_changed_observations += FilterPoints(mapper_options, &mapper);
+    num_changed_observations += FilterPointsFinal(mapper_options, &mapper);
+    
     const double changed =
         static_cast<double>(num_changed_observations) / num_observations;
     std::cout << StringPrintf("  => Changed observations: %.6f", changed)

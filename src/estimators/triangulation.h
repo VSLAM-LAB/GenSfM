@@ -58,6 +58,7 @@ class TriangulationEstimator {
   enum class ResidualType {
     ANGULAR_ERROR,
     REPROJECTION_ERROR,
+    ANGULAR_ERROR_SPLITTING,
   };
 
   struct PointData {

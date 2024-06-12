@@ -182,7 +182,7 @@ std::vector<TriangulationEstimator::M_t> TriangulationEstimator::EstimateStandar
     const std::vector<Y_t>& pose_data, bool initial) const {
   CHECK_GE(point_data.size(), 2);
   CHECK_EQ(point_data.size(), pose_data.size());
-  std::cout << "==============================Starting standard triangulation ===============================" << std::endl;
+  // std::cout << "==============================Starting standard triangulation ===============================" << std::endl;
 
   
 
@@ -228,7 +228,8 @@ std::vector<TriangulationEstimator::M_t> TriangulationEstimator::EstimateStandar
       //   Eigen::Vector2d n = pose_data[i].proj_matrix.topRows<2>() * xyz.homogeneous();
       //   cheiral_ok &= n.dot(point_data[i].point_normalized_standard) > 0;
       // } else {
-      cheiral_ok &= HasPointPositiveDepth(pose_data[i].proj_matrix_standard, xyz);
+      // cheiral_ok &= HasPointPositiveDepth(pose_data[i].proj_matrix_standard, xyz);
+      cheiral_ok &= HasPointPositiveDepth(pose_data[i].proj_matrix, xyz);
       // }
     }
 
@@ -258,8 +259,7 @@ std::vector<TriangulationEstimator::M_t> TriangulationEstimator::EstimateStandar
     output.push_back(xyz);
   }
 
-
-return output;
+  return output;
 }
 
 
@@ -399,6 +399,14 @@ void TriangulationEstimator::Residuals(const std::vector<X_t>& point_data,
           point_data[i].point, xyz, pose_data[i].proj_matrix,
           *pose_data[i].camera);
       (*residuals)[i] = angular_error * angular_error;
+    } else if(residual_type_== ResidualType::ANGULAR_ERROR_SPLITTING){
+      const double angular_error = CalculateAngularErrorSplitting(
+          point_data[i].point, xyz, pose_data[i].proj_matrix, point_data[i].focal_length,
+          *pose_data[i].camera);
+      (*residuals)[i] = angular_error * angular_error;
+    } else {
+      LOG(FATAL) << "Invalid residual type";
+
     }
   }
 }
@@ -423,14 +431,13 @@ bool EstimateTriangulation(
   ransac.estimator.SetResidualType(options.residual_type);
   ransac.local_estimator.SetMinTriAngle(options.min_tri_angle);
   ransac.local_estimator.SetResidualType(options.residual_type);
+  if(options.residual_type == TriangulationEstimator::ResidualType::ANGULAR_ERROR_SPLITTING) {
+    initial = true;
+  }
+   
   decltype(auto) report = standard_triangulation ?
                         ransac.EstimateStandard(point_data, pose_data, initial) :
                         ransac.Estimate(point_data, pose_data, initial);
-  // if(!standard_triangulation){
-  // const auto report = ransac.Estimate(point_data, pose_data, initial);
-  // }else{
-  //   const auto report = ransac.EstimateStandard(point_data, pose_data, initial);
-  // }
   if (!report.success) {
     return false;
   }
@@ -441,34 +448,5 @@ bool EstimateTriangulation(
   return report.success;
 }
 
-// bool EstimateTriangulationInitial(
-//     const EstimateTriangulationOptions& options,
-//     const std::vector<TriangulationEstimator::PointData>& point_data,
-//     const std::vector<TriangulationEstimator::PoseData>& pose_data,
-//     std::vector<char>* inlier_mask, Eigen::Vector3d* xyz) {
-//   CHECK_NOTNULL(inlier_mask);
-//   CHECK_NOTNULL(xyz);
-//   CHECK_GE(point_data.size(), 2);
-//   CHECK_EQ(point_data.size(), pose_data.size());
-//   options.Check();
-
-//   // Robustly estimate track using LORANSAC.
-//   LORANSAC<TriangulationEstimator, TriangulationEstimator,
-//            InlierSupportMeasurer, CombinationSampler>
-//       ransac(options.ransac_options);
-//   ransac.estimator.SetMinTriAngle(options.min_tri_angle);
-//   ransac.estimator.SetResidualType(options.residual_type);
-//   ransac.local_estimator.SetMinTriAngle(options.min_tri_angle);
-//   ransac.local_estimator.SetResidualType(options.residual_type);
-//   const auto report = ransac.Estimate(point_data, pose_data);
-//   if (!report.success) {
-//     return false;
-//   }
-
-//   *inlier_mask = report.inlier_mask;
-//   *xyz = report.model;
-
-//   return report.success;
-// }
 
 }  // namespace colmap

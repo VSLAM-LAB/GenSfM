@@ -114,6 +114,7 @@ double CalculateSquaredReprojectionErrorFinal(const Eigen::Vector2d& point2D,
                                          const Eigen::Vector4d& qvec,
                                          const Eigen::Vector3d& tvec,
                                          const std::vector<double>& radii,
+                                         const std::vector<double>& theta,
                                          const std::vector<double>& focal_lengths,
                                          const Camera& camera);
 double CalculateSquaredReprojectionError(const Eigen::Vector2d& point2D,
@@ -132,6 +133,11 @@ double CalculateAngularError(const Eigen::Vector2d& point2D,
 double CalculateAngularError(const Eigen::Vector2d& point2D,
                              const Eigen::Vector3d& point3D,
                              const Eigen::Matrix3x4d& proj_matrix,
+                             const Camera& camera);
+double CalculateAngularErrorSplitting(const Eigen::Vector2d& point2D,
+                             const Eigen::Vector3d& point3D,
+                             const Eigen::Matrix3x4d& proj_matrix,
+                             const double& focal_length,
                              const Camera& camera);
 
 // Calculate depth of 3D point with respect to camera.

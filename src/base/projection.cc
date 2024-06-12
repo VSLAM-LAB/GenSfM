@@ -157,6 +157,7 @@ double CalculateSquaredReprojectionErrorFinal(const Eigen::Vector2d& point2D,
                                          const Eigen::Vector3d& tvec,
                                          const std::vector<double>& radii,
                                          const std::vector<double>& focal_lengths,
+                                         const std::vector<double>& theta,
                                          const Camera& camera) {                                         
   const Eigen::Vector3d proj_point3D =
       QuaternionRotatePoint(qvec, point3D) + tvec; //the 3D point in camera coordinate system
@@ -175,12 +176,53 @@ double CalculateSquaredReprojectionErrorFinal(const Eigen::Vector2d& point2D,
     }
     proj_point2D = camera.WorldToImage(dot_product * n);
     // check if radii is not empty
-    if(radii.size()!=0) {
+    if(radii.size()>=4) {
       
-      std::cout << "Using full reprojection error" << std::endl;
+      // std::cout << "Using full reprojection error" << std::endl;
       Eigen::Vector2d pp = Eigen::Vector2d(camera.PrincipalPointX(), camera.PrincipalPointY());
-      double radius = (point2D - pp).norm();
+      // double radius = (point2D - pp).norm();
+      // //////////////// Calculating the theta of the point3D for mapping to the radius and thus focal length ///////////////////////
+      double rho = proj_point3D.topRows<2>().norm();
+      double z = proj_point3D(2);
+      double theta_this = std::atan2(rho,z);
+      double radius;
+      // std::cout << "theta size: " << theta.size() << std::endl;
+      // std::cout << "radii size: " << radii.size() << std::endl;
+
+      if (theta_this <= theta[0]) {
+            // special case, extrpolate from first points
+            double dtheta = theta[1] - theta[0];
+            double alpha = (theta_this - theta[0]) / dtheta;
+            radius = (1.0 - alpha) * radii[0] + alpha * radii[1];
+            
+        } else if (theta_this >= theta[theta.size()-1]) {
+            // special case, extrapolate from last points
+            double dtheta = theta[theta.size()-1] - theta[theta.size()-2];
+            double alpha = (theta_this - theta[theta.size()-2]) / dtheta;
+            radius = (1.0 - alpha) * radii[theta.size()-2] + alpha * radii[theta.size()-1];
+        
+        } else {
+            // we interpolate between the two neighboring calibration points
+            // concatenate theta and radii into a vector of pairs: theta_r
+            std::vector<std::pair<double,double>> theta_r;
+            for (size_t i = 0; i < radii.size(); i++) {
+                theta_r.push_back(std::make_pair(theta[i], radii[i]));
+            }
+            auto it = std::lower_bound(theta_r.begin(), theta_r.end(), std::make_pair(theta_this, std::numeric_limits<double>::lowest()));
+            
+            const std::pair<double,double> &theta_r1 = *it;
+            const std::pair<double,double> &theta_r0 = *(--it);
+            
+            // Interpolate radius           
+            double dtheta = theta_r1.first - theta_r0.first;
+            double alpha = (theta_this - theta_r0.first) / dtheta;
+            radius = (1.0 - alpha) * theta_r0.second + alpha * theta_r1.second;
+        }
+      // std::cout << "calculated radius: " << radius << std::endl;
+      // std::cout << "plain radius: " << (point2D - pp).norm() << std::endl;
+
       // get the focal length for this radius
+      // radius = (point2D - pp).norm();
       double focal_length = 0;
       for (int i = 0; i < radii.size() - 1; i++) {
         // std::cout << "radii " << i << " "<<radii[i] << std::endl;
@@ -199,36 +241,39 @@ double CalculateSquaredReprojectionErrorFinal(const Eigen::Vector2d& point2D,
       if (radius > radii[radii.size() - 1]) {
         focal_length = focal_lengths[radii.size() - 1];
       }
-      std::cout << "focal length: " << focal_length << std::endl;
+      // std::cout << "focal length: " << focal_length << std::endl;
       // proj_point2D(0) = proj_point3D.hnormalized()(0) * focal_length + pp(0);
       // proj_point2D(1) = proj_point3D.hnormalized()(1) * focal_length + pp(1);
+      if (focal_length > 100){
       proj_point2D= proj_point3D.hnormalized() * focal_length + pp;
-      std::cout << "pp: " << pp << std::endl;
-      std::cout << "proj_point2D: " << proj_point2D << std::endl;
-      std::cout << "point2D: " << point2D << std::endl;
-      std::cout << "calculated reprojection error: " << (proj_point2D - point2D).squaredNorm() << std::endl;
-      std::cout << "used radius: " << radius << std::endl;
-      std::cout << "used focal length: " << focal_length << std::endl;
-      double actual_radius = (proj_point2D - pp).norm();
-      double actual_f ;
-      for (int i = 0; i < radii.size() - 1; i++) {
-        // std::cout << "radii " << i << " "<<radii[i] << std::endl;
-        if (actual_radius >= radii[i] && actual_radius <= radii[i+1]) {
-          // interpolate the focal length
-
-          actual_f = focal_lengths[i] + (focal_lengths[i+1] - focal_lengths[i]) * (radius - radii[i]) / (radii[i+1] - radii[i]+ std::numeric_limits<double>::epsilon());
-          break;
-        }
+      }else{
+        proj_point2D = camera.WorldToImage(proj_point3D.hnormalized());
       }
+      // std::cout << "pp: " << pp << std::endl;
+      // std::cout << "proj_point2D: " << proj_point2D << std::endl;
+      // std::cout << "point2D: " << point2D << std::endl;
+      // std::cout << "calculated reprojection error: " << (proj_point2D - point2D).squaredNorm() << std::endl;
+      // std::cout << "used radius: " << radius << std::endl;
+      // std::cout << "used focal length: " << focal_length << std::endl;
+      // double actual_radius = (proj_point2D - pp).norm();
+      // double actual_f ;
+      // for (int i = 0; i < radii.size() - 1; i++) {
+      //   // std::cout << "radii " << i << " "<<radii[i] << std::endl;
+      //   if (actual_radius >= radii[i] && actual_radius <= radii[i+1]) {
+      //     // interpolate the focal length
 
-      std::cout << "actual radius: " << (proj_point2D - pp).norm() << std::endl;
-      std::cout << "actual focal length: " << actual_f << std::endl;
+      //     actual_f = focal_lengths[i] + (focal_lengths[i+1] - focal_lengths[i]) * (radius - radii[i]) / (radii[i+1] - radii[i]+ std::numeric_limits<double>::epsilon());
+      //     break;
+      //   }
+      // }
+
+      // std::cout << "actual radius: " << (proj_point2D - pp).norm() << std::endl;
+      // std::cout << "actual focal length: " << actual_f << std::endl;
       // check that point is infront of camera.
-      if (proj_point3D.z() < std::numeric_limits<double>::epsilon()) {
-        return std::numeric_limits<double>::max();
-      }
+      // if (proj_point3D.z() < std::numeric_limits<double>::epsilon()) {
+      //   return std::numeric_limits<double>::max();
+      // }
     }
-    
   } else {
     // Check that point is infront of camera.
     if (proj_point3D.z() < std::numeric_limits<double>::epsilon()) {
@@ -297,6 +342,25 @@ double CalculateAngularError(const Eigen::Vector2d& point2D,
   if(camera.ModelId() == Radial1DCameraModel::model_id) {    
     return std::acos(point2D_norm.normalized().dot(point3D_cam.topRows<2>().normalized()));
     // return std::acos(point2D_norm.homogeneous().normalized().dot(point3D_cam.normalized()));
+  } else {
+    return std::acos(point2D_norm.homogeneous().normalized().dot(point3D_cam.normalized()));
+  }
+}
+
+double CalculateAngularErrorSplitting(const Eigen::Vector2d& point2D,
+                             const Eigen::Vector3d& point3D,
+                             const Eigen::Matrix3x4d& proj_matrix,
+                             const double& focal_length,
+                             const Camera& camera) {
+  // std::cout << "Using splitting " << std::endl;
+  const Eigen::Vector2d point2D_norm = camera.ImageToWorld(point2D) / focal_length;
+  
+  const Eigen::Vector3d point3D_cam = proj_matrix * point3D.homogeneous();
+
+  if(camera.ModelId() == Radial1DCameraModel::model_id) { 
+
+    // return 0.5*(std::acos(point2D_norm.homogeneous().normalized().dot(point3D_cam.normalized()))) + 0.5*(std::acos((point2D_norm * focal_length).normalized().dot(point3D_cam.topRows<2>().normalized())));
+    return std::acos(point2D_norm.homogeneous().normalized().dot(point3D_cam.normalized())); 
   } else {
     return std::acos(point2D_norm.homogeneous().normalized().dot(point3D_cam.normalized()));
   }

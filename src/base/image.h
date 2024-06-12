@@ -34,8 +34,11 @@
 
 #include <string>
 #include <vector>
+#include<optional>
 
 #include <Eigen/Core>
+#include <boost/math/interpolators/cardinal_cubic_b_spline.hpp> 
+#include <boost/math/interpolators/cubic_hermite.hpp>
 
 #include "base/camera.h"
 #include "base/point2d.h"
@@ -114,6 +117,10 @@ class Image {
   inline void SetFocalLengthParams(const std::vector<double>& focal_length_params) const;
   inline std::vector<double> GetRawRadii() const; 
   inline void SetRawRadii(const std::vector<double>& raw_radii) const;
+  inline std::vector<double> GetTheta() const;
+  inline void SetTheta(const std::vector<double>& theta) const;
+  // inline boost::math::interpolators::cubic_hermite<std::vector<double>> GetSpline() const;
+  // inline void SetSpline(const boost::math::interpolators::cubic_hermite<std::vector<double>>& spline) const;
 
   // Access quaternion vector as (qw, qx, qy, qz) specifying the rotation of the
   // pose which is defined as the transformation from world to image space.
@@ -242,10 +249,12 @@ class Image {
   // Parameters for retrieving point-wise focal length from implicit_distortion.
   mutable std::vector<double> focal_length_params_;
   mutable std::vector<double> raw_radii_;
+  mutable std::vector<double> theta_;
+  // mutable boost::math::interpolators::cubic_hermite<std::vector<double>> spline_;
 
   // All image points, including points that are not part of a 3D point track.
   std::vector<class Point2D> points2D_;
-
+  
   // Per image point, the number of correspondences that have a 3D point.
   std::vector<image_t> num_correspondences_have_point3D_;
 
@@ -329,6 +338,21 @@ inline void Image::SetRawRadii(const std::vector<double>& raw_radii) const {
   raw_radii_ = raw_radii;
 }
 
+inline std::vector<double> Image::GetTheta() const {
+  return theta_;
+}
+
+inline void Image::SetTheta(const std::vector<double>& theta) const {
+  theta_ = theta;
+}
+
+// inline boost::math::interpolators::cubic_hermite<std::vector<double>> Image::GetSpline() const {
+//   return spline_;
+// }
+
+// inline void Image::SetSpline(const boost::math::interpolators::cubic_hermite<std::vector<double>>& spline) const {
+//   spline_ = spline;
+// }
 void Image::SetQvec(const Eigen::Vector4d& qvec) { qvec_ = qvec; }
 
 const Eigen::Vector4d& Image::QvecPrior() const { return qvec_prior_; }

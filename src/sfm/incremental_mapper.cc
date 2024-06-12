@@ -629,11 +629,22 @@ size_t IncrementalMapper::TriangulateImage(
     const IncrementalTriangulator::Options& tri_options,
     const image_t image_id, bool initial) {
   CHECK_NOTNULL(reconstruction_);
+
+  // Commented out for point_triangulator
+  size_t num_images_having_point3D = 0;
+  for (const auto& image_id : reconstruction_->RegImageIds()) {
+    Image &image_this = reconstruction_->Image(image_id);
+    if (image_this.NumPoints3D()>10) {
+      std::cout << "Image " << image_id << " has " << image_this.NumPoints3D() << " points3D" << std::endl;
+      num_images_having_point3D += 1;
+    }
+  }
   size_t num_registrations = reconstruction_->NumRegImages();
-  bool standard_triangulation = (num_registrations >= tri_options.min_num_reg_images);
-  // bool standard_triangulation = false;
+  // bool standard_triangulation = (num_registrations >= tri_options.min_num_reg_images);
+  bool standard_triangulation = (num_images_having_point3D >= tri_options.min_num_reg_images);
+  // standard_triangulation = true;
   if(standard_triangulation) {
-    std::cout << "Standard Triangulation Condition meeted, with num_registrations: " << num_registrations<<" min_num_reg_images:"<< tri_options.min_num_reg_images<< std::endl;
+    std::cout << "Standard Triangulation Condition meeted, with num_images_having_point3D " << num_images_having_point3D<<" min_num_reg_images:"<< tri_options.min_num_reg_images<< std::endl;
 
   }
   return triangulator_->TriangulateImage(tri_options, image_id, initial, standard_triangulation);
@@ -952,7 +963,7 @@ IncrementalMapper::ImplicitAdjustLocalBundle(const Options& options,
   CHECK(options.Check());
   size_t num_reg_images = reconstruction_->NumRegImages();
   bool standard_triangulation = false;
-  if (num_reg_images >=10) {
+  if (num_reg_images >=16) {
     bool standard_triangulation = true;
   }
   

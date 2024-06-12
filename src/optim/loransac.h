@@ -303,9 +303,13 @@ LORANSAC<Estimator, LocalEstimator, SupportMeasurer, Sampler>::EstimateStandard(
     sampler.SampleXY(X, Y, &X_rand, &Y_rand);
 
     // Estimate model for current subset.
-    const std::vector<typename Estimator::M_t> sample_models =
+    std::vector<typename Estimator::M_t> sample_models ;
         // estimator.EstimateStandard(X_rand, Y_rand, initial);
-        estimator.Estimate(X_rand, Y_rand, initial);
+    if(initial){
+
+        sample_models= estimator.EstimateStandard(X_rand, Y_rand, initial);}else{
+        sample_models= estimator.Estimate(X_rand, Y_rand, initial);
+        }
 
     // Iterate through all estimated models
     for (const auto& sample_model : sample_models) {
