@@ -321,7 +321,7 @@ IncrementalTriangulator::Options IncrementalMapperOptions::Triangulation()
   options.min_focal_length_ratio = min_focal_length_ratio;
   options.max_focal_length_ratio = max_focal_length_ratio;
   options.max_extra_param = max_extra_param;
-  options.min_num_reg_images = 16;
+  options.min_num_reg_images = 12;
   return options;
 }
 
@@ -655,9 +655,9 @@ void IncrementalMapperController::Reconstruct(
             ImplicitAdjustGlobalBundle(*options_, &mapper);
             // int min_num_reg_images = *options_->Triangulation().min_num_reg_images;
             // if(reconstruction.NumRegImages() >= 18 && reconstruction.NumRegImages() <= 30){
-              if(reconstruction.NumRegImages() >= 18 ){
-              FilterPointsFinal(*options_, &mapper);
-            }
+            //   if(reconstruction.NumRegImages() >= 18 ){
+            //   FilterPointsFinal(*options_, &mapper);
+            // }
             // FilterPointsFinal(*options_, &mapper);
             // FilterPoints(*options_, &mapper);
             // IterativeGlobalRefinement(*options_, &mapper);

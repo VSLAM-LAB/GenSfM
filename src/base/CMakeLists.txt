@@ -60,6 +60,7 @@ COLMAP_ADD_SOURCES(
     undistortion.h undistortion.cc
     visibility_pyramid.h visibility_pyramid.cc
     warp.h warp.cc
+    spline.h
 )
 
 COLMAP_ADD_TEST(camera_database_test camera_database_test.cc)

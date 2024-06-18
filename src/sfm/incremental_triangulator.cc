@@ -39,6 +39,7 @@
 
 
 
+
 #include "base/projection.h"
 #include "estimators/triangulation.h"
 #include "estimators/implicit_camera_pose.h"
@@ -688,6 +689,7 @@ size_t IncrementalTriangulator::Create(
     CostMatrixOptions cm_options;
     CostMatrix cost_matrix = build_cost_matrix(points2D_xy, cm_options, Eigen::Vector2d(camera.PrincipalPointX(), camera.PrincipalPointY()));
     Eigen::Vector2d pp = Eigen::Vector2d(camera.PrincipalPointX(), camera.PrincipalPointY());
+    // Eigen::Vector2d pp = Eigen::Vector2d(3036.64, 2015.48);
    
     // Commented out for point_triangulator 
    
@@ -717,7 +719,7 @@ size_t IncrementalTriangulator::Create(
     // for (int i = 0; i < points2D_xy.size(); i++) {
     //   radii.push_back((points2D_xy[i] - Eigen::Vector2d(camera.PrincipalPointX(),camera.PrincipalPointY())).norm());
     // }
-    if(radii.size()>=40){
+    if(radii.size()>=10){
     image.SetRawRadii(radii);
     std::cout<<"radii set"<<std::endl;
     // Retrieve rotation matrix 
@@ -738,6 +740,7 @@ size_t IncrementalTriangulator::Create(
         theta.push_back(pair.first); // Extract the first element of each pair (r)
         // radii_for_theta.push_back(pair.second);
     }
+    image.SetTheta(theta);
     // for (int i = 0; i < radii.size(); i++) {
     // Eigen::Vector2d offset = points2D_xy[i] - Eigen::Vector2d(camera.PrincipalPointX(), camera.PrincipalPointY());
     // double dot_product = offset.x() * X_cam[i].x() + offset.y() * X_cam[i].y(); // Calculate dot product of the projection
@@ -751,69 +754,57 @@ size_t IncrementalTriangulator::Create(
     //     focal_lengths.push_back(1); // or some form of error value or handling
     //   }
     // }
-    double fx = 3408.59;
-    double fy = 3408.87;
-    double cx = 3036.9;
-    double cy = 2012.66;
-    double k1 = 0.209259;
-    double k2 = 0.220061;
-    double p1 = 7.28021e-05;
-    double p2 = -2.99402e-05;
-    double k3 = -0.186234;
-    double k4 = 0.421684;
-    double s1 =  0.000884047;
-    double s2 = 0.00052266;
+    double fx = 3414.66;
+    double fy = 3413.37;
+    double cx = 3036.64;
+    double cy = 2015.48;
+    double k1 = 0.209273;
+    double k2 = 0.221806;
+    double p1 = 0.000539398;
+    double p2 =  4.82691e-05;
+    double k3 = -0.190406;
+    double k4 =  0.431421;
+    double s1 =  0.000189817;
+    double s2 =  0.000278303;
+    std::vector<double> r_3d;
+    // from 0 to 1, increment by 0.01
+    for (double i = 0; i < 1; i += 0.002) {
+      r_3d.push_back(i);
+    }
+    std::vector<double> radii_list;
 
-    for (int i = 0; i < radii.size(); i++){
-      double theta = atan(radii[i]);
-      double x_d = radii[i] * cos(theta);
-      double y_d = radii[i] * sin(theta);
-      double u_d = theta/radii[i] * x_d;
-      double v_d = theta/radii[i] * y_d;
+    for (int i = 0; i < r_3d.size(); i++){
+      double theta = atan(r_3d[i]);
+      double x_d = r_3d[i] * cos(theta);
+      double y_d = r_3d[i] * sin(theta);
+      double u_d = theta/r_3d[i] * x_d;
+      double v_d = theta/r_3d[i] * y_d;
       double theta_squared = theta * theta;
       double t_r = 1 + k1 * theta_squared + k2 * theta_squared * theta_squared + k3 * theta_squared * theta_squared * theta_squared + k4 * theta_squared * theta_squared * theta_squared * theta_squared;
       double u_n = u_d * t_r + 2 * p1 * u_d * v_d + p2 * (theta_squared + 2 * u_d * u_d) + s1 * theta_squared;
       double v_n = v_d * t_r + 2 * p2 * u_d * v_d + p1 * (theta_squared + 2 * v_d * v_d) + s2 * theta_squared;
       double u = fx * u_n + cx;
       double v = fy * v_n + cy;
-      double gt_f = u/x_d;
+      double radius = sqrt((u - cx) * (u - cx) + (v - cy) * (v - cy));
+      radii_list.push_back(radius);
+      double gt_f = (u-cx)/x_d;
       gt_focal_lengths.push_back(gt_f);
     }
     // image.SetFocalLengthParams(gt_focal_lengths);
+    // image.SetRawRadii(radii_list);
     image.SetFocalLengthParams(focal_lengths);
     // std::cout<<"focal lengths set"<<std::endl;
-    image.SetTheta(theta);
+    
     // img_ids.push_back(image.ImageId()); 
     // std::cout<<"img_ids size:"<<img_ids.size()<<std::endl;
     std::cout<<"theta set"<<std::endl;
     std::cout << "Radii: " << radii.size() << " Focal Lengths: " << focal_lengths.size() << std::endl;
     
     // -------------% Fitting a parametric spline model for estimated r-f map %------------ //
-    // fitting a spline model for radii-focal_length mapping
-    
-      // fitting a cubic spline model for radii-focal_length mapping with 3 knots
-      // std::cout << "Fitting a spline model for radii-focal_length mapping" << std::endl;
-      // prepare the uniformly distributed data for fitting the spline model
-      // generate uniformly distributed 100 points in raw_radii range
-      
-      
-      // std::vector<double> x = radii;
-      // std::vector<double> y = focal_lengths;
-      // std::vector<double>dydx;
-      // for (int i = 0; i < focal_lengths.size() - 1; i++) {
-      //   dydx.push_back(1);
-      // }
-      // dydx = dydx;
-      // using boost::math::interpolators::cubic_hermite;
-      // auto spline = cubic_hermite<decltype(x)>(std::move(x), std::move(y), std::move(dydx));
-
-         
-      
-      // store the fitted spline model 
-      // image.SetSpline(spline);
+    image.FitSpline(radii, focal_lengths);
     }
 
-    if (radii.size() <=40) {
+    if (radii.size() <=10) {
         standard_triangulation = false;
     }
   }
@@ -859,27 +850,16 @@ size_t IncrementalTriangulator::Create(
     pose_data[i].camera = corr_data.camera;
     pose_data[i].image = corr_data.image;
     if(standard_triangulation){
-      
-    std::vector<double> raw_radii = corr_data.image->GetRawRadii();
-    std::vector<double> focal_lengths = corr_data.image->GetFocalLengthParams();
-    // auto spline = corr_data.image->GetSpline();
-    std::vector<double> x = raw_radii;
-    std::vector<double> y = focal_lengths;
-    std::vector<double>dydx;
-    for (int i = 0; i < focal_lengths.size() - 1; i++) {
-      dydx.push_back(1);
-    }
-    dydx = dydx;
-    // using boost::math::interpolators::cubic_hermite;
-    // auto spline = cubic_hermite<decltype(x)>(std::move(x), std::move(y), std::move(dydx));
     double radius = point_data[i].point_normalized.norm();
     // generate uniformly distributed 100 points in raw_radii range
-    // Eigen::VectorXd points = Eigen::VectorXd::LinSpaced(100, raw_radii[0], raw_radii[raw_radii.size() - 1]);
-    // std::vector<double> std_points = std::vector<double>(points.data(), points.data() + points.size());
-    // std::vector<double> focal_lengths_splined ;
-    // for (int i = 0; i < std_points.size(); i++) {
-    //   focal_lengths_splined.push_back(spline(std_points[i]));
-    // }
+    std::vector<double> raw_radii = corr_data.image->GetRawRadii();
+    std::vector<double> focal_lengths = corr_data.image->GetFocalLengthParams();
+    Eigen::VectorXd points = Eigen::VectorXd::LinSpaced(100, raw_radii[0], raw_radii[raw_radii.size() - 1]);
+    std::vector<double> std_points = std::vector<double>(points.data(), points.data() + points.size());
+    std::vector<double> focal_lengths_splined;
+    for (int i = 0; i < std_points.size(); i++) {
+      focal_lengths_splined.push_back(corr_data.image->EvalFocalLength(std_points[i]));
+    }
     // std::cout << "Radius: " << radius << std::endl;
 
     // calculate the focal length by interpolating the focal_lengths
@@ -918,24 +898,24 @@ size_t IncrementalTriangulator::Create(
       focal_length = focal_lengths[raw_radii.size() - 1];
     }
 
-    // double focal_length_splined = spline(radius);
+    double focal_length_splined = corr_data.image->EvalFocalLength(radius);
     // std::cout << "Estimated Focal Length: " << focal_length << std::endl;
     // save the interpolated focal length to the previous txt file
     if(corr_data.image_id == 2){
     std::ofstream file2(filename, std::ios_base::app);
     file2 << "Interpolated Focal Length: " << focal_length << std::endl;
-    // file2 << "Focal Length Spline: " << focal_length_splined << std::endl;
+    file2 << "Focal Length Spline: " << focal_length_splined << std::endl;
     file2 <<"radii: " << radius << std::endl;
     file2.close();
     }
-    // if(corr_data.image_id == 2){
-    // std::ofstream file2(filename, std::ios_base::app);
-    // for (int i = 0; i < std_points.size(); i++) {
-    //   file2 <<"spline: "<<std_points[i] << " " << focal_lengths_splined[i] << std::endl;
-    // }
-    // file2.close();
+    if(corr_data.image_id == 2){
+    std::ofstream file2(filename, std::ios_base::app);
+    for (int i = 0; i < std_points.size(); i++) {
+      file2 <<"spline: "<<std_points[i] << " " << focal_lengths_splined[i] << std::endl;
+    }
+    file2.close();
     
-    // }
+    }
     
     // set the focal length
     // std::cout << "Interpolated Point wise Focal length: " << focal_length << std::endl;
@@ -984,7 +964,7 @@ size_t IncrementalTriangulator::Create(
   tri_options_full.residual_type =
       TriangulationEstimator::ResidualType::ANGULAR_ERROR_SPLITTING;
   // tri_options_full.residual_type =
-      // TriangulationEstimator::ResidualType::ANGULAR_ERROR;
+  //     TriangulationEstimator::ResidualType::ANGULAR_ERROR;
   tri_options_full.ransac_options.max_error =
       DegToRad(options.create_max_angle_error);
   tri_options_full.ransac_options.confidence = 0.9999;
