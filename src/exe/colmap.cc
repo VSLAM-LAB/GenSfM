@@ -714,8 +714,8 @@ int RunImageFilterer(int argc, char** argv) {
 
   const size_t num_reg_images = reconstruction.NumRegImages();
 
-  reconstruction.FilterImages(min_focal_length_ratio, max_focal_length_ratio,
-                              max_extra_param);
+  // reconstruction.FilterImages(min_focal_length_ratio, max_focal_length_ratio,
+                              // max_extra_param);
 
   std::vector<image_t> filtered_image_ids;
   for (const auto& image : reconstruction.Images()) {
@@ -1575,6 +1575,7 @@ int RunPointTriangulator(int argc, char** argv) {
   //////////////////////////////////////////////////////////////////////////////
   // Bundle adjustment
   //////////////////////////////////////////////////////////////////////////////
+ 
 
   auto ba_options = mapper_options.GlobalBundleAdjustment();
   ba_options.refine_focal_length = false;
@@ -1586,6 +1587,11 @@ int RunPointTriangulator(int argc, char** argv) {
   BundleAdjustmentConfig ba_config;
   for (const image_t image_id : reconstruction.RegImageIds()) {
     ba_config.AddImage(image_id);
+    Camera &camera = reconstruction.Camera(reconstruction.Image(image_id).CameraId());
+    camera.UpdateParams();
+    for (int i = 0; i < camera.NumParams(); ++i) {
+     std::cout << "camera param: " << camera.Params()[i] << std::endl;
+    }
   }
 
   for (int i = 0; i < mapper_options.ba_global_max_refinements; ++i) {
@@ -1600,7 +1606,7 @@ int RunPointTriangulator(int argc, char** argv) {
 
     size_t num_changed_observations = 0;
     num_changed_observations += CompleteAndMergeTracks(mapper_options, &mapper);
-    num_changed_observations += FilterPoints(mapper_options, &mapper);
+    // num_changed_observations += FilterPoints(mapper_options, &mapper);
     num_changed_observations += FilterPointsFinal(mapper_options, &mapper);
     
     const double changed =
@@ -2144,7 +2150,7 @@ int RunRadialQuadrifocalInitializer(int argc, char** argv) {
 
     size_t num_changed_observations = 0;
     num_changed_observations += CompleteAndMergeTracks(mapper_options, &mapper);
-    num_changed_observations += FilterPoints(mapper_options, &mapper);
+    // num_changed_observations += FilterPoints(mapper_options, &mapper);
     const double changed =
         static_cast<double>(num_changed_observations) / num_observations;
     std::cout << StringPrintf("  => Changed observations: %.6f", changed)

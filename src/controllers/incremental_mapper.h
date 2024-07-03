@@ -85,7 +85,7 @@ struct IncrementalMapperOptions {
   // Which intrinsic parameters to optimize during the reconstruction.
   bool ba_refine_focal_length = true;
   bool ba_refine_principal_point = false;
-  bool ba_refine_extra_params = true;
+  bool ba_refine_extra_params = false;
 
   // The minimum number of residuals per bundle adjustment problem to
   // enable multi-threading solving of the problems.
@@ -184,8 +184,8 @@ size_t FilterPoints(const IncrementalMapperOptions& options,
                     IncrementalMapper* mapper);
 size_t FilterPointsFinal(const IncrementalMapperOptions& options,
                     IncrementalMapper* mapper);
-size_t FilterImages(const IncrementalMapperOptions& options,
-                    IncrementalMapper* mapper);
+// size_t FilterImages(const IncrementalMapperOptions& options,
+                    // IncrementalMapper* mapper);
 
 // Globally complete and merge tracks in mapper.
 size_t CompleteAndMergeTracks(const IncrementalMapperOptions& options,

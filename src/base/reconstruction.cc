@@ -428,7 +428,7 @@ void Reconstruction::NormalizeRadialCameras() {
   bool all_radial = true;
   for (auto& image : images_) {
     const class Camera& camera = Camera(image.second.CameraId());
-    if (camera.ModelId() != Radial1DCameraModel::model_id) {
+    if (camera.ModelId() != Radial1DCameraModel::model_id && camera.ModelId() != ImplicitDistortionModel::model_id){
       all_radial = false;
       continue;
     }
@@ -449,7 +449,9 @@ void Reconstruction::NormalizeRadialCameras() {
     double tz =
         EstimateRadialCameraForwardOffset(proj_matrix, points2D, points3D, &negative_focal);
     Eigen::Vector3d tvec = proj_matrix.col(3);
-    tvec(2) += tz;
+
+    if(camera.ModelId()==Radial1DCameraModel::model_id){
+      tvec(2) += tz;}
     image.second.SetTvec(tvec);
     if(negative_focal) {
       negative_focal_count++;
@@ -797,7 +799,8 @@ size_t Reconstruction::FilterObservationsWithNegativeDepth() {
       if (point2D.HasPoint3D()) {
         const class Point3D& point3D = Point3D(point2D.Point3DId());
 
-        if (camera.ModelId() == Radial1DCameraModel::model_id) {
+        if (camera.ModelId() == Radial1DCameraModel::model_id || camera.ModelId() == ImplicitDistortionModel::model_id
+            ){
           // For radial cameras we instead check the half-plane constraint
           const Eigen::Vector2d n =
               proj_matrix.topRows<2>() * point3D.XYZ().homogeneous();
@@ -1399,7 +1402,8 @@ size_t Reconstruction::FilterPoints3DWithSmallTriangulationAngle(
     for (size_t i1 = 0; i1 < point3D.Track().Length(); ++i1) {
       const image_t image_id1 = point3D.Track().Element(i1).image_id;
       const class Camera &camera1 = Camera(Image(image_id1).CameraId());
-      is_radial[i1] = camera1.ModelId() == Radial1DCameraModel::model_id;
+      is_radial[i1] = (camera1.ModelId() == Radial1DCameraModel::model_id ||
+                       camera1.ModelId() == ImplicitDistortionModel::model_id);
       
       Eigen::Vector3d proj_center1;
       Eigen::Vector3d principal_axis1;
@@ -1552,6 +1556,7 @@ size_t Reconstruction::FilterPoints3DWithLargeReprojectionErrorFinal(
 
   // Number of filtered points.
   size_t num_filtered = 0;
+  size_t num_track;
 
   for (const auto point3D_id : point3D_ids) {
     if (!ExistsPoint3D(point3D_id)) {
@@ -1564,9 +1569,9 @@ size_t Reconstruction::FilterPoints3DWithLargeReprojectionErrorFinal(
     for (const auto& track_el : point3D.Track().Elements()) {
       const class Image& image = Image(track_el.image_id);
       const class Camera& camera = Camera(image.CameraId());
-      if (camera.ModelId() == Radial1DCameraModel::model_id) {
+      if (camera.ModelId() == Radial1DCameraModel::model_id || camera.ModelId() == ImplicitDistortionModel::model_id) {
         // num_constraints += 1;
-        if (image.GetRawRadii().size() > 0) {
+        if (camera.GetRawRadii().size() > 0) {
           num_constraints += 2;
         } else {
           num_constraints += 2;
@@ -1587,38 +1592,48 @@ size_t Reconstruction::FilterPoints3DWithLargeReprojectionErrorFinal(
     double original_error_sum = 0.0;
 
     std::vector<TrackElement> track_els_to_delete;
+    std::vector<TrackElement> track_els_total;
 
     for (const auto& track_el : point3D.Track().Elements()) {
       const class Image& image = Image(track_el.image_id);
       const class Camera& camera = Camera(image.CameraId());
       const Point2D& point2D = image.Point2D(track_el.point2D_idx);
       const double squared_reproj_error = CalculateSquaredReprojectionErrorFinal(
-          point2D.XY(), point3D.XYZ(), image.Qvec(), image.Tvec(), image.GetRawRadii(), image.GetFocalLengthParams(), image.GetTheta(), camera);
+          point2D.XY(), point3D.XYZ(), image.Qvec(), image.Tvec(), camera.GetRawRadii(), camera.GetFocalLengthParams(), camera.GetTheta(), camera);
       original_error_sum += std::sqrt(squared_reproj_error);
       if (squared_reproj_error > max_squared_reproj_error ) {
         // track_els_to_delete.push_back(track_el);
-        if (image.GetRawRadii().size() > 0) {
+        if (camera.GetRawRadii().size() > 0) {
            num_constraints -= (camera.ModelId() == Radial1DCameraModel::model_id) ? 2 : 2;
         } else {
-          num_constraints -=
-            (camera.ModelId() == Radial1DCameraModel::model_id) ? 1 : 2;
+          if (camera.ModelId() == Radial1DCameraModel::model_id) {
+              num_constraints -= 1;
+          } else if (camera.ModelId() == ImplicitDistortionModel::model_id) {
+              num_constraints -= 1;
+          } else {
+              num_constraints -= 2;
+          }
         }
         
       } 
       // else {
       //   reproj_error_sum += std::sqrt(squared_reproj_error);
       // }
-      if (squared_reproj_error <10000) {
+      if (squared_reproj_error <16) {
         reproj_error_sum += std::sqrt(squared_reproj_error);
+        // track_els_total.push_back(track_el);
       }else{
         track_els_to_delete.push_back(track_el);
+        // track_els_total.push_back(track_el);
       }
+      track_els_total.push_back(track_el);
     }
     // std::cout << "/// ========== Original error sum: ========== /// " << original_error_sum << std::endl;
 
     if (num_constraints < 4) {
       // num_filtered += point3D.Track().Length();
       // DeletePoint3D(point3D_id);
+    
     } else {
       num_filtered += track_els_to_delete.size();
       for (const auto& track_el : track_els_to_delete) {
@@ -1626,7 +1641,9 @@ size_t Reconstruction::FilterPoints3DWithLargeReprojectionErrorFinal(
       }
       point3D.SetError(reproj_error_sum / point3D.Track().Length());
     }
+    num_track += track_els_total.size(); 
   }
+  std::cout << "total track: " <<num_track<< std::endl;
 
   return num_filtered;
   // return track_els_to_delete.size()

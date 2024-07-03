@@ -79,17 +79,20 @@ size_t IncrementalTriangulator::TriangulateImage(const Options& options,
   size_t num_tris = 0;
 
   ClearCaches();
+  std::cout<<"Entering triangulator::tiangulateImage: "<<std::endl;
   // std::cout << "Initial in IncrementalTriangulator::Triangulateimage: " << initial << std::endl;
 
   const Image& image = reconstruction_->Image(image_id);
   if (!image.IsRegistered()) {
     return num_tris;
   }
+  std::cout<<"Image is registered"<<std::endl;
 
   const Camera& camera = reconstruction_->Camera(image.CameraId());
-  if (HasCameraBogusParams(options, camera)) {
-    return num_tris;
-  }
+  // if (HasCameraBogusParams(options, camera)) {
+  //   return num_tris;
+  // }
+  std::cout<<"Camera has no bogus params"<<std::endl;
 
   // Correspondence data for reference observation in given image. We iterate
   // over all observations of the image and each observation once becomes
@@ -111,10 +114,12 @@ size_t IncrementalTriangulator::TriangulateImage(const Options& options,
     if (corrs_data.empty()) {
       continue;
     }
+    // std::cout<<"Corrs data is not empty"<<std::endl;
 
     const Point2D& point2D = image.Point2D(point2D_idx);
     ref_corr_data.point2D_idx = point2D_idx;
     ref_corr_data.point2D = &point2D;
+    // std::cout<<"num_triangulated: "<<num_triangulated<<std::endl; 
 
     if (num_triangulated == 0) {
       corrs_data.push_back(ref_corr_data);
@@ -331,9 +336,9 @@ size_t IncrementalTriangulator::CompleteImage(const Options& options,
         const CorrData& corr_data = corrs_data[i];
         track.AddElement(corr_data.image_id, corr_data.point2D_idx);
         if (standard_triangulation){
-          num_constraints += (corr_data.camera->ModelId() == Radial1DCameraModel::model_id) ? 2 : 2;
+          num_constraints += (corr_data.camera->ModelId() == Radial1DCameraModel::model_id || corr_data.camera->ModelId() == ImplicitDistortionModel::model_id) ? 2 : 2;
         }else{
-          num_constraints += (corr_data.camera->ModelId() == Radial1DCameraModel::model_id) ? 1 : 2;
+          num_constraints += (corr_data.camera->ModelId() == Radial1DCameraModel::model_id || corr_data.camera->ModelId() == ImplicitDistortionModel::model_id) ? 1 : 2;
         }
         // num_constraints += (corr_data.camera->ModelId() == Radial1DCameraModel::model_id) ? 1 : 2;
       }
@@ -459,10 +464,10 @@ size_t IncrementalTriangulator::Retriangulate(const Options& options) {
 
     const Camera& camera1 = reconstruction_->Camera(image1.CameraId());
     const Camera& camera2 = reconstruction_->Camera(image2.CameraId());
-    if (HasCameraBogusParams(options, camera1) ||
-        HasCameraBogusParams(options, camera2)) {
-      continue;
-    }
+    // if (HasCameraBogusParams(options, camera1) ||
+    //     HasCameraBogusParams(options, camera2)) {
+    //   continue;
+    // }
 
     // Find correspondences and perform retriangulation.
 
@@ -507,7 +512,7 @@ size_t IncrementalTriangulator::Retriangulate(const Options& options) {
         const std::vector<CorrData> corrs_data = {corr_data1, corr_data2};
         // Do not use larger triangulation threshold as this causes
         // significant drift when creating points (options vs. re_options).
-        std::cout << "=============================Retriangulating===========================" << std::endl;
+        // std::cout << "=============================Retriangulating===========================" << std::endl;
         num_tris += Create(options, corrs_data, false, standard_triangulation);
       }
       // Else both points have a 3D point, but we do not want to
@@ -566,9 +571,9 @@ size_t IncrementalTriangulator::Find(const Options& options,
     }
 
     const Camera& corr_camera = reconstruction_->Camera(corr_image.CameraId());
-    if (HasCameraBogusParams(options, corr_camera)) {
-      continue;
-    }
+    // if (HasCameraBogusParams(options, corr_camera)) {
+    //   continue;
+    // }
 
     CorrData corr_data;
     corr_data.image_id = corr.image_id;
@@ -650,6 +655,7 @@ std::string currentDateTime() {
 size_t IncrementalTriangulator::Create(
     const Options& options, const std::vector<CorrData>& corrs_data, bool initial, bool standard_triangulation) {
   //  std::vector<image_t> img_ids;
+  bool full_error = true;
   if(standard_triangulation){
   // Construct raw_radii and focal lengths for the images in corrs_data
   // std::cout << "================== Starting Standard Triangulation =======================" << std::endl;
@@ -658,15 +664,15 @@ size_t IncrementalTriangulator::Create(
   // std::vector<image_t> img_ids;
   for (const CorrData& corr_data : corrs_data) {
     const Image& image = *corr_data.image;
+    const Camera& camera = *corr_data.camera;
     // check if the image has already been set a radii and focal_lengths
     // if (std::find(img_ids.begin(), img_ids.end(), image.ImageId()) != img_ids.end() ) {
     //   continue;
     // }
-    if(image.GetRawRadii().size()>0){
+    // if(image.GetRawRadii().size()>0){
+    if(camera.GetRawRadii().size()>40){
       continue;
     }
-
-    const Camera& camera = *corr_data.camera;
     // Retrieve the points2D in this image
     std::vector<class Point2D> points2D_exist = image.Points2D();
     std::vector<class Point2D> points2D;
@@ -689,13 +695,18 @@ size_t IncrementalTriangulator::Create(
     CostMatrixOptions cm_options;
     CostMatrix cost_matrix = build_cost_matrix(points2D_xy, cm_options, Eigen::Vector2d(camera.PrincipalPointX(), camera.PrincipalPointY()));
     Eigen::Vector2d pp = Eigen::Vector2d(camera.PrincipalPointX(), camera.PrincipalPointY());
-    // Eigen::Vector2d pp = Eigen::Vector2d(3036.64, 2015.48);
-   
+    // Eigen::Vector2d pp = Eigen::Vector2d(3041.29, 2014.07);
+    // refining pp
+    CameraPose *pose_refining = &pose;
+    Eigen::Vector2d *pp_refining = &pp;
+    PoseRefinement1DRadialOptions opt;
+
+    // pose_refinement_1D_radial(points2D_xy, points3D_xyz, pose_refining, pp_refining,opt);
     // Commented out for point_triangulator 
    
-    // CameraPose pose_refined = pose_refinement(points2D_xy, points3D_xyz, cost_matrix, pp,pose, pose_refinement_options);
-    CameraPose pose_refined = pose;
-    // filter_result_pose_refinement(points2D_xy, points3D_xyz, pose_refined, pp, pose_refinement_options);
+    CameraPose pose_refined = pose_refinement(points2D_xy, points3D_xyz, cost_matrix, pp,pose, pose_refinement_options);
+    // pose_refined = pose;
+    filter_result_pose_refinement(points2D_xy, points3D_xyz, pose_refined, pp, pose_refinement_options);
     std::vector<Eigen::Vector2d> points2D_xy_filtered = points2D_xy;
     std::vector<Eigen::Vector3d> points3D_xyz_filtered = points3D_xyz;
     
@@ -719,8 +730,9 @@ size_t IncrementalTriangulator::Create(
     // for (int i = 0; i < points2D_xy.size(); i++) {
     //   radii.push_back((points2D_xy[i] - Eigen::Vector2d(camera.PrincipalPointX(),camera.PrincipalPointY())).norm());
     // }
-    if(radii.size()>=10){
-    image.SetRawRadii(radii);
+    if(radii.size()>=40){
+    // image.SetRawRadii(radii);
+    camera.SetRawRadii(radii);
     std::cout<<"radii set"<<std::endl;
     // Retrieve rotation matrix 
    
@@ -740,7 +752,8 @@ size_t IncrementalTriangulator::Create(
         theta.push_back(pair.first); // Extract the first element of each pair (r)
         // radii_for_theta.push_back(pair.second);
     }
-    image.SetTheta(theta);
+    // image.SetTheta(theta);
+    camera.SetTheta(theta);
     // for (int i = 0; i < radii.size(); i++) {
     // Eigen::Vector2d offset = points2D_xy[i] - Eigen::Vector2d(camera.PrincipalPointX(), camera.PrincipalPointY());
     // double dot_product = offset.x() * X_cam[i].x() + offset.y() * X_cam[i].y(); // Calculate dot product of the projection
@@ -754,18 +767,18 @@ size_t IncrementalTriangulator::Create(
     //     focal_lengths.push_back(1); // or some form of error value or handling
     //   }
     // }
-    double fx = 3414.66;
-    double fy = 3413.37;
-    double cx = 3036.64;
-    double cy = 2015.48;
-    double k1 = 0.209273;
-    double k2 = 0.221806;
-    double p1 = 0.000539398;
-    double p2 =  4.82691e-05;
-    double k3 = -0.190406;
-    double k4 =  0.431421;
-    double s1 =  0.000189817;
-    double s2 =  0.000278303;
+    double fx = 3411.42;
+    double fy = 3410.02;
+    double cx = 3041.29;
+    double cy = 2014.07;
+    double k1 = 0.21047;
+    double k2 = 0.21102;
+    double p1 = -5.36231e-06;
+    double p2 =  0.00051541;
+    double k3 = -0.158023;
+    double k4 =  0.406856;
+    double s1 =  -8.46499e-05;
+    double s2 =  0.000861313;
     std::vector<double> r_3d;
     // from 0 to 1, increment by 0.01
     for (double i = 0; i < 1; i += 0.002) {
@@ -790,9 +803,14 @@ size_t IncrementalTriangulator::Create(
       double gt_f = (u-cx)/x_d;
       gt_focal_lengths.push_back(gt_f);
     }
-    // image.SetFocalLengthParams(gt_focal_lengths);
-    // image.SetRawRadii(radii_list);
-    image.SetFocalLengthParams(focal_lengths);
+    // camera.SetFocalLengthParams(gt_focal_lengths);
+    // camera.SetRawRadii(radii_list);
+
+
+    // image.SetFocalLengthParams(focal_lengths);
+    camera.SetFocalLengthParams(focal_lengths);
+    
+    
     // std::cout<<"focal lengths set"<<std::endl;
     
     // img_ids.push_back(image.ImageId()); 
@@ -801,10 +819,14 @@ size_t IncrementalTriangulator::Create(
     std::cout << "Radii: " << radii.size() << " Focal Lengths: " << focal_lengths.size() << std::endl;
     
     // -------------% Fitting a parametric spline model for estimated r-f map %------------ //
-    image.FitSpline(radii, focal_lengths);
+    // image.FitSpline(radii, focal_lengths);
+    camera.FitSpline(radii, focal_lengths);
+    // camera.FitSpline(radii_list, gt_focal_lengths);
+  
+    
     }
 
-    if (radii.size() <=10) {
+    if (radii.size() <=40) {
         standard_triangulation = false;
     }
   }
@@ -847,18 +869,23 @@ size_t IncrementalTriangulator::Create(
         corr_data.camera->ImageToWorld(point_data[i].point);
     pose_data[i].proj_matrix = corr_data.image->ProjectionMatrix();
     pose_data[i].proj_center = corr_data.image->ProjectionCenter();
+    
     pose_data[i].camera = corr_data.camera;
+    
     pose_data[i].image = corr_data.image;
     if(standard_triangulation){
     double radius = point_data[i].point_normalized.norm();
     // generate uniformly distributed 100 points in raw_radii range
-    std::vector<double> raw_radii = corr_data.image->GetRawRadii();
-    std::vector<double> focal_lengths = corr_data.image->GetFocalLengthParams();
+    // std::vector<double> raw_radii = corr_data.image->GetRawRadii();
+    // std::vector<double> focal_lengths = corr_data.image->GetFocalLengthParams();
+    std::vector<double> raw_radii = corr_data.camera->GetRawRadii();
+    std::vector<double> focal_lengths = corr_data.camera->GetFocalLengthParams();
     Eigen::VectorXd points = Eigen::VectorXd::LinSpaced(100, raw_radii[0], raw_radii[raw_radii.size() - 1]);
     std::vector<double> std_points = std::vector<double>(points.data(), points.data() + points.size());
     std::vector<double> focal_lengths_splined;
     for (int i = 0; i < std_points.size(); i++) {
-      focal_lengths_splined.push_back(corr_data.image->EvalFocalLength(std_points[i]));
+      // focal_lengths_splined.push_back(corr_data.image->EvalFocalLength(std_points[i]));
+      focal_lengths_splined.push_back(corr_data.camera->EvalFocalLength(std_points[i]));
     }
     // std::cout << "Radius: " << radius << std::endl;
 
@@ -892,13 +919,16 @@ size_t IncrementalTriangulator::Create(
     // if the radius is smaller than the smallest radius, set the focal length to the smallest focal length
     if (radius < raw_radii[0]) {
       focal_length = focal_lengths[0];
+      count++;
     }
     // if the radius is larger than the largest radius, set the focal length to the largest focal length
     if (radius > raw_radii[raw_radii.size() - 1]) {
       focal_length = focal_lengths[raw_radii.size() - 1];
+      count++;
     }
 
-    double focal_length_splined = corr_data.image->EvalFocalLength(radius);
+    // double focal_length_splined = corr_data.image->EvalFocalLength(radius);
+    double focal_length_splined = corr_data.camera->EvalFocalLength(radius);
     // std::cout << "Estimated Focal Length: " << focal_length << std::endl;
     // save the interpolated focal length to the previous txt file
     if(corr_data.image_id == 2){
@@ -923,7 +953,7 @@ size_t IncrementalTriangulator::Create(
     point_data[i].focal_length = focal_length;
     }else{
       point_data[i].focal_length = focal_length;
-      count++;
+      // count++;
       // standard_triangulation = false;
     }
     
@@ -935,8 +965,8 @@ size_t IncrementalTriangulator::Create(
     pose_data[i].proj_matrix_standard = K * pose_data[i].proj_matrix;
   }
   }
-  if (count > 0.5*create_corrs_data.size()) {
-    standard_triangulation = false;
+  if (count > 0) {
+    full_error = false;
   }
 
   // Setup estimation options for radial estimation
@@ -944,8 +974,11 @@ size_t IncrementalTriangulator::Create(
   tri_options.min_tri_angle = DegToRad(options.min_angle);
   tri_options.residual_type =
       TriangulationEstimator::ResidualType::ANGULAR_ERROR;
+  if(full_error && standard_triangulation){
   // if(standard_triangulation){
-  //   tri_options.residual_type = TriangulationEstimator::ResidualType::ANGULAR_ERROR_SPLITTING;}
+    tri_options.residual_type = TriangulationEstimator::ResidualType::ANGULAR_ERROR_SPLITTING;
+  //   // std::cout << "================== Using full error=======================" << std::endl;}
+  }
   tri_options.ransac_options.max_error =
       DegToRad(options.create_max_angle_error);
   tri_options.ransac_options.confidence = 0.9999;
@@ -961,10 +994,10 @@ size_t IncrementalTriangulator::Create(
   // Setup estimation options for full estimation
   EstimateTriangulationOptions tri_options_full;
   tri_options_full.min_tri_angle = DegToRad(options.min_angle);
-  tri_options_full.residual_type =
-      TriangulationEstimator::ResidualType::ANGULAR_ERROR_SPLITTING;
   // tri_options_full.residual_type =
-  //     TriangulationEstimator::ResidualType::ANGULAR_ERROR;
+      // TriangulationEstimator::ResidualType::ANGULAR_ERROR_SPLITTING;
+  tri_options_full.residual_type =
+      TriangulationEstimator::ResidualType::ANGULAR_ERROR;
   tri_options_full.ransac_options.max_error =
       DegToRad(options.create_max_angle_error);
   tri_options_full.ransac_options.confidence = 0.9999;
@@ -976,7 +1009,7 @@ size_t IncrementalTriangulator::Create(
   if (point_data.size() <= kExhaustiveSamplingThreshold) {
     tri_options_full.ransac_options.min_num_trials = NChooseK(point_data.size(), 2);
   }
-
+  // std::cout<<"Standard_triangulation: "<<standard_triangulation<<std::endl; 
 
   // Estimate triangulation.
   Eigen::Vector3d xyz;
@@ -1002,10 +1035,10 @@ size_t IncrementalTriangulator::Create(
       const CorrData& corr_data = create_corrs_data[i];
       track.AddElement(corr_data.image_id, corr_data.point2D_idx);
       if(standard_triangulation){
-        num_constraints += (corr_data.camera->ModelId() == Radial1DCameraModel::model_id) ? 2 : 2;
+        num_constraints += (corr_data.camera->ModelId() == Radial1DCameraModel::model_id || corr_data.camera->ModelId() == ImplicitDistortionModel::model_id) ? 2 : 2;
       }
       else{
-        num_constraints += (corr_data.camera->ModelId() == Radial1DCameraModel::model_id) ? 1 : 2;
+        num_constraints += (corr_data.camera->ModelId() == Radial1DCameraModel::model_id || corr_data.camera->ModelId() == ImplicitDistortionModel::model_id) ? 1 : 2;
       }
     }
   }
@@ -1017,8 +1050,8 @@ size_t IncrementalTriangulator::Create(
     for (size_t i = 0; i < inlier_mask_full.size(); ++i) {
       if (inlier_mask_full[i]) {
         const CorrData& corr_data = create_corrs_data[i];
-        track_full.AddElement(corr_data.image_id, corr_data.point2D_idx);
-        num_constraints += (corr_data.camera->ModelId() == Radial1DCameraModel::model_id) ? 2 : 2;
+        track_full.AddElement(corr_data.image_id, corr_data.point2D_idx);  
+        num_constraints += (corr_data.camera->ModelId() == Radial1DCameraModel::model_id || corr_data.camera->ModelId() == ImplicitDistortionModel::model_id) ? 2 : 2;
         }
       }
     }

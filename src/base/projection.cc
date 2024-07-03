@@ -106,7 +106,8 @@ bool DecomposeProjectionMatrix(const Eigen::Matrix3x4d& P, Eigen::Matrix3d* K,
 Eigen::Vector2d ProjectPointToImage(const Eigen::Vector3d& point3D,
                                     const Eigen::Matrix3x4d& proj_matrix,
                                     const Camera& camera) {
-  CHECK(camera.ModelId() != Radial1DCameraModel::model_id);
+  CHECK(camera.ModelId() != Radial1DCameraModel::model_id &&
+        camera.ModelId() != ImplicitDistortionModel::model_id);
   const Eigen::Vector3d world_point = proj_matrix * point3D.homogeneous();
   return camera.WorldToImage(world_point.hnormalized());
 }
@@ -120,8 +121,11 @@ double CalculateSquaredReprojectionError(const Eigen::Vector2d& point2D,
       QuaternionRotatePoint(qvec, point3D) + tvec;
   
   Eigen::Vector2d proj_point2D;
+  // if(camera.ModelId()==ImplicitDistortionModel::model_id){
+  //     return CalculateSquaredReprojectionErrorFinal(point2D, point3D, qvec, tvec, camera.GetRawRadii(), camera.GetFocalLengthParams(), camera.GetTheta(), camera);
+  //   }
   
-  if(camera.ModelId() == Radial1DCameraModel::model_id) {
+  if(camera.ModelId() == Radial1DCameraModel::model_id || camera.ModelId() == ImplicitDistortionModel::model_id){
     // if(false) {       
     const Eigen::Vector2d n = proj_point3D.topRows<2>().normalized();
     const Eigen::Vector2d point2D_center = camera.ImageToWorld(point2D);
@@ -129,7 +133,9 @@ double CalculateSquaredReprojectionError(const Eigen::Vector2d& point2D,
 
     // check that we project onto the correct half-plane
     if(dot_product < std::numeric_limits<double>::epsilon()) {
-      return std::numeric_limits<double>::max();
+      // if(camera.ModelId() == Radial1DCameraModel::model_id){
+        return std::numeric_limits<double>::max();
+      // }
     }
     proj_point2D = camera.WorldToImage(dot_product * n);
 
@@ -139,6 +145,9 @@ double CalculateSquaredReprojectionError(const Eigen::Vector2d& point2D,
     //   return std::numeric_limits<double>::max();
     // }
     // proj_point2D = camera.WorldToImage(proj_point3D.hnormalized());
+    // if(camera.ModelId()==ImplicitDistortionModel::model_id){
+    //   return CalculateSquaredReprojectionErrorFinal(point2D, point3D, qvec, tvec, camera.GetRawRadii(), camera.GetFocalLengthParams(), camera.GetTheta(), camera);
+    // }
 
   } else {
     // Check that point is infront of camera.
@@ -164,7 +173,7 @@ double CalculateSquaredReprojectionErrorFinal(const Eigen::Vector2d& point2D,
   
   Eigen::Vector2d proj_point2D;
   
-  if(camera.ModelId() == Radial1DCameraModel::model_id) {
+  if(camera.ModelId() == Radial1DCameraModel::model_id || camera.ModelId() == ImplicitDistortionModel::model_id){
     
     const Eigen::Vector2d n = proj_point3D.topRows<2>().normalized(); //the unit direction pointing from camera center to 3D point
     const Eigen::Vector2d point2D_center = camera.ImageToWorld(point2D);
@@ -172,7 +181,8 @@ double CalculateSquaredReprojectionErrorFinal(const Eigen::Vector2d& point2D,
 
     // check that we project onto the correct half-plane
     if(dot_product < std::numeric_limits<double>::epsilon()) {
-      return std::numeric_limits<double>::max();
+      if(camera.ModelId() == Radial1DCameraModel::model_id || camera.ModelId() == ImplicitDistortionModel::model_id){
+      return std::numeric_limits<double>::max();}
     }
     proj_point2D = camera.WorldToImage(dot_product * n);
     // check if radii is not empty
@@ -222,7 +232,7 @@ double CalculateSquaredReprojectionErrorFinal(const Eigen::Vector2d& point2D,
       // std::cout << "plain radius: " << (point2D - pp).norm() << std::endl;
 
       // get the focal length for this radius
-      // radius = (point2D - pp).norm();
+      radius = (point2D - pp).norm();
       double focal_length = 0;
       for (int i = 0; i < radii.size() - 1; i++) {
         // std::cout << "radii " << i << " "<<radii[i] << std::endl;
@@ -241,11 +251,16 @@ double CalculateSquaredReprojectionErrorFinal(const Eigen::Vector2d& point2D,
       if (radius > radii[radii.size() - 1]) {
         focal_length = focal_lengths[radii.size() - 1];
       }
+      // if (camera.ModelId()==ImplicitDistortionModel::model_id){
+      //   tk::spline s = camera.GetSpline();
+      //   focal_length = s(radius);
+      // }
       // std::cout << "focal length: " << focal_length << std::endl;
       // proj_point2D(0) = proj_point3D.hnormalized()(0) * focal_length + pp(0);
       // proj_point2D(1) = proj_point3D.hnormalized()(1) * focal_length + pp(1);
       if (focal_length > 100){
       proj_point2D= proj_point3D.hnormalized() * focal_length + pp;
+      // std::cout<<"proj_point2D: "<<proj_point2D<<std::endl;
       }else{
         proj_point2D = camera.WorldToImage(proj_point3D.hnormalized());
       }
@@ -292,7 +307,7 @@ double CalculateSquaredReprojectionError(const Eigen::Vector2d& point2D,
 
   Eigen::Vector2d proj_point2D;
 
-  if(camera.ModelId() == Radial1DCameraModel::model_id) {        
+  if(camera.ModelId() == Radial1DCameraModel::model_id || camera.ModelId() == ImplicitDistortionModel::model_id){        
     const Eigen::Vector2d n = (proj_matrix.topRows<2>() * point3D.homogeneous()).normalized();
     const Eigen::Vector2d point2D_center = camera.ImageToWorld(point2D);
     const double dot_product = n.dot(point2D_center);
@@ -339,7 +354,7 @@ double CalculateAngularError(const Eigen::Vector2d& point2D,
   const Eigen::Vector2d point2D_norm = camera.ImageToWorld(point2D);
   const Eigen::Vector3d point3D_cam = proj_matrix * point3D.homogeneous();
 
-  if(camera.ModelId() == Radial1DCameraModel::model_id) {    
+  if(camera.ModelId() == Radial1DCameraModel::model_id || camera.ModelId() == ImplicitDistortionModel::model_id){    
     return std::acos(point2D_norm.normalized().dot(point3D_cam.topRows<2>().normalized()));
     // return std::acos(point2D_norm.homogeneous().normalized().dot(point3D_cam.normalized()));
   } else {
@@ -357,7 +372,7 @@ double CalculateAngularErrorSplitting(const Eigen::Vector2d& point2D,
   
   const Eigen::Vector3d point3D_cam = proj_matrix * point3D.homogeneous();
 
-  if(camera.ModelId() == Radial1DCameraModel::model_id) { 
+  if(camera.ModelId() == Radial1DCameraModel::model_id || camera.ModelId() == ImplicitDistortionModel::model_id){ 
 
     // return 0.5*(std::acos(point2D_norm.homogeneous().normalized().dot(point3D_cam.normalized()))) + 0.5*(std::acos((point2D_norm * focal_length).normalized().dot(point3D_cam.topRows<2>().normalized())));
     return std::acos(point2D_norm.homogeneous().normalized().dot(point3D_cam.normalized())); 

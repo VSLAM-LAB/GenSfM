@@ -95,7 +95,7 @@ class IncrementalMapper {
     bool abs_pose_refine_focal_length = true;
 
     // Whether to estimate the extra parameters in absolute pose estimation.
-    bool abs_pose_refine_extra_params = true;
+    bool abs_pose_refine_extra_params = false;
 
     // Number of images to optimize in local bundle adjustment.
     int local_ba_num_images = 6;

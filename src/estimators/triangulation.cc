@@ -65,7 +65,7 @@ std::vector<TriangulationEstimator::M_t> TriangulationEstimator::Estimate(
   // Check if any of the cameras in this sample is a 1D radial camera
   bool have_radial = false;
   for(const auto &p : pose_data) {
-    if(p.camera->ModelId() == Radial1DCameraModel::model_id) {
+    if(p.camera->ModelId() == Radial1DCameraModel::model_id || p.camera->ModelId() == ImplicitDistortionModel::model_id){
       have_radial = true;
       // full triangulation
       // have_radial = false;
@@ -115,7 +115,7 @@ std::vector<TriangulationEstimator::M_t> TriangulationEstimator::Estimate(
 
     for (size_t i = 0; i < point_data.size(); ++i) {
       proj_matrices.push_back(pose_data[i].proj_matrix);
-      if(pose_data[i].camera->ModelId() == Radial1DCameraModel::model_id) {
+      if(pose_data[i].camera->ModelId() == Radial1DCameraModel::model_id || pose_data[i].camera->ModelId() == ImplicitDistortionModel::model_id){
         // add line corresponding to the radial line
         lines.emplace_back(point_data[i].point_normalized(1), -point_data[i].point_normalized(0), 0.0);
       } else {        
@@ -136,7 +136,7 @@ std::vector<TriangulationEstimator::M_t> TriangulationEstimator::Estimate(
     // check cheirality for each camera (or half-plane constraint for radial cameras)
     bool cheiral_ok = true;
     for (size_t i = 0; i < pose_data.size(); ++i) {
-      if(pose_data[i].camera->ModelId() == Radial1DCameraModel::model_id) {
+      if(pose_data[i].camera->ModelId() == Radial1DCameraModel::model_id || pose_data[i].camera->ModelId() == ImplicitDistortionModel::model_id) {
         Eigen::Vector2d n = pose_data[i].proj_matrix.topRows<2>() * xyz.homogeneous();
         cheiral_ok &= n.dot(point_data[i].point_normalized) > 0;
       } else {
@@ -150,11 +150,11 @@ std::vector<TriangulationEstimator::M_t> TriangulationEstimator::Estimate(
     bool tri_angle_ok = false;
     // check point-based triangulation angle
     for (size_t i = 0; i < pose_data.size(); ++i) {
-      if(pose_data[i].camera->ModelId() == Radial1DCameraModel::model_id) {
+      if(pose_data[i].camera->ModelId() == Radial1DCameraModel::model_id || pose_data[i].camera->ModelId() == ImplicitDistortionModel::model_id) {
         continue;
       }
       for (size_t j = 0; j < i; ++j) {
-        if(pose_data[j].camera->ModelId() == Radial1DCameraModel::model_id) {
+        if(pose_data[j].camera->ModelId() == Radial1DCameraModel::model_id || pose_data[j].camera->ModelId() == ImplicitDistortionModel::model_id){
           continue;
         }
         const double tri_angle = CalculateTriangulationAngle(
@@ -274,8 +274,8 @@ std::vector<TriangulationEstimator::M_t> TriangulationEstimator::EstimateInitial
 
   // Check if any of the cameras in this sample is a 1D radial camera
   bool have_radial = false;
-  for(const auto &p : pose_data) {
-    if(p.camera->ModelId() == Radial1DCameraModel::model_id) {
+  for(const auto &p : pose_data) { 
+    if(p.camera->ModelId() == Radial1DCameraModel::model_id || p.camera->ModelId() == ImplicitDistortionModel::model_id){
       have_radial = true;
       // full triangulation
       // have_radial = false;
@@ -320,7 +320,7 @@ std::vector<TriangulationEstimator::M_t> TriangulationEstimator::EstimateInitial
 
     for (size_t i = 0; i < point_data.size(); ++i) {
       proj_matrices.push_back(pose_data[i].proj_matrix);
-      if(pose_data[i].camera->ModelId() == Radial1DCameraModel::model_id) {
+      if(pose_data[i].camera->ModelId() == Radial1DCameraModel::model_id || pose_data[i].camera->ModelId() == ImplicitDistortionModel::model_id){
         // add line corresponding to the radial line
         lines.emplace_back(point_data[i].point_normalized(1), -point_data[i].point_normalized(0), 0.0);
       } else {        
@@ -341,7 +341,7 @@ std::vector<TriangulationEstimator::M_t> TriangulationEstimator::EstimateInitial
     // check cheirality for each camera (or half-plane constraint for radial cameras)
     bool cheiral_ok = true;
     for (size_t i = 0; i < pose_data.size(); ++i) {
-      if(pose_data[i].camera->ModelId() == Radial1DCameraModel::model_id) {
+      if(pose_data[i].camera->ModelId() == Radial1DCameraModel::model_id || pose_data[i].camera->ModelId() == ImplicitDistortionModel::model_id){
         Eigen::Vector2d n = pose_data[i].proj_matrix.topRows<2>() * xyz.homogeneous();
         cheiral_ok &= n.dot(point_data[i].point_normalized) > 0;
       } else {
@@ -355,11 +355,11 @@ std::vector<TriangulationEstimator::M_t> TriangulationEstimator::EstimateInitial
     bool tri_angle_ok = false;
     // check point-based triangulation angle
     for (size_t i = 0; i < pose_data.size(); ++i) {
-      if(pose_data[i].camera->ModelId() == Radial1DCameraModel::model_id) {
+      if(pose_data[i].camera->ModelId() == Radial1DCameraModel::model_id || pose_data[i].camera->ModelId() == ImplicitDistortionModel::model_id) {
         continue;
       }
       for (size_t j = 0; j < i; ++j) {
-        if(pose_data[j].camera->ModelId() == Radial1DCameraModel::model_id) {
+        if(pose_data[j].camera->ModelId() == Radial1DCameraModel::model_id || pose_data[j].camera->ModelId() == ImplicitDistortionModel::model_id){
           continue;
         }
         const double tri_angle = CalculateTriangulationAngle(

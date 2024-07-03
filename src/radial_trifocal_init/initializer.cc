@@ -49,7 +49,8 @@ bool InitializeRadialReconstruction(const DatabaseCache& database_cache,
   for (int i = 0; i < 5; ++i) {
     const Camera& camera =
         database_cache.Camera(database_cache.Image(image_ids[i]).CameraId());
-    if (camera.ModelId() != Radial1DCameraModel::model_id) {
+    if (camera.ModelId() != Radial1DCameraModel::model_id &&
+        camera.ModelId() != ImplicitDistortionModel::model_id){
       std::cerr << "ERROR: Incorrect camera model! radial_trifocal_initializer "
                    "requires cameras to be 1D_RADIAL.\n";
       return false;

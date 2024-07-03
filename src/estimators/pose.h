@@ -92,7 +92,7 @@ struct AbsolutePoseRefinementOptions {
   bool refine_focal_length = true;
 
   // Whether to refine the extra parameter group.
-  bool refine_extra_params = true;
+  bool refine_extra_params = false;
 
   // Whether to print final summary.
   bool print_summary = true;

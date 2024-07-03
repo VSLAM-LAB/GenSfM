@@ -83,7 +83,9 @@ bool EstimateRadialAbsolutePose(const AbsolutePoseEstimationOptions& options,
                                 Eigen::Vector4d* qvec, Eigen::Vector3d* tvec,
                                 Camera* camera, size_t* num_inliers,
                                 std::vector<char>* inlier_mask) {
-  CHECK_EQ(camera->ModelId(), Radial1DCameraModel::model_id);
+  // CHECK_EQ(camera->ModelId(), Radial1DCameraModel::model_id);
+  CHECK(camera->ModelId() == Radial1DCameraModel::model_id ||
+      camera->ModelId() == ImplicitDistortionModel::model_id);
 
   // Subtract principal point
   std::vector<Eigen::Vector2d> points2D_N(points2D.size());
@@ -175,7 +177,8 @@ bool EstimateAbsolutePose(const AbsolutePoseEstimationOptions& options,
                           std::vector<char>* inlier_mask) {
   options.Check();
 
-  if (camera->ModelId() == Radial1DCameraModel::model_id) {
+  if (camera->ModelId() == Radial1DCameraModel::model_id ||
+      camera->ModelId() == ImplicitDistortionModel::model_id ){
     return EstimateRadialAbsolutePose(options, points2D, points3D, qvec, tvec,
                                       camera, num_inliers, inlier_mask);
   }
@@ -344,7 +347,8 @@ bool RefineAbsolutePose(const AbsolutePoseRefinementOptions& options,
         new ceres::QuaternionParameterization;
     problem.SetParameterization(qvec_data, quaternion_parameterization);
 
-    if (camera->ModelId() == Radial1DCameraModel::model_id) {
+    if (camera->ModelId() == Radial1DCameraModel::model_id ||
+        camera->ModelId() == ImplicitDistortionModel::model_id) {
       // Only optimize over the first two elements of the translation vector for
       // radial cameras
       problem.SetParameterization(tvec_data,

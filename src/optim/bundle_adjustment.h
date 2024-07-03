@@ -61,7 +61,7 @@ struct BundleAdjustmentOptions {
   bool refine_principal_point = false;
 
   // Whether to refine the extra parameter group.
-  bool refine_extra_params = true;
+  bool refine_extra_params = false;
 
   // Whether to refine the extrinsic parameter group.
   bool refine_extrinsics = true;

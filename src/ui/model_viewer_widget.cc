@@ -871,7 +871,7 @@ void ModelViewerWidget::UploadPointConnectionData() {
   for (const auto& track_el : point3D.Track().Elements()) {
     const Image& conn_image = images[track_el.image_id];
     const Camera& conn_camera = cameras[conn_image.CameraId()];
-    if(conn_camera.ModelId() == Radial1DCameraModel::model_id) {
+    if(conn_camera.ModelId() == Radial1DCameraModel::model_id || conn_camera.ModelId() == ImplicitDistortionModel::model_id) { 
       continue;
     }
     const Eigen::Vector3f conn_proj_center =
@@ -915,7 +915,7 @@ void ModelViewerWidget::UploadImageData(const bool selection_mode) {
       }
     }
 
-    if(camera.ModelId() == Radial1DCameraModel::model_id) {      
+    if(camera.ModelId() == Radial1DCameraModel::model_id || camera.ModelId() == ImplicitDistortionModel::model_id){      
       if(image_size_ > kInitImageSize) {
         BuildImageModelRadialCamera(image, camera, image_size_, frame_color, &line_data);
       }      

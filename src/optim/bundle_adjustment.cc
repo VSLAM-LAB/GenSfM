@@ -257,14 +257,25 @@ BundleAdjuster::BundleAdjuster(const BundleAdjustmentOptions& options,
 
 bool BundleAdjuster::Solve(Reconstruction* reconstruction, bool initial) {
   CHECK_NOTNULL(reconstruction);
+  std::cout<<"reconstruction check succeed"<<std::endl;
   CHECK(!problem_) << "Cannot use the same BundleAdjuster multiple times";
+  std::cout<<"problem check succeed"<<std::endl;
 
   problem_.reset(new ceres::Problem());
 
   ceres::LossFunction* loss_function = options_.CreateLossFunction();
+  for (const camera_t camera_id : camera_ids_) {
+    Camera& camera = reconstruction->Camera(camera_id);
+    camera.UpdateParams();
+    std::cout<<"camera.Params():"<<std::endl;
+    for(int i=0;i<camera.NumParams();i++){
+      std::cout<<camera.Params()[i]<<std::endl;
+    }}
   SetUp(reconstruction, loss_function, initial);
+  std::cout<<"Setup done"<<std::endl;
 
   if (problem_->NumResiduals() == 0) {
+    std::cout<<"numResiduals()"<<problem_->NumResiduals()<<std::endl;
     return false;
   }
 
@@ -328,6 +339,7 @@ void BundleAdjuster::SetUp(Reconstruction* reconstruction,
   for (const image_t image_id : config_.Images()) {
     AddImageToProblem(image_id, reconstruction, loss_function, initial);
   }
+  
   for (const auto point3D_id : config_.VariablePoints()) {
     AddPointToProblem(point3D_id, reconstruction, loss_function);
   }
@@ -392,11 +404,15 @@ void BundleAdjuster::AddImageToProblem(const image_t image_id,
                                  point3D.XYZ().data(), camera_params_data);
     } else {
       switch (camera.ModelId()) {
-#define CAMERA_MODEL_CASE(CameraModel)                                   \
-  case CameraModel::kModelId:                                            \
-    cost_function =                                                      \
-        BundleAdjustmentCostFunction<CameraModel>::Create(point2D.XY()); \
-    break;
+    // case ImplicitDistortionModel::kModelId:
+    //   cost_function = BundleAdjustmentCostFunction<ImplicitDistortionModel>::Create(point2D.XY(), camera.Params());
+    //   break;  
+
+      #define CAMERA_MODEL_CASE(CameraModel)                                   \
+      case CameraModel::kModelId:                                            \
+        cost_function =                                                      \
+            BundleAdjustmentCostFunction<CameraModel>::Create(point2D.XY()); \
+        break;
 
         CAMERA_MODEL_SWITCH_CASES
 
@@ -420,7 +436,7 @@ void BundleAdjuster::AddImageToProblem(const image_t image_id,
       if (config_.HasConstantTvec(image_id)) {
         std::vector<int> constant_tvec_idxs = config_.ConstantTvec(image_id);
 
-        if (camera.ModelId() == Radial1DCameraModel::model_id) {
+        if (camera.ModelId() == Radial1DCameraModel::model_id || camera.ModelId() == ImplicitDistortionModel::model_id){
           // For radial cameras we fix the third parameter of the translation
           // full bundle adjustment for points except for the initial ones
           constant_tvec_idxs.push_back(2);
@@ -432,7 +448,7 @@ void BundleAdjuster::AddImageToProblem(const image_t image_id,
         problem_->SetParameterization(tvec_data, tvec_parameterization);
       } else {
         // For radial cameras we fix the third parameter of the translation
-        if (camera.ModelId() == Radial1DCameraModel::model_id) {
+        if (camera.ModelId() == Radial1DCameraModel::model_id || camera.ModelId() == ImplicitDistortionModel::model_id){
           problem_->SetParameterization(
               tvec_data, new ceres::SubsetParameterization(3, {2}));
           // if(initial){

@@ -134,4 +134,58 @@ void filter_result_pose_refinement_multi(std::vector<std::vector<Eigen::Vector2d
     }
     // std::cout << "filtered number of entries: " << counter << std::endl;
 }
+
+void pose_refinement_1D_radial(const std::vector<Eigen::Vector2d> &points2D,
+                            const std::vector<Eigen::Vector3d> &points3D,
+                            CameraPose *pose, Eigen::Vector2d *pp, 
+                            PoseRefinement1DRadialOptions opt) {
+
+    std::vector<CameraPose> poses;
+    poses.push_back(*pose);
+    joint_pose_refinement_1D_radial({points2D}, {points3D}, &poses, pp, opt);
+    *pose = poses[0];
+}
+
+
+
+void joint_pose_refinement_1D_radial(const std::vector<std::vector<Eigen::Vector2d>> &points2D,
+                            const std::vector<std::vector<Eigen::Vector3d>> &points3D,
+                            std::vector<CameraPose> *poses, Eigen::Vector2d *pp, 
+                            PoseRefinement1DRadialOptions opt) {
+
+    const size_t num_cams = points2D.size();
+    std::vector<Eigen::Quaterniond> qs;
+    std::vector<Eigen::Vector2d> ts;
+
+    for (size_t k = 0; k < num_cams; ++k) {
+        qs.emplace_back(poses->at(k).q());
+        ts.push_back(poses->at(k).t.topRows<2>());
+    }
+
+    ceres::Problem problem;
+    ceres::LossFunction* loss_function = new ceres::HuberLoss(6.0);
+
+    for (size_t cam_k = 0; cam_k < num_cams; ++cam_k) {
+        for (size_t i = 0; i < points2D[cam_k].size(); ++i) {
+            ceres::CostFunction* reg_cost = RadialReprojError::CreateCost(points2D[cam_k][i], points3D[cam_k][i]);
+            problem.AddResidualBlock(reg_cost, loss_function, qs[cam_k].coeffs().data(), ts[cam_k].data(), pp->data());
+        }
+    }
+    
+    for (size_t cam_k = 0; cam_k < num_cams; ++cam_k) {
+        problem.SetParameterization(qs[cam_k].coeffs().data(), new ceres::EigenQuaternionParameterization());
+    }
+
+
+    ceres::Solver::Options options;
+    options.linear_solver_type = ceres::SPARSE_SCHUR;
+    options.minimizer_progress_to_stdout = opt.verbose;
+    ceres::Solver::Summary summary;
+    ceres::Solve(options, &problem, &summary);
+
+    for (size_t cam_k = 0; cam_k < num_cams; ++cam_k) {
+        poses->at(cam_k).q(qs[cam_k]);
+        poses->at(cam_k).t.topRows<2>() = ts[cam_k];
+    }
+}
 } // namespace colmap

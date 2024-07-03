@@ -182,7 +182,7 @@ void PointViewerWidget::Show(const point3D_t point3D_id) {
     const Point2D& point2D = image.Point2D(track_el.first.point2D_idx);
 
     Eigen::Vector2d proj_point2D;   
-    if(camera.ModelId() == Radial1DCameraModel::model_id) {
+    if(camera.ModelId() == Radial1DCameraModel::model_id || camera.ModelId() == ImplicitDistortionModel::model_id){
       Eigen::Vector2d n = (image.ProjectionMatrix().topRows(2) * point3D.XYZ().homogeneous()).normalized();            
       Eigen::Vector2d p_center = camera.ImageToWorld(point2D.XY());      
       proj_point2D = camera.WorldToImage(n.dot(p_center) * n);      
@@ -220,7 +220,7 @@ void PointViewerWidget::Show(const point3D_t point3D_id) {
     pen.setColor(Qt::blue);
     painter.setPen(pen);
 
-    if(camera.ModelId() == Radial1DCameraModel::model_id) {
+    if(camera.ModelId() == Radial1DCameraModel::model_id || camera.ModelId() == ImplicitDistortionModel::model_id){
       const Eigen::Vector2d n = (image.ProjectionMatrix().topRows(2) * point3D.XYZ().homogeneous()).normalized();      
       const int pp_x = static_cast<int>(std::round(camera.PrincipalPointX()));
       const int pp_y = static_cast<int>(std::round(camera.PrincipalPointY()));      

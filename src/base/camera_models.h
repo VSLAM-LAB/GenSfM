@@ -127,7 +127,8 @@ static const int kInvalidCameraModelId = -1;
   CAMERA_MODEL_CASE(FullOpenCVCameraModel)          \
   CAMERA_MODEL_CASE(FOVCameraModel)                 \
   CAMERA_MODEL_CASE(ThinPrismFisheyeCameraModel)    \
-  CAMERA_MODEL_CASE(Radial1DCameraModel)
+  CAMERA_MODEL_CASE(Radial1DCameraModel)            \
+  CAMERA_MODEL_CASE(ImplicitDistortionModel)
 #endif
 
 #ifndef CAMERA_MODEL_SWITCH_CASES
@@ -359,6 +360,17 @@ struct ThinPrismFisheyeCameraModel
 struct Radial1DCameraModel
     : public BaseCameraModel<Radial1DCameraModel> {
   CAMERA_MODEL_DEFINITIONS(11, "1D_RADIAL", 2)
+};
+
+// Implicit distortion camera model.
+//
+// Parameter list is expected in the following order:
+//
+//    cx, cy, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, y1, y2, y3, y4, y5, y6, y7, y8, y9, y10
+//
+struct ImplicitDistortionModel
+    : public BaseCameraModel<ImplicitDistortionModel> {
+  CAMERA_MODEL_DEFINITIONS(12, "IMPLICIT_DISTORTION", 22)
 };
 
 // Check whether camera model with given name or identifier exists.
@@ -1536,6 +1548,77 @@ void Radial1DCameraModel::WorldToImage(const T* params, const T u,
 template <typename T>
 void Radial1DCameraModel::ImageToWorld(const T* params, const T x,
                                             const T y, T* u, T* v) {  
+  const T c1 = params[0];
+  const T c2 = params[1];
+
+  *u = x - c1;
+  *v = y - c2;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// ImplicitDistortionModel
+
+std::string ImplicitDistortionModel::InitializeParamsInfo() {
+  return "cx, cy, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, y1, y2, y3, y4, "
+         "y5, y6, y7, y8, y9, y10";
+}
+
+std::vector<size_t> ImplicitDistortionModel::InitializeFocalLengthIdxs() {
+  return {};
+}
+
+std::vector<size_t> ImplicitDistortionModel::InitializePrincipalPointIdxs() {
+  return {0, 1};
+}
+
+std::vector<size_t> ImplicitDistortionModel::InitializeExtraParamsIdxs() {
+  return {2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+          12, 13, 14, 15, 16, 17, 18, 19, 20, 21};
+}
+
+std::vector<double> ImplicitDistortionModel::InitializeParams(
+    const double focal_length, const size_t width, const size_t height) {
+  return {width / 2.0, height / 2.0, 350, 700, 1050, 1400, 1750, 2100, 2450, 2800, 3150, 3500,
+          3400, 3380, 3360, 3340, 3330, 3310, 3290, 3280, 3280, 3300};
+  }
+template <typename T>
+void ImplicitDistortionModel::WorldToImage(const T* params, const T u,
+                                           const T v, T* x, T* y) {
+  
+  // TODO: cannot retrieve the radius directly//
+  const T c1 = params[0];
+  const T c2 = params[1];
+  // const T x1 = params[2];
+  // const T x2 = params[3];
+  // const T x3 = params[4];
+  // const T x4 = params[5];
+  // const T x5 = params[6];
+  // const T x6 = params[7];
+  // const T x7 = params[8];
+  // const T x8 = params[9];
+  // const T x9 = params[10];
+  // const T x10 = params[11];
+  // const T y1 = params[12];
+  // const T y2 = params[13];
+  // const T y3 = params[14];
+  // const T y4 = params[15];
+  // const T y5 = params[16];
+  // const T y6 = params[17];
+  // const T y7 = params[18];
+  // const T y8 = params[19];
+  // const T y9 = params[20];
+  // const T y10 = params[21];
+
+  // No Distortion
+
+  // Transform to image coordinates
+  *x = u + c1;
+  *y = v + c2;
+  }
+
+template <typename T>
+void ImplicitDistortionModel::ImageToWorld(const T* params, const T x,
+                                           const T y, T* u, T* v) {
   const T c1 = params[0];
   const T c2 = params[1];
 

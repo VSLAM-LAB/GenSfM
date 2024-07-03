@@ -40,6 +40,7 @@
 #include "estimators/pose.h"
 #include "util/bitmap.h"
 #include "util/misc.h"
+#include "base/camera_models.h"
 
 
 
@@ -489,11 +490,11 @@ bool IncrementalMapper::RegisterNextImage(const Options& options,
           reconstruction_->Camera(corr_image.CameraId());
 
       // Avoid correspondences to images with bogus camera parameters.
-      if (corr_camera.HasBogusParams(options.min_focal_length_ratio,
-                                     options.max_focal_length_ratio,
-                                     options.max_extra_param)) {
-        continue;
-      }
+      // if (corr_camera.HasBogusParams(options.min_focal_length_ratio,
+      //                                options.max_focal_length_ratio,
+      //                                options.max_extra_param)) {
+      //   continue;
+      // }
 
       const Point3D& point3D =
           reconstruction_->Point3D(corr_point2D.Point3DId());
@@ -547,11 +548,18 @@ bool IncrementalMapper::RegisterNextImage(const Options& options,
                               options.max_extra_param)) {
       // Previously refined camera has bogus parameters,
       // so reset parameters and try to re-estimage.
-      camera.SetParams(database_cache_->Camera(image.CameraId()).Params());
-      abs_pose_options.estimate_focal_length = !camera.HasPriorFocalLength();
-      abs_pose_refinement_options.refine_focal_length = true;
-      abs_pose_refinement_options.refine_extra_params = true;
-    } else {
+      // camera.SetParams(database_cache_->Camera(image.CameraId()).Params());
+      // abs_pose_options.estimate_focal_length = !camera.HasPriorFocalLength();
+      // abs_pose_refinement_options.refine_focal_length = true;
+      // abs_pose_refinement_options.refine_extra_params = true;
+
+
+      // Implicit_distortion tempararily
+      abs_pose_options.estimate_focal_length = false;
+      abs_pose_refinement_options.refine_focal_length = false;
+      abs_pose_refinement_options.refine_extra_params = false;
+    }
+    else {
       abs_pose_options.estimate_focal_length = false;
       abs_pose_refinement_options.refine_focal_length = false;
       abs_pose_refinement_options.refine_extra_params = false;
@@ -629,7 +637,7 @@ size_t IncrementalMapper::TriangulateImage(
     const IncrementalTriangulator::Options& tri_options,
     const image_t image_id, bool initial) {
   CHECK_NOTNULL(reconstruction_);
-
+  std::cout<<"entered TiangulateImage"<<std::endl;
   // Commented out for point_triangulator
   size_t num_images_having_point3D = 0;
   for (const auto& image_id : reconstruction_->RegImageIds()) {
@@ -640,8 +648,10 @@ size_t IncrementalMapper::TriangulateImage(
     }
   }
   size_t num_registrations = reconstruction_->NumRegImages();
-  // bool standard_triangulation = (num_registrations >= tri_options.min_num_reg_images);
-  bool standard_triangulation = (num_images_having_point3D >= tri_options.min_num_reg_images);
+  std::cout << "num_registrations: " << num_registrations << std::endl;
+  bool standard_triangulation = (num_registrations >= tri_options.min_num_reg_images);
+  std::cout << "Standard_Triangulation:" <<standard_triangulation<< std::endl;
+  // bool standard_triangulation = (num_images_having_point3D >= tri_options.min_num_reg_images);
   // standard_triangulation = true;
   if(standard_triangulation) {
     std::cout << "Standard Triangulation Condition meeted, with num_images_having_point3D " << num_images_having_point3D<<" min_num_reg_images:"<< tri_options.min_num_reg_images<< std::endl;
@@ -792,6 +802,20 @@ bool IncrementalMapper::AdjustGlobalBundle(
 
   // Avoid degeneracies in bundle adjustment.
   reconstruction_->FilterObservationsWithNegativeDepth();
+  reconstruction_->Normalize();
+
+  //preparing for pose refinement
+  
+  bool all_refinable = true;
+  for (const image_t image_id : reg_image_ids) {
+    Image image = reconstruction_->Image(image_id);
+    Camera camera = reconstruction_->Camera(image.CameraId());
+    if (camera.ModelId() != Radial1DCameraModel::model_id &&camera.ModelId() != ImplicitDistortionModel::model_id) {
+      all_refinable = false;
+      break;
+    }
+  }
+
 
   // Configure bundle adjustment.
   BundleAdjustmentConfig ba_config;
@@ -823,7 +847,7 @@ bool IncrementalMapper::AdjustGlobalBundle(
 
   // Normalize scene for numerical stability and
   // to avoid large scale changes in viewer.
-  reconstruction_->Normalize();
+  // reconstruction_->Normalize();
 
   return true;
 }
@@ -959,6 +983,7 @@ IncrementalMapper::ImplicitAdjustLocalBundle(const Options& options,
                                                   const std::unordered_set<point3D_t>& point3D_ids,
                                                   const ImplicitBundleAdjustmentOptions& implicit_ba_options,
                                                   bool initial) {
+  std::cout << "Entered ImplicitAdjustLocalBundle" << std::endl;
   CHECK_NOTNULL(reconstruction_);
   CHECK(options.Check());
   size_t num_reg_images = reconstruction_->NumRegImages();
@@ -1635,6 +1660,11 @@ bool IncrementalMapper::EstimateInitialTwoViewGeometry(
 
   if(camera1.ModelId() == Radial1DCameraModel::model_id || 
       camera2.ModelId() == Radial1DCameraModel::model_id) {
+    return false; // two-view estimation not possible with radial cameras
+  }
+
+  if(camera1.ModelId() == ImplicitDistortionModel::model_id || 
+      camera2.ModelId() == ImplicitDistortionModel::model_id) {
     return false; // two-view estimation not possible with radial cameras
   }
 
