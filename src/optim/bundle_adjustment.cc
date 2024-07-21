@@ -262,15 +262,14 @@ bool BundleAdjuster::Solve(Reconstruction* reconstruction, bool initial) {
   std::cout<<"problem check succeed"<<std::endl;
 
   problem_.reset(new ceres::Problem());
+  std::cout<<"camera_ids_: "<<camera_ids_.size()<<std::endl;
 
   ceres::LossFunction* loss_function = options_.CreateLossFunction();
-  for (const camera_t camera_id : camera_ids_) {
-    Camera& camera = reconstruction->Camera(camera_id);
+  for (const image_t img_id : reconstruction->RegImageIds()) {
+    Camera& camera = reconstruction->Camera(reconstruction->Image(img_id).CameraId());
     camera.UpdateParams();
-    std::cout<<"camera.Params():"<<std::endl;
-    for(int i=0;i<camera.NumParams();i++){
-      std::cout<<camera.Params()[i]<<std::endl;
-    }}
+    std::cout<<"------- camera.Params(): -------"<< camera.Params()[2]<<std::endl;
+  }
   SetUp(reconstruction, loss_function, initial);
   std::cout<<"Setup done"<<std::endl;
 
@@ -436,7 +435,7 @@ void BundleAdjuster::AddImageToProblem(const image_t image_id,
       if (config_.HasConstantTvec(image_id)) {
         std::vector<int> constant_tvec_idxs = config_.ConstantTvec(image_id);
 
-        if (camera.ModelId() == Radial1DCameraModel::model_id || camera.ModelId() == ImplicitDistortionModel::model_id){
+        if (camera.ModelId() == Radial1DCameraModel::model_id || (camera.ModelId() == ImplicitDistortionModel::model_id&&reconstruction->RegImageIds().size()<=5)){
           // For radial cameras we fix the third parameter of the translation
           // full bundle adjustment for points except for the initial ones
           constant_tvec_idxs.push_back(2);
@@ -448,7 +447,7 @@ void BundleAdjuster::AddImageToProblem(const image_t image_id,
         problem_->SetParameterization(tvec_data, tvec_parameterization);
       } else {
         // For radial cameras we fix the third parameter of the translation
-        if (camera.ModelId() == Radial1DCameraModel::model_id || camera.ModelId() == ImplicitDistortionModel::model_id){
+        if (camera.ModelId() == Radial1DCameraModel::model_id ||(camera.ModelId() == ImplicitDistortionModel::model_id&&reconstruction->RegImageIds().size()<=5) ){
           problem_->SetParameterization(
               tvec_data, new ceres::SubsetParameterization(3, {2}));
           // if(initial){

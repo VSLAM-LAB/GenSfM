@@ -221,7 +221,7 @@ class BundleAdjustmentCostFunction<ImplicitDistortionModel> {
 //   static ceres::CostFunction* Create(const Eigen::Vector2d& point2D) {
 //     return (new ceres::AutoDiffCostFunction<
 //             BundleAdjustmentCostFunction<ImplicitDistortionModel>, 2, 4, 3, 3,
-//             Radial1DCameraModel::kNumParams>(
+//             ImplicitDistortionModel::kNumParams>(
 //         new BundleAdjustmentCostFunction(point2D)));
 //   }
 
@@ -260,9 +260,10 @@ class BundleAdjustmentCostFunction<ImplicitDistortionModel> {
 //     // Subtract principal point from image point
 //     ImplicitDistortionModel::ImageToWorld(camera_params, T(observed_x_),
 //                                           T(observed_y_), &x_c, &y_c);
-//     if(int(sample_x[0])!=int(350)){
+//     if(int(sample_x[0])!=int(350) && double(sample_y[0])>0){
 //     // std::cout<<"using standard BA"<<std::endl;
 //     // std::cout<<"sample_x:"<<sample_x[0]<<std::endl;
+//     std::cout<<"sample_x[0]:"<<sample_x[0]<<std::endl;
 
 //     T radius = sqrt(x_c * x_c + y_c * y_c);
 //     // T focal_length = spline_focal_lengths(radius);
@@ -281,6 +282,7 @@ class BundleAdjustmentCostFunction<ImplicitDistortionModel> {
 //               (projection[0] * projection[0] + projection[1] * projection[1]);
 
 //       // Re-projection error.
+//       // std::cout<<"sample_x[0]:"<<sample_x[0]<<std::endl;
 //       residuals[0] = alpha * projection[0] - x_c;
 //       residuals[1] = alpha * projection[1] - y_c;
 
@@ -452,7 +454,7 @@ class BundleAdjustmentConstantPoseCostFunction<Radial1DCameraModel> {
 //                                      const Eigen::Vector2d& point2D) {
 //     return (new ceres::AutoDiffCostFunction<
 //             BundleAdjustmentConstantPoseCostFunction<ImplicitDistortionModel>, 2, 3,
-//             Radial1DCameraModel::kNumParams>(
+//             ImplicitDistortionModel::kNumParams>(
 //         new BundleAdjustmentConstantPoseCostFunction(qvec, tvec, point2D)));
 //   }
 
@@ -490,9 +492,9 @@ class BundleAdjustmentConstantPoseCostFunction<Radial1DCameraModel> {
 //     // Subtract principal point from image point
 //     ImplicitDistortionModel::ImageToWorld(camera_params, T(observed_x_),
 //                                       T(observed_y_), &x_c, &y_c);
-//     if(int(sample_x[0])!=int(350)){
+//     if(int(sample_x[0])!=int(350)&&double(sample_y[0])>0){
 //     // Compute radial reprojection error
-//     // std::cout<<"sample_x:"<<sample_x[0]<<std::endl;
+//     std::cout<<"sample_x:"<<sample_x[0]<<std::endl;
 //     // std::cout<<"using standard BA"<<std::endl;
 //     T radius = sqrt(x_c * x_c + y_c * y_c);
 //     double radius_double =ExtractScalar(radius);
@@ -508,6 +510,7 @@ class BundleAdjustmentConstantPoseCostFunction<Radial1DCameraModel> {
 //       T dot_product = projection[0] * x_c + projection[1] * y_c;
 //       T alpha = dot_product /
 //               (projection[0] * projection[0] + projection[1] * projection[1]);
+//       // std::cout<<"sample_x[0]:"<<sample_x[0]<<std::endl;
 
 //       // Re-projection error.
 //       residuals[0] = alpha * projection[0] - x_c;

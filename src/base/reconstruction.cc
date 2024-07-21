@@ -782,7 +782,7 @@ size_t Reconstruction::FilterAllPoints3DFinal(const double max_reproj_error,
       FilterPoints3DWithLargeReprojectionErrorFinal(max_reproj_error, point3D_ids);
   std::cout << StringPrintf("(Filtered due to reproj in final error: %d)\n", num_filtered);
   // num_filtered +=
-  //     FilterPoints3DWithSmallTriangulationAngle(min_tri_angle, point3D_ids);
+      FilterPoints3DWithSmallTriangulationAngle(min_tri_angle, point3D_ids);
   return num_filtered;
 }
 

@@ -174,7 +174,7 @@ class IncrementalTriangulator {
 
   // Try to create a new 3D point from the given correspondences.
   size_t Create(const Options& options,
-                const std::vector<CorrData>& corrs_data, bool initial = false, bool standard_triangulation = false);
+                const std::vector<CorrData>& corrs_data, bool initial = false, bool standard_triangulation = false, bool update_calibration = false);
   // size_t CreateInitial(
   //   const Options& options, const std::vector<CorrData>& corrs_data);
   // Try to continue the 3D point with the given correspondences.

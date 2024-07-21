@@ -652,7 +652,7 @@ size_t IncrementalMapper::TriangulateImage(
   bool standard_triangulation = (num_registrations >= tri_options.min_num_reg_images);
   std::cout << "Standard_Triangulation:" <<standard_triangulation<< std::endl;
   // bool standard_triangulation = (num_images_having_point3D >= tri_options.min_num_reg_images);
-  // standard_triangulation = true;
+  // standard_triangulation = false;
   if(standard_triangulation) {
     std::cout << "Standard Triangulation Condition meeted, with num_images_having_point3D " << num_images_having_point3D<<" min_num_reg_images:"<< tri_options.min_num_reg_images<< std::endl;
 
@@ -802,7 +802,7 @@ bool IncrementalMapper::AdjustGlobalBundle(
 
   // Avoid degeneracies in bundle adjustment.
   reconstruction_->FilterObservationsWithNegativeDepth();
-  reconstruction_->Normalize();
+  // reconstruction_->Normalize();
 
   //preparing for pose refinement
   
@@ -847,7 +847,7 @@ bool IncrementalMapper::AdjustGlobalBundle(
 
   // Normalize scene for numerical stability and
   // to avoid large scale changes in viewer.
-  // reconstruction_->Normalize();
+  reconstruction_->Normalize();
 
   return true;
 }
