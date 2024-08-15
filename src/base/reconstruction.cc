@@ -450,7 +450,7 @@ void Reconstruction::NormalizeRadialCameras() {
         EstimateRadialCameraForwardOffset(proj_matrix, points2D, points3D, &negative_focal);
     Eigen::Vector3d tvec = proj_matrix.col(3);
 
-    if(camera.ModelId()==Radial1DCameraModel::model_id){
+    if(camera.ModelId()==Radial1DCameraModel::model_id || camera.ModelId()==ImplicitDistortionModel::model_id){
       tvec(2) += tz;}
     image.second.SetTvec(tvec);
     if(negative_focal) {

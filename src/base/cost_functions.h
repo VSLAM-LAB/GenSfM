@@ -164,64 +164,16 @@ class BundleAdjustmentCostFunction<Radial1DCameraModel> {
   const double observed_y_;
 };
 
-template <>
-class BundleAdjustmentCostFunction<ImplicitDistortionModel> {
- public:
-  explicit BundleAdjustmentCostFunction(const Eigen::Vector2d& point2D)
-      : observed_x_(point2D(0)), observed_y_(point2D(1)) {}
-
-  static ceres::CostFunction* Create(const Eigen::Vector2d& point2D) {
-    return (new ceres::AutoDiffCostFunction<
-            BundleAdjustmentCostFunction<ImplicitDistortionModel>, 2, 4, 3, 3,
-            Radial1DCameraModel::kNumParams>(
-        new BundleAdjustmentCostFunction(point2D)));
-  }
-
-  template <typename T>
-  bool operator()(const T* const qvec, const T* const tvec,
-                  const T* const point3D, const T* const camera_params,
-                  T* residuals) const {
-    // Rotate and translate.
-    T projection[3];
-    ceres::UnitQuaternionRotatePoint(qvec, point3D, projection);
-    projection[0] += tvec[0];
-    projection[1] += tvec[1];
-
-    T x_c, y_c;
-
-    // Subtract principal point from image point
-    ImplicitDistortionModel::ImageToWorld(camera_params, T(observed_x_),
-                                      T(observed_y_), &x_c, &y_c);
-
-    // Compute radial reprojection error
-    T dot_product = projection[0] * x_c + projection[1] * y_c;
-    T alpha = dot_product /
-              (projection[0] * projection[0] + projection[1] * projection[1]);
-
-    // Re-projection error.
-    residuals[0] = alpha * projection[0] - x_c;
-    residuals[1] = alpha * projection[1] - y_c;
-
-    return true;
-  }
-
- private:
-  const double observed_x_;
-  const double observed_y_;
-};
-
-
-
 // template <>
 // class BundleAdjustmentCostFunction<ImplicitDistortionModel> {
 //  public:
 //   explicit BundleAdjustmentCostFunction(const Eigen::Vector2d& point2D)
-//       : observed_x_(point2D(0)), observed_y_(point2D(1))  {}
+//       : observed_x_(point2D(0)), observed_y_(point2D(1)) {}
 
 //   static ceres::CostFunction* Create(const Eigen::Vector2d& point2D) {
 //     return (new ceres::AutoDiffCostFunction<
 //             BundleAdjustmentCostFunction<ImplicitDistortionModel>, 2, 4, 3, 3,
-//             ImplicitDistortionModel::kNumParams>(
+//             Radial1DCameraModel::kNumParams>(
 //         new BundleAdjustmentCostFunction(point2D)));
 //   }
 
@@ -234,59 +186,21 @@ class BundleAdjustmentCostFunction<ImplicitDistortionModel> {
 //     ceres::UnitQuaternionRotatePoint(qvec, point3D, projection);
 //     projection[0] += tvec[0];
 //     projection[1] += tvec[1];
-//     projection[2] += tvec[2];
-
-//     projection[0] /= projection[2];
-//     projection[1] /= projection[2];
 
 //     T x_c, y_c;
-//     std::vector<double> sample_x;
-//     for (int i = 2; i < 12; i++) {
-//         sample_x.push_back(ExtractScalar(camera_params[i]));
-//         // std::cout << "x: " << ExtractScalar(camera_params[i]) << std::endl;
-//     }
-    
-//     std::vector<double> sample_y;
-
-//     for(int i = 12; i < 22; i++) {
-//         sample_y.push_back(ExtractScalar(camera_params[i]));
-//         }
-    
-//     tk::spline spline_focal_lengths;
-//     spline_focal_lengths.set_points(sample_x, sample_y);
-//     // double radius = sqrt(observed_x_ * observed_x_ + observed_y_ * observed_y_);
-
 
 //     // Subtract principal point from image point
 //     ImplicitDistortionModel::ImageToWorld(camera_params, T(observed_x_),
-//                                           T(observed_y_), &x_c, &y_c);
-//     if(int(sample_x[0])!=int(350) && double(sample_y[0])>0){
-//     // std::cout<<"using standard BA"<<std::endl;
-//     // std::cout<<"sample_x:"<<sample_x[0]<<std::endl;
-//     std::cout<<"sample_x[0]:"<<sample_x[0]<<std::endl;
+//                                       T(observed_y_), &x_c, &y_c);
 
-//     T radius = sqrt(x_c * x_c + y_c * y_c);
-//     // T focal_length = spline_focal_lengths(radius);
-//     double radius_double =ExtractScalar(radius);
-    
-//     double focal_length = spline_focal_lengths(radius_double);
-//     residuals[0] = projection[0] * T(focal_length) + camera_params[0];
-//     residuals[1] = projection[1] * T(focal_length) + camera_params[1];
-//     residuals[0] -= T(observed_x_);
-//     residuals[1] -= T(observed_y_);}
-//     else{
-//       //compute radial reproj error
-//       // std::cout<<"using radial1D cost function"<< std::endl;
-//       T dot_product = projection[0] * x_c + projection[1] * y_c;
-//       T alpha = dot_product /
+//     // Compute radial reprojection error
+//     T dot_product = projection[0] * x_c + projection[1] * y_c;
+//     T alpha = dot_product /
 //               (projection[0] * projection[0] + projection[1] * projection[1]);
 
-//       // Re-projection error.
-//       // std::cout<<"sample_x[0]:"<<sample_x[0]<<std::endl;
-//       residuals[0] = alpha * projection[0] - x_c;
-//       residuals[1] = alpha * projection[1] - y_c;
-
-//     }
+//     // Re-projection error.
+//     residuals[0] = alpha * projection[0] - x_c;
+//     residuals[1] = alpha * projection[1] - y_c;
 
 //     return true;
 //   }
@@ -294,8 +208,95 @@ class BundleAdjustmentCostFunction<ImplicitDistortionModel> {
 //  private:
 //   const double observed_x_;
 //   const double observed_y_;
-//   // const std::vector<double> camera_parameters_;
 // };
+
+
+
+template <>
+class BundleAdjustmentCostFunction<ImplicitDistortionModel> {
+ public:
+  explicit BundleAdjustmentCostFunction(const Eigen::Vector2d& point2D)
+      : observed_x_(point2D(0)), observed_y_(point2D(1))  {}
+
+  static ceres::CostFunction* Create(const Eigen::Vector2d& point2D) {
+    return (new ceres::AutoDiffCostFunction<
+            BundleAdjustmentCostFunction<ImplicitDistortionModel>, 2, 4, 3, 3,
+            ImplicitDistortionModel::kNumParams>(
+        new BundleAdjustmentCostFunction(point2D)));
+  }
+
+  template <typename T>
+  bool operator()(const T* const qvec, const T* const tvec,
+                  const T* const point3D, const T* const camera_params,
+                  T* residuals) const {
+    // Rotate and translate.
+    T projection[3];
+    ceres::UnitQuaternionRotatePoint(qvec, point3D, projection);
+    projection[0] += tvec[0];
+    projection[1] += tvec[1];
+    projection[2] += tvec[2];
+
+    projection[0] /= projection[2];
+    projection[1] /= projection[2];
+
+    T x_c, y_c;
+    std::vector<double> sample_x;
+    for (int i = 2; i < 12; i++) {
+        sample_x.push_back(ExtractScalar(camera_params[i]));
+        // std::cout << "x: " << ExtractScalar(camera_params[i]) << std::endl;
+    }
+    
+    std::vector<double> sample_y;
+
+    for(int i = 12; i < 22; i++) {
+        sample_y.push_back(ExtractScalar(camera_params[i]));
+        }
+    
+    tk::spline spline_focal_lengths;
+    spline_focal_lengths.set_points(sample_x, sample_y);
+    // double radius = sqrt(observed_x_ * observed_x_ + observed_y_ * observed_y_);
+
+
+    // Subtract principal point from image point
+    ImplicitDistortionModel::ImageToWorld(camera_params, T(observed_x_),
+                                          T(observed_y_), &x_c, &y_c);
+    // if(int(sample_x[0])!=int(350) && double(sample_y[0])>0){
+    if(int(sample_x[0])!=int(350)){
+    // std::cout<<"using standard BA"<<std::endl;
+    // std::cout<<"sample_x:"<<sample_x[0]<<std::endl;
+    // std::cout<<"sample_x[0]:"<<sample_x[0]<<std::endl;
+
+    T radius = sqrt(x_c * x_c + y_c * y_c);
+    // T focal_length = spline_focal_lengths(radius);
+    double radius_double =ExtractScalar(radius);
+    
+    double focal_length = spline_focal_lengths(radius_double);
+    residuals[0] = projection[0] * T(focal_length) + camera_params[0];
+    residuals[1] = projection[1] * T(focal_length) + camera_params[1];
+    residuals[0] -= T(observed_x_);
+    residuals[1] -= T(observed_y_);}
+    else{
+      //compute radial reproj error
+      // std::cout<<"using radial1D cost function"<< std::endl;
+      T dot_product = projection[0] * x_c + projection[1] * y_c;
+      T alpha = dot_product /
+              (projection[0] * projection[0] + projection[1] * projection[1]);
+
+      // Re-projection error.
+      // std::cout<<"sample_x[0]:"<<sample_x[0]<<std::endl;
+      residuals[0] = alpha * projection[0] - x_c;
+      residuals[1] = alpha * projection[1] - y_c;
+
+    }
+
+    return true;
+  }
+
+ private:
+  const double observed_x_;
+  const double observed_y_;
+  // const std::vector<double> camera_parameters_;
+};
 
 // Bundle adjustment cost function for variable
 // camera calibration and point parameters, and fixed camera pose.
@@ -433,104 +434,6 @@ class BundleAdjustmentConstantPoseCostFunction<Radial1DCameraModel> {
   const double observed_y_;
 };
 
-// template <>
-// class BundleAdjustmentConstantPoseCostFunction<ImplicitDistortionModel> {
-//  public:
-//   BundleAdjustmentConstantPoseCostFunction(const Eigen::Vector4d& qvec,
-//                                            const Eigen::Vector3d& tvec,
-//                                            const Eigen::Vector2d& point2D)
-//       : qw_(qvec(0)),
-//         qx_(qvec(1)),
-//         qy_(qvec(2)),
-//         qz_(qvec(3)),
-//         tx_(tvec(0)),
-//         ty_(tvec(1)),
-//         tz_(tvec(2)),
-//         observed_x_(point2D(0)),
-//         observed_y_(point2D(1)) {}
-
-//   static ceres::CostFunction* Create(const Eigen::Vector4d& qvec,
-//                                      const Eigen::Vector3d& tvec,
-//                                      const Eigen::Vector2d& point2D) {
-//     return (new ceres::AutoDiffCostFunction<
-//             BundleAdjustmentConstantPoseCostFunction<ImplicitDistortionModel>, 2, 3,
-//             ImplicitDistortionModel::kNumParams>(
-//         new BundleAdjustmentConstantPoseCostFunction(qvec, tvec, point2D)));
-//   }
-
-//   template <typename T>
-//   bool operator()(const T* const point3D, const T* const camera_params,
-//                   T* residuals) const {
-//     const T qvec[4] = {T(qw_), T(qx_), T(qy_), T(qz_)};
-
-//     // Rotate and translate.
-//     T projection[3];
-//     ceres::UnitQuaternionRotatePoint(qvec, point3D, projection);
-//     projection[0] += T(tx_);
-//     projection[1] += T(ty_);
-//     projection[2] += T(tz_);
-
-//     // Project to image plane 
-//     projection[0] /= projection[2];
-//     projection[1] /= projection[2];
-
-//     T x_c, y_c;
-
-//     std::vector<double> sample_x;
-//     for (int i = 2; i < 12; i++) {
-//         sample_x.push_back(ExtractScalar(camera_params[i]));
-//     }
-    
-//     std::vector<double> sample_y;
-
-//     for(int i = 12; i < 22; i++) {
-//         sample_y.push_back(ExtractScalar(camera_params[i]));
-//         }
-//     tk::spline spline_focal_lengths;
-//     spline_focal_lengths.set_points(sample_x, sample_y);
-
-//     // Subtract principal point from image point
-//     ImplicitDistortionModel::ImageToWorld(camera_params, T(observed_x_),
-//                                       T(observed_y_), &x_c, &y_c);
-//     if(int(sample_x[0])!=int(350)&&double(sample_y[0])>0){
-//     // Compute radial reprojection error
-//     std::cout<<"sample_x:"<<sample_x[0]<<std::endl;
-//     // std::cout<<"using standard BA"<<std::endl;
-//     T radius = sqrt(x_c * x_c + y_c * y_c);
-//     double radius_double =ExtractScalar(radius);
-//     // std::cout << "Radius: " << radius_double << std::endl;
-//     double focal_length = spline_focal_lengths(radius_double);
-//     // std::cout << "Focal length: " << focal_length << std::endl;
-//     residuals[0] = projection[0] * T(focal_length) + camera_params[0];
-//     residuals[1] = projection[1] * T(focal_length) + camera_params[1];
-//     residuals[0] -= T(observed_x_);
-//     residuals[1] -= T(observed_y_);}else{
-//       // std::cout<<"using radial1D cost function"<< std::endl;
-//        //compute radial reproj error
-//       T dot_product = projection[0] * x_c + projection[1] * y_c;
-//       T alpha = dot_product /
-//               (projection[0] * projection[0] + projection[1] * projection[1]);
-//       // std::cout<<"sample_x[0]:"<<sample_x[0]<<std::endl;
-
-//       // Re-projection error.
-//       residuals[0] = alpha * projection[0] - x_c;
-//       residuals[1] = alpha * projection[1] - y_c;
-//     }
-
-//     return true;
-//   }
-
-//  private:
-//   const double qw_;
-//   const double qx_;
-//   const double qy_;
-//   const double qz_;
-//   const double tx_;
-//   const double ty_;
-//   const double tz_;
-//   const double observed_x_;
-//   const double observed_y_;
-// };
 template <>
 class BundleAdjustmentConstantPoseCostFunction<ImplicitDistortionModel> {
  public:
@@ -552,7 +455,7 @@ class BundleAdjustmentConstantPoseCostFunction<ImplicitDistortionModel> {
                                      const Eigen::Vector2d& point2D) {
     return (new ceres::AutoDiffCostFunction<
             BundleAdjustmentConstantPoseCostFunction<ImplicitDistortionModel>, 2, 3,
-            Radial1DCameraModel::kNumParams>(
+            ImplicitDistortionModel::kNumParams>(
         new BundleAdjustmentConstantPoseCostFunction(qvec, tvec, point2D)));
   }
 
@@ -566,21 +469,55 @@ class BundleAdjustmentConstantPoseCostFunction<ImplicitDistortionModel> {
     ceres::UnitQuaternionRotatePoint(qvec, point3D, projection);
     projection[0] += T(tx_);
     projection[1] += T(ty_);
+    projection[2] += T(tz_);
+
+    // Project to image plane 
+    projection[0] /= projection[2];
+    projection[1] /= projection[2];
 
     T x_c, y_c;
+
+    std::vector<double> sample_x;
+    for (int i = 2; i < 12; i++) {
+        sample_x.push_back(ExtractScalar(camera_params[i]));
+    }
+    
+    std::vector<double> sample_y;
+
+    for(int i = 12; i < 22; i++) {
+        sample_y.push_back(ExtractScalar(camera_params[i]));
+        }
+    tk::spline spline_focal_lengths;
+    spline_focal_lengths.set_points(sample_x, sample_y);
 
     // Subtract principal point from image point
     ImplicitDistortionModel::ImageToWorld(camera_params, T(observed_x_),
                                       T(observed_y_), &x_c, &y_c);
-
+    // if(int(sample_x[0])!=int(350)&&double(sample_y[0])>0){
+    if(int(sample_x[0])!=int(350)){
     // Compute radial reprojection error
-    T dot_product = projection[0] * x_c + projection[1] * y_c;
-    T alpha = dot_product /
+    // std::cout<<"sample_x:"<<sample_x[0]<<std::endl;
+    // std::cout<<"using standard BA"<<std::endl;
+    T radius = sqrt(x_c * x_c + y_c * y_c);
+    double radius_double =ExtractScalar(radius);
+    // std::cout << "Radius: " << radius_double << std::endl;
+    double focal_length = spline_focal_lengths(radius_double);
+    // std::cout << "Focal length: " << focal_length << std::endl;
+    residuals[0] = projection[0] * T(focal_length) + camera_params[0];
+    residuals[1] = projection[1] * T(focal_length) + camera_params[1];
+    residuals[0] -= T(observed_x_);
+    residuals[1] -= T(observed_y_);}else{
+      // std::cout<<"using radial1D cost function"<< std::endl;
+       //compute radial reproj error
+      T dot_product = projection[0] * x_c + projection[1] * y_c;
+      T alpha = dot_product /
               (projection[0] * projection[0] + projection[1] * projection[1]);
+      // std::cout<<"sample_x[0]:"<<sample_x[0]<<std::endl;
 
-    // Re-projection error.
-    residuals[0] = alpha * projection[0] - x_c;
-    residuals[1] = alpha * projection[1] - y_c;
+      // Re-projection error.
+      residuals[0] = alpha * projection[0] - x_c;
+      residuals[1] = alpha * projection[1] - y_c;
+    }
 
     return true;
   }
@@ -596,6 +533,71 @@ class BundleAdjustmentConstantPoseCostFunction<ImplicitDistortionModel> {
   const double observed_x_;
   const double observed_y_;
 };
+// template <>
+// class BundleAdjustmentConstantPoseCostFunction<ImplicitDistortionModel> {
+//  public:
+//   BundleAdjustmentConstantPoseCostFunction(const Eigen::Vector4d& qvec,
+//                                            const Eigen::Vector3d& tvec,
+//                                            const Eigen::Vector2d& point2D)
+//       : qw_(qvec(0)),
+//         qx_(qvec(1)),
+//         qy_(qvec(2)),
+//         qz_(qvec(3)),
+//         tx_(tvec(0)),
+//         ty_(tvec(1)),
+//         tz_(tvec(2)),
+//         observed_x_(point2D(0)),
+//         observed_y_(point2D(1)) {}
+
+//   static ceres::CostFunction* Create(const Eigen::Vector4d& qvec,
+//                                      const Eigen::Vector3d& tvec,
+//                                      const Eigen::Vector2d& point2D) {
+//     return (new ceres::AutoDiffCostFunction<
+//             BundleAdjustmentConstantPoseCostFunction<ImplicitDistortionModel>, 2, 3,
+//             Radial1DCameraModel::kNumParams>(
+//         new BundleAdjustmentConstantPoseCostFunction(qvec, tvec, point2D)));
+//   }
+
+//   template <typename T>
+//   bool operator()(const T* const point3D, const T* const camera_params,
+//                   T* residuals) const {
+//     const T qvec[4] = {T(qw_), T(qx_), T(qy_), T(qz_)};
+
+//     // Rotate and translate.
+//     T projection[3];
+//     ceres::UnitQuaternionRotatePoint(qvec, point3D, projection);
+//     projection[0] += T(tx_);
+//     projection[1] += T(ty_);
+
+//     T x_c, y_c;
+
+//     // Subtract principal point from image point
+//     ImplicitDistortionModel::ImageToWorld(camera_params, T(observed_x_),
+//                                       T(observed_y_), &x_c, &y_c);
+
+//     // Compute radial reprojection error
+//     T dot_product = projection[0] * x_c + projection[1] * y_c;
+//     T alpha = dot_product /
+//               (projection[0] * projection[0] + projection[1] * projection[1]);
+
+//     // Re-projection error.
+//     residuals[0] = alpha * projection[0] - x_c;
+//     residuals[1] = alpha * projection[1] - y_c;
+
+//     return true;
+//   }
+
+//  private:
+//   const double qw_;
+//   const double qx_;
+//   const double qy_;
+//   const double qz_;
+//   const double tx_;
+//   const double ty_;
+//   const double tz_;
+//   const double observed_x_;
+//   const double observed_y_;
+// };
 
 // Rig bundle adjustment cost function for variable camera pose and calibration
 // and point parameters. Different from the standard bundle adjustment function,

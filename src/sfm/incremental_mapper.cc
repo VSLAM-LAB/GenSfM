@@ -640,22 +640,35 @@ size_t IncrementalMapper::TriangulateImage(
   std::cout<<"entered TiangulateImage"<<std::endl;
   // Commented out for point_triangulator
   size_t num_images_having_point3D = 0;
-  for (const auto& image_id : reconstruction_->RegImageIds()) {
-    Image &image_this = reconstruction_->Image(image_id);
-    if (image_this.NumPoints3D()>10) {
-      std::cout << "Image " << image_id << " has " << image_this.NumPoints3D() << " points3D" << std::endl;
-      num_images_having_point3D += 1;
-    }
-  }
+  std::cout <<"image_id before iterating: " << image_id << std::endl;
+  // for (const auto& image_id : reconstruction_->RegImageIds()) {
+  //   Image &image_this = reconstruction_->Image(image_id);
+  //   if (image_this.NumPoints3D()>10) {
+  //     std::cout << "Image " << image_id << " has " << image_this.NumPoints3D() << " points3D" << std::endl;
+  //     num_images_having_point3D += 1;
+  //   }
+  // }
+  std::cout <<"image_id after iterating: " << image_id << std::endl;
   size_t num_registrations = reconstruction_->NumRegImages();
   std::cout << "num_registrations: " << num_registrations << std::endl;
   bool standard_triangulation = (num_registrations >= tri_options.min_num_reg_images);
   std::cout << "Standard_Triangulation:" <<standard_triangulation<< std::endl;
   // bool standard_triangulation = (num_images_having_point3D >= tri_options.min_num_reg_images);
   // standard_triangulation = false;
-  if(standard_triangulation) {
-    std::cout << "Standard Triangulation Condition meeted, with num_images_having_point3D " << num_images_having_point3D<<" min_num_reg_images:"<< tri_options.min_num_reg_images<< std::endl;
+  Image &image = reconstruction_->Image(image_id);
+  Camera &camera = reconstruction_->Camera(image.CameraId());
+  // check how many registered images does the camera have
+  // std::cout << "----------------- Camera " << camera.CameraId() << " has " << num_reg_images_per_camera_[camera.CameraId()] << " registered images ----------------------" << std::endl;
+  if (num_reg_images_per_camera_[camera.CameraId()] >= tri_options.min_num_reg_images) {
+    standard_triangulation = true;
+  } else {
+    standard_triangulation = false;
+  }
+  // standard_triangulation = false;
 
+  if(standard_triangulation) {
+    // std::cout << "Standard Triangulation Condition meeted, with num_reg_images_per_camera " << num_reg_images_per_camera_[camera.CameraId()]<<" min_num_reg_images:"<< tri_options.min_num_reg_images<< std::endl;
+    std::cout << "Standard Triangulation Condition meeted, with num_images_having_point3D " << num_images_having_point3D<<" min_num_reg_images:"<< tri_options.min_num_reg_images<< std::endl;
   }
   return triangulator_->TriangulateImage(tri_options, image_id, initial, standard_triangulation);
 }
@@ -987,11 +1000,14 @@ IncrementalMapper::ImplicitAdjustLocalBundle(const Options& options,
   CHECK_NOTNULL(reconstruction_);
   CHECK(options.Check());
   size_t num_reg_images = reconstruction_->NumRegImages();
-  bool standard_triangulation = false;
-  if (num_reg_images >=16) {
-    bool standard_triangulation = true;
-  }
-  
+  Camera &camera_reg = reconstruction_->Camera(reconstruction_->Image(image_id).CameraId());
+  size_t camera_reg_images = num_reg_images_per_camera_[camera_reg.CameraId()];
+  // bool standard_triangulation = false;
+  bool standard_triangulation = camera_reg_images >= tri_options.min_num_reg_images;
+  // if (num_reg_images >=16) {
+  //   bool standard_triangulation = true;
+  // }
+  // standard_triangulation = false;
 
   LocalBundleAdjustmentReport report;
 
@@ -1199,9 +1215,9 @@ IncrementalMapper::ImplicitAdjustLocalBundle(const Options& options,
   //     options.filter_max_reproj_error, options.filter_min_tri_angle,
   //     filter_image_ids);
   // std::cout << "Filtering points in images ended successfully" << std::endl;
-  // report.num_filtered_observations += reconstruction_->FilterPoints3D(
-      // options.filter_max_reproj_error, options.filter_min_tri_angle,
-      // point3D_ids);
+  report.num_filtered_observations += reconstruction_->FilterPoints3D(
+      options.filter_max_reproj_error, options.filter_min_tri_angle,
+      point3D_ids);
 
   // std::cout << "Filtering points in 3D ended successfully" << std::endl;
   

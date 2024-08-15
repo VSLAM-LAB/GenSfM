@@ -268,7 +268,7 @@ bool BundleAdjuster::Solve(Reconstruction* reconstruction, bool initial) {
   for (const image_t img_id : reconstruction->RegImageIds()) {
     Camera& camera = reconstruction->Camera(reconstruction->Image(img_id).CameraId());
     camera.UpdateParams();
-    std::cout<<"------- camera.Params(): -------"<< camera.Params()[2]<<std::endl;
+    // std::cout<<"------- camera.Params(): -------"<< camera.Params()[2]<<std::endl;
   }
   SetUp(reconstruction, loss_function, initial);
   std::cout<<"Setup done"<<std::endl;

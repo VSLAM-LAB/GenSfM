@@ -224,13 +224,15 @@ std::vector<TriangulationEstimator::M_t> TriangulationEstimator::EstimateStandar
     // check cheirality for each camera (or half-plane constraint for radial cameras)
     bool cheiral_ok = true;
     for (size_t i = 0; i < pose_data.size(); ++i) {
-      // if(pose_data[i].camera->ModelId() == Radial1DCameraModel::model_id) {
-      //   Eigen::Vector2d n = pose_data[i].proj_matrix.topRows<2>() * xyz.homogeneous();
-      //   cheiral_ok &= n.dot(point_data[i].point_normalized_standard) > 0;
-      // } else {
-      // cheiral_ok &= HasPointPositiveDepth(pose_data[i].proj_matrix_standard, xyz);
-      cheiral_ok &= HasPointPositiveDepth(pose_data[i].proj_matrix, xyz);
-      // }
+      if(pose_data[i].camera->ModelId() == Radial1DCameraModel::model_id || pose_data[i].camera->ModelId() == ImplicitDistortionModel::model_id) {
+        Eigen::Vector2d n = pose_data[i].proj_matrix.topRows<2>() * xyz.homogeneous();
+        // cheiral_ok &= n.dot(point_data[i].point_normalized_standard) > 0;
+        cheiral_ok &= n.dot(point_data[i].point_normalized) > 0;
+      } 
+      else {
+      cheiral_ok &= HasPointPositiveDepth(pose_data[i].proj_matrix_standard, xyz);
+      // cheiral_ok &= HasPointPositiveDepth(pose_data[i].proj_matrix, xyz);
+      }
     }
 
     if(!cheiral_ok)
@@ -251,10 +253,10 @@ std::vector<TriangulationEstimator::M_t> TriangulationEstimator::EstimateStandar
         tri_angle_ok |= (tri_angle >= min_tri_angle_);
       }
     }
-    if(!tri_angle_ok) {
-      // we have only pinhole-like cameras and poor triangulatiopn angle
-      continue;
-    }
+    // if(!tri_angle_ok) {
+    //   // we have only pinhole-like cameras and poor triangulatiopn angle
+    //   continue;
+    // }
     // TODO: triangulation angle equivalent for radial cameras
     output.push_back(xyz);
   }

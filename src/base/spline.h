@@ -139,6 +139,8 @@ public:
     std::vector<double> get_y() const { return m_y; }
     double get_x_min() const { assert(!m_x.empty()); return m_x.front(); }
     double get_x_max() const { assert(!m_x.empty()); return m_x.back(); }
+    double get_m_left_value() const { return m_left_value; }
+    double get_m_right_value() const { return m_right_value; }
 
 #ifdef HAVE_SSTREAM
     // spline info string, i.e. spline type, boundary conditions etc.
