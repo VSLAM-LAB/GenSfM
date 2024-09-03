@@ -299,7 +299,7 @@ bool RefineAbsolutePose(const AbsolutePoseRefinementOptions& options,
                         const std::vector<Eigen::Vector2d>& points2D,
                         const std::vector<Eigen::Vector3d>& points3D,
                         Eigen::Vector4d* qvec, Eigen::Vector3d* tvec,
-                        Camera* camera) {
+                        Camera* camera, bool optimize_tz) {
   CHECK_EQ(inlier_mask.size(), points2D.size());
   CHECK_EQ(points2D.size(), points3D.size());
   options.Check();
@@ -322,7 +322,11 @@ bool RefineAbsolutePose(const AbsolutePoseRefinementOptions& options,
     }
 
     ceres::CostFunction* cost_function = nullptr;
-
+    if(!optimize_tz){
+    cost_function = BundleAdjustmentCostFunction<Radial1DCameraModel>::Create(
+        points2D[i]);
+        }
+    else{
     switch (camera->ModelId()) {
 #define CAMERA_MODEL_CASE(CameraModel)                                  \
   case CameraModel::kModelId:                                           \
@@ -334,21 +338,25 @@ bool RefineAbsolutePose(const AbsolutePoseRefinementOptions& options,
 
 #undef CAMERA_MODEL_CASE
     }
+    }
 
     problem.AddResidualBlock(cost_function, loss_function, qvec_data, tvec_data,
                              points3D_copy[i].data(), camera_params_data);
     problem.SetParameterBlockConstant(points3D_copy[i].data());
   }
-
+  
   if (problem.NumResiduals() > 0) {
     // Quaternion parameterization.
     *qvec = NormalizeQuaternion(*qvec);
     ceres::LocalParameterization* quaternion_parameterization =
         new ceres::QuaternionParameterization;
     problem.SetParameterization(qvec_data, quaternion_parameterization);
-
+  
     if (camera->ModelId() == Radial1DCameraModel::model_id ||
-        camera->ModelId() == ImplicitDistortionModel::model_id) {
+         (camera->ModelId() == ImplicitDistortionModel::model_id && !optimize_tz)) {
+    // if (camera->ModelId() == Radial1DCameraModel::model_id ||
+        //  camera->ModelId() == ImplicitDistortionModel::model_id) {
+    //  if (camera->ModelId() == Radial1DCameraModel::model_id) {
       // Only optimize over the first two elements of the translation vector for
       // radial cameras
       problem.SetParameterization(tvec_data,

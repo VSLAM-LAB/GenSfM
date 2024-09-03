@@ -265,11 +265,11 @@ bool BundleAdjuster::Solve(Reconstruction* reconstruction, bool initial) {
   std::cout<<"camera_ids_: "<<camera_ids_.size()<<std::endl;
 
   ceres::LossFunction* loss_function = options_.CreateLossFunction();
-  for (const image_t img_id : reconstruction->RegImageIds()) {
-    Camera& camera = reconstruction->Camera(reconstruction->Image(img_id).CameraId());
-    camera.UpdateParams();
-    // std::cout<<"------- camera.Params(): -------"<< camera.Params()[2]<<std::endl;
-  }
+  // for (const image_t img_id : reconstruction->RegImageIds()) {
+  //   Camera& camera = reconstruction->Camera(reconstruction->Image(img_id).CameraId());
+  //   camera.UpdateParams();
+  //   // std::cout<<"------- camera.Params(): -------"<< camera.Params()[2]<<std::endl;
+  // }
   SetUp(reconstruction, loss_function, initial);
   std::cout<<"Setup done"<<std::endl;
 
@@ -359,6 +359,37 @@ void BundleAdjuster::AddImageToProblem(const image_t image_id,
                                        ceres::LossFunction* loss_function, bool initial) {
   Image& image = reconstruction->Image(image_id);
   Camera& camera = reconstruction->Camera(image.CameraId());
+  // check the number of registered images for the camera
+  size_t num_reg_images = 0;
+  std::vector<std::pair<camera_t,size_t>> registered_num_images_per_camera;
+  bool using_radial1d = false; 
+  for (const image_t img_id : reconstruction->RegImageIds()) {
+    if (reconstruction->Image(img_id).CameraId() == image.CameraId()) {
+      num_reg_images++;
+    }
+  }
+  // check if a camera in reconstruction only registered number of images <= 20
+  for (const image_t img_id : reconstruction->RegImageIds()) {
+    bool found = false;
+    for (auto& pair : registered_num_images_per_camera) {
+      if (reconstruction->Image(img_id).CameraId() == pair.first) {
+        pair.second++;
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      registered_num_images_per_camera.push_back(std::make_pair(reconstruction->Image(img_id).CameraId(), 1));
+    }
+  }
+  // check if one of the cameras has only registered number of images <= 20
+  for (auto& pair : registered_num_images_per_camera) {
+    // related to min_num_reg_images
+    if (pair.second <= 20) {
+      using_radial1d = true;
+      break;
+    }
+  }
 
   // CostFunction assumes unit quaternions.
   image.NormalizeQvec();
@@ -386,6 +417,8 @@ void BundleAdjuster::AddImageToProblem(const image_t image_id,
     ceres::CostFunction* cost_function = nullptr;
 
     if (constant_pose) {
+      if(using_radial1d){
+        cost_function = BundleAdjustmentConstantPoseCostFunction<Radial1DCameraModel>::Create(image.Qvec(), image.Tvec(), point2D.XY());}else{
       switch (camera.ModelId()) {
 #define CAMERA_MODEL_CASE(CameraModel)                                 \
   case CameraModel::kModelId:                                          \
@@ -398,10 +431,12 @@ void BundleAdjuster::AddImageToProblem(const image_t image_id,
 
 #undef CAMERA_MODEL_CASE
       }
+      }
 
       problem_->AddResidualBlock(cost_function, loss_function,
                                  point3D.XYZ().data(), camera_params_data);
     } else {
+      if(using_radial1d){cost_function = BundleAdjustmentCostFunction<Radial1DCameraModel>::Create(point2D.XY());}else{
       switch (camera.ModelId()) {
     // case ImplicitDistortionModel::kModelId:
     //   cost_function = BundleAdjustmentCostFunction<ImplicitDistortionModel>::Create(point2D.XY(), camera.Params());
@@ -416,6 +451,7 @@ void BundleAdjuster::AddImageToProblem(const image_t image_id,
         CAMERA_MODEL_SWITCH_CASES
 
 #undef CAMERA_MODEL_CASE
+      }
       }
 
       problem_->AddResidualBlock(cost_function, loss_function, qvec_data,
@@ -435,7 +471,9 @@ void BundleAdjuster::AddImageToProblem(const image_t image_id,
       if (config_.HasConstantTvec(image_id)) {
         std::vector<int> constant_tvec_idxs = config_.ConstantTvec(image_id);
 
-        if (camera.ModelId() == Radial1DCameraModel::model_id || (camera.ModelId() == ImplicitDistortionModel::model_id&&reconstruction->RegImageIds().size()<=5)){
+        // if (camera.ModelId() == Radial1DCameraModel::model_id || (camera.ModelId() == ImplicitDistortionModel::model_id&&num_reg_images<=20)){
+        if (camera.ModelId() == Radial1DCameraModel::model_id || (camera.ModelId() == ImplicitDistortionModel::model_id&&using_radial1d)){
+          // if (camera.ModelId() == Radial1DCameraModel::model_id || camera.ModelId() == ImplicitDistortionModel::model_id){
           // For radial cameras we fix the third parameter of the translation
           // full bundle adjustment for points except for the initial ones
           constant_tvec_idxs.push_back(2);
@@ -447,7 +485,10 @@ void BundleAdjuster::AddImageToProblem(const image_t image_id,
         problem_->SetParameterization(tvec_data, tvec_parameterization);
       } else {
         // For radial cameras we fix the third parameter of the translation
-        if (camera.ModelId() == Radial1DCameraModel::model_id ||(camera.ModelId() == ImplicitDistortionModel::model_id&&reconstruction->RegImageIds().size()<=5) ){
+        // if (camera.ModelId() == Radial1DCameraModel::model_id ||(camera.ModelId() == ImplicitDistortionModel::model_id&&num_reg_images<=20) ){
+        if (camera.ModelId() == Radial1DCameraModel::model_id || (camera.ModelId() == ImplicitDistortionModel::model_id&&using_radial1d)){
+        //  if (camera.ModelId() == Radial1DCameraModel::model_id || camera.ModelId() == ImplicitDistortionModel::model_id){
+        // if (camera.ModelId() == Radial1DCameraModel::model_id){
           problem_->SetParameterization(
               tvec_data, new ceres::SubsetParameterization(3, {2}));
           // if(initial){
@@ -464,6 +505,28 @@ void BundleAdjuster::AddPointToProblem(const point3D_t point3D_id,
                                        Reconstruction* reconstruction,
                                        ceres::LossFunction* loss_function) {
   Point3D& point3D = reconstruction->Point3D(point3D_id);
+  bool using_radial1d = false; 
+  std::vector<std::pair<camera_t,size_t>> registered_num_images_per_camera;
+  for (const image_t img_id : reconstruction->RegImageIds()) {
+    bool found = false;
+    for (auto& pair : registered_num_images_per_camera) {
+      if (reconstruction->Image(img_id).CameraId() == pair.first) {
+        pair.second++;
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      registered_num_images_per_camera.push_back(std::make_pair(reconstruction->Image(img_id).CameraId(), 1));
+    }
+  }
+  for (auto& pair : registered_num_images_per_camera) {
+    // related to min_num_reg_images
+    if (pair.second <= 20) {
+      using_radial1d = true;
+      break;
+    }
+  }
 
   // Is 3D point already fully contained in the problem? I.e. its entire track
   // is contained in `variable_image_ids`, `constant_image_ids`,
@@ -493,7 +556,8 @@ void BundleAdjuster::AddPointToProblem(const point3D_t point3D_id,
     }
 
     ceres::CostFunction* cost_function = nullptr;
-
+    if(using_radial1d){
+      cost_function = BundleAdjustmentConstantPoseCostFunction<Radial1DCameraModel>::Create(image.Qvec(), image.Tvec(), point2D.XY());}else{
     switch (camera.ModelId()) {
 #define CAMERA_MODEL_CASE(CameraModel)                                 \
   case CameraModel::kModelId:                                          \
@@ -506,6 +570,7 @@ void BundleAdjuster::AddPointToProblem(const point3D_t point3D_id,
 
 #undef CAMERA_MODEL_CASE
     }
+      }
     problem_->AddResidualBlock(cost_function, loss_function,
                                point3D.XYZ().data(), camera.ParamsData());
   }

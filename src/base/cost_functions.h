@@ -39,6 +39,9 @@
 #include <ceres/jet.h>
 #include <type_traits>
 #include "base/spline.h"
+#include <fstream>
+#include <iterator>
+#include <iostream>
 
 namespace colmap {
 
@@ -127,7 +130,8 @@ class BundleAdjustmentCostFunction<Radial1DCameraModel> {
   static ceres::CostFunction* Create(const Eigen::Vector2d& point2D) {
     return (new ceres::AutoDiffCostFunction<
             BundleAdjustmentCostFunction<Radial1DCameraModel>, 2, 4, 3, 3,
-            Radial1DCameraModel::kNumParams>(
+            // Radial1DCameraModel::kNumParams>(
+            ImplicitDistortionModel::kNumParams>(
         new BundleAdjustmentCostFunction(point2D)));
   }
 
@@ -240,13 +244,13 @@ class BundleAdjustmentCostFunction<ImplicitDistortionModel> {
     projection[1] /= projection[2];
 
     T x_c, y_c;
-    std::vector<double> sample_x;
+    std::vector<double> sample_x = {};
     for (int i = 2; i < 12; i++) {
         sample_x.push_back(ExtractScalar(camera_params[i]));
         // std::cout << "x: " << ExtractScalar(camera_params[i]) << std::endl;
     }
     
-    std::vector<double> sample_y;
+    std::vector<double> sample_y={};
 
     for(int i = 12; i < 22; i++) {
         sample_y.push_back(ExtractScalar(camera_params[i]));
@@ -262,6 +266,7 @@ class BundleAdjustmentCostFunction<ImplicitDistortionModel> {
                                           T(observed_y_), &x_c, &y_c);
     // if(int(sample_x[0])!=int(350) && double(sample_y[0])>0){
     if(int(sample_x[0])!=int(350)){
+    // if(false){
     // std::cout<<"using standard BA"<<std::endl;
     // std::cout<<"sample_x:"<<sample_x[0]<<std::endl;
     // std::cout<<"sample_x[0]:"<<sample_x[0]<<std::endl;
@@ -271,13 +276,39 @@ class BundleAdjustmentCostFunction<ImplicitDistortionModel> {
     double radius_double =ExtractScalar(radius);
     
     double focal_length = spline_focal_lengths(radius_double);
-    residuals[0] = projection[0] * T(focal_length) + camera_params[0];
-    residuals[1] = projection[1] * T(focal_length) + camera_params[1];
-    residuals[0] -= T(observed_x_);
-    residuals[1] -= T(observed_y_);}
+    // T focal_length_test = T(500);
+    residuals[0] = projection[0] * T(focal_length) + T(camera_params[0]) - T(observed_x_);
+    // residuals[0] = projection[0] * T(focal_length) * projection[2] + T(camera_params[0]);
+    // residuals[0] = projection[0] * camera_params[12] + camera_params[0];
+    residuals[1] = projection[1] * T(focal_length) + T(camera_params[1]) - T(observed_y_);
+    // residuals[1] = projection[1] * T(focal_length) * projection[2] + T(camera_params[1]);
+    // residuals[1] = projection[1] * camera_params[12] + camera_params[1];
+    // ImplicitDistortionModel::WorldToImage(camera_params, projection[0], projection[1],
+                              // &residuals[0], &residuals[1]);
+    // residuals[0] -= T(observed_x_);
+    // residuals[1] -= T(observed_y_);
+    // residuals[0] /= T(10);
+    // residuals[1] /= T(10);
+    // if(abs(residuals[0])>T(50)){
+    //   // calculate radial error 
+    //   projection[0] *= projection[2]; 
+    //   projection[1] *= projection[2];
+    //   T dot_product = projection[0] * x_c + projection[1] * y_c;
+    //   T alpha = dot_product /
+    //           (projection[0] * projection[0] + projection[1] * projection[1]);
+
+    //   // Re-projection error.
+    //   // std::cout<<"sample_x[0]:"<<sample_x[0]<<std::endl;
+    //   residuals[0] = alpha * projection[0] - x_c;
+    //   residuals[1] = alpha * projection[1] - y_c;
+
+    // }
+    }
     else{
       //compute radial reproj error
       // std::cout<<"using radial1D cost function"<< std::endl;
+      projection[0] *= projection[2]; 
+      projection[1] *= projection[2];
       T dot_product = projection[0] * x_c + projection[1] * y_c;
       T alpha = dot_product /
               (projection[0] * projection[0] + projection[1] * projection[1]);
@@ -389,7 +420,8 @@ class BundleAdjustmentConstantPoseCostFunction<Radial1DCameraModel> {
                                      const Eigen::Vector2d& point2D) {
     return (new ceres::AutoDiffCostFunction<
             BundleAdjustmentConstantPoseCostFunction<Radial1DCameraModel>, 2, 3,
-            Radial1DCameraModel::kNumParams>(
+            // Radial1DCameraModel::kNumParams>(
+            ImplicitDistortionModel::kNumParams>(
         new BundleAdjustmentConstantPoseCostFunction(qvec, tvec, point2D)));
   }
 
@@ -418,6 +450,7 @@ class BundleAdjustmentConstantPoseCostFunction<Radial1DCameraModel> {
     // Re-projection error.
     residuals[0] = alpha * projection[0] - x_c;
     residuals[1] = alpha * projection[1] - y_c;
+    // std::cout<<"using radial1D cost function, residuals[0]: "<< residuals[0]<< std::endl;
 
     return true;
   }
@@ -470,44 +503,123 @@ class BundleAdjustmentConstantPoseCostFunction<ImplicitDistortionModel> {
     projection[0] += T(tx_);
     projection[1] += T(ty_);
     projection[2] += T(tz_);
+    // std::cout<<"tz_:"<<tz_<<std::endl;  
+
 
     // Project to image plane 
     projection[0] /= projection[2];
     projection[1] /= projection[2];
 
     T x_c, y_c;
+    // std::cout<<"camera_params[0]:"<<camera_params[0]<<std::endl;
+    // std::cout<<"camera_params[2]:"<<camera_params[2]<<std::endl;
 
-    std::vector<double> sample_x;
+    std::vector<double> sample_x={};
     for (int i = 2; i < 12; i++) {
         sample_x.push_back(ExtractScalar(camera_params[i]));
+        // std::cout << "x: " << ExtractScalar(camera_params[i]) << std::endl;
     }
     
-    std::vector<double> sample_y;
+    std::vector<double> sample_y{};
 
     for(int i = 12; i < 22; i++) {
         sample_y.push_back(ExtractScalar(camera_params[i]));
+        // std::cout << "y: " << ExtractScalar(camera_params[i]) << std::endl;
         }
     tk::spline spline_focal_lengths;
     spline_focal_lengths.set_points(sample_x, sample_y);
 
     // Subtract principal point from image point
+    // std::cout<<"observed_x_ before subtraction:"<<observed_x_<<std::endl;  
+    // std::cout<<"x_c before subtraction:"<<x_c<<std::endl;
     ImplicitDistortionModel::ImageToWorld(camera_params, T(observed_x_),
                                       T(observed_y_), &x_c, &y_c);
+    // std::cout<<"observed_x_ after subtraction:"<<observed_x_<<std::endl;
+    // std::cout<<"x_c after subtraction:"<<x_c<<std::endl;
     // if(int(sample_x[0])!=int(350)&&double(sample_y[0])>0){
     if(int(sample_x[0])!=int(350)){
+    // if(false){
     // Compute radial reprojection error
     // std::cout<<"sample_x:"<<sample_x[0]<<std::endl;
     // std::cout<<"using standard BA"<<std::endl;
     T radius = sqrt(x_c * x_c + y_c * y_c);
+    // T radius = sqrt((projection[0]-camera_params[0]) * (projection[0]-camera_params[0])  + (projection[1]-camera_params[1]) * (projection[1]-camera_params[1]));
     double radius_double =ExtractScalar(radius);
     // std::cout << "Radius: " << radius_double << std::endl;
+    // std::cout << sample_x[0] <<" "<<sample_x[1]<<" "<<sample_x[2]<<" "<<sample_x[3]<<" "<<sample_x[4]<<" "<<sample_x[5]<<" "<<sample_x[6]<<" "<<sample_x[7] <<" "<<sample_x[8]<<" "<<sample_x[9]<<" "<<sample_x[10]<< std::endl;
+    // std::cout << sample_y[0] <<" "<<sample_y[1]<<" "<<sample_y[2]<<" "<<sample_y[3]<<" "<<sample_y[4]<<" "<<sample_y[5]<<" "<<sample_y[6]<<" "<<sample_y[7] <<" "<<sample_y[8]<<" "<<sample_y[9]<<" "<<sample_y[10]<< std::endl;
+    // std::cout << "Radius: " << radius_double << std::endl;
     double focal_length = spline_focal_lengths(radius_double);
+    // T focal_length_test = T(500);
     // std::cout << "Focal length: " << focal_length << std::endl;
-    residuals[0] = projection[0] * T(focal_length) + camera_params[0];
-    residuals[1] = projection[1] * T(focal_length) + camera_params[1];
-    residuals[0] -= T(observed_x_);
-    residuals[1] -= T(observed_y_);}else{
+    // std::cout << "projection[0]: " << projection[0] << std::endl;
+    // residuals[0] = projection[0] * focal_length + camera_params[0];
+    residuals[0] = projection[0] * T(focal_length)  + camera_params[0] - T(observed_x_);
+    // residuals[0] = projection[0] * camera_params[12] + camera_params[0];
+    // ImplicitDistortionModel::WorldToImage(camera_params, projection[0], projection[1],
+                              // &residuals[0], &residuals[1]);
+    // std::cout <<"prediction:"<<residuals[0]<<std::endl;
+    // std::cout <<"observed_x_:"<<observed_x_<<std::endl;
+    // residuals[1] = projection[1] * focal_length + camera_params[1];
+    residuals[1] = projection[1] * T(focal_length)  + camera_params[1] - T(observed_y_);
+    // residuals[1] = projection[1] * camera_params[12] + camera_params[1];
+
+    // residuals[0] -= T(observed_x_);
+    
+    // residuals[1] -= T(observed_y_); 
+    // residuals[0] /= T(10);
+    // residuals[1] /= T(10);
+    // if(abs(residuals[0])>T(50)){
+    //   // calculate radial error 
+    //   projection[0] *= projection[2]; 
+    //   projection[1] *= projection[2];
+    //   T dot_product = projection[0] * x_c + projection[1] * y_c;
+    //   T alpha = dot_product /
+    //           (projection[0] * projection[0] + projection[1] * projection[1]);
+
+    //   // Re-projection error.
+    //   // std::cout<<"sample_x[0]:"<<sample_x[0]<<std::endl;
+    //   residuals[0] = alpha * projection[0] - x_c;
+    //   residuals[1] = alpha * projection[1] - y_c;} 
+    // std::cout <<"residuals[0] for full:"<<residuals[0]<<std::endl;
+    // append radius , focal length and residuals to a file
+    // std::string filename = "residuals_2.txt";
+    // std::ofstream myfile(filename, std::ios_base::app);
+    
+  
+    // myfile << radius_double << " " << focal_length << " " << residuals[0] << " ";
+
+    // // Write all elements of sample_x separated by spaces
+    // std::copy(std::begin(sample_x), std::end(sample_x), std::ostream_iterator<double>(myfile, " "));
+    
+    // // Write all elements of sample_y separated by spaces
+    // std::copy(std::begin(sample_y), std::end(sample_y), std::ostream_iterator<double>(myfile, " "));
+
+    // // End the line
+    // myfile << std::endl;
+
+    // // Close the file
+    // myfile.close();
+
+
+
+    // projection[0] *= projection[2];
+    //   projection[1] *= projection[2];
+    //    //compute radial reproj error
+    //   T dot_product = projection[0] * x_c + projection[1] * y_c;
+    //   T alpha = dot_product /
+    //           (projection[0] * projection[0] + projection[1] * projection[1]);
+    //   // std::cout<<"sample_x[0]:"<<sample_x[0]<<std::endl;
+
+    //   // Re-projection error.
+    //   residuals[0] = alpha * projection[0] - x_c;
+    //   residuals[1] = alpha * projection[1] - y_c;
+    //   std::cout<<"residuals[0] for radial:"<<residuals[0]<<std::endl;
+    }
+    else{
       // std::cout<<"using radial1D cost function"<< std::endl;
+      projection[0] *= projection[2];
+      projection[1] *= projection[2];
        //compute radial reproj error
       T dot_product = projection[0] * x_c + projection[1] * y_c;
       T alpha = dot_product /

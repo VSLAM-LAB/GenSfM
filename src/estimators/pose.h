@@ -166,7 +166,7 @@ bool RefineAbsolutePose(const AbsolutePoseRefinementOptions& options,
                         const std::vector<Eigen::Vector2d>& points2D,
                         const std::vector<Eigen::Vector3d>& points3D,
                         Eigen::Vector4d* qvec, Eigen::Vector3d* tvec,
-                        Camera* camera);
+                        Camera* camera, bool optimize_tz = false);
 
 // Refine relative pose of two cameras.
 //

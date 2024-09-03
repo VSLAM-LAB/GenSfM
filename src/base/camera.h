@@ -159,6 +159,12 @@ class Camera {
   inline void SetRawRadii(const std::vector<double>& raw_radii) const;
   inline std::vector<double> GetTheta() const;
   inline void SetTheta(const std::vector<double>& theta) const;
+  inline void recursiveSplit(const std::vector<double>& radii, const std::vector<double>& focal_lengths,
+                        std::vector<std::vector<double>>& radii_segments,
+                        std::vector<std::vector<double>>& focal_lengths_segments, 
+                        double threshold = 0.05, double stddev_threshold = 0.01) const;
+
+  inline void FitPIeceWiseSpline_binary(std::vector<double>& radii, std::vector<double>& focal_lengths) const;
   inline void FitSpline(std::vector<double>& radii,  std::vector<double>& focal_lengths) const ;
   inline void FitPieceWiseSpline(std::vector<double>& radii,  std::vector<double>& focal_lengths) const ;
   inline void FitGridSpline(std::vector<double>& radii, std::vector<double>& focal_lengths) const;
@@ -278,8 +284,8 @@ inline void Camera::FitSpline(std::vector<double>& radii, std::vector<double>& f
   std::mt19937 gen(rd());
   std::uniform_int_distribution<> dis(0, new_radii.size() - 1);
   tk::spline best_spline;
-  const int max_iterations = 40;
-  const double threshold = 20.0;
+  const int max_iterations = 80;
+  const double threshold = 10.0;
   int degree = 10;
   
   for (int i = 0; i < max_iterations; ++i){
@@ -351,7 +357,46 @@ inline void Camera::FitSpline(std::vector<double>& radii, std::vector<double>& f
     // SetParams(updated_params);
   }
 }
+inline void Camera::recursiveSplit(const std::vector<double>& radii, const std::vector<double>& focal_lengths,
+                        std::vector<std::vector<double>>& radii_segments,
+                        std::vector<std::vector<double>>& focal_lengths_segments, 
+                        double threshold, double stddev_threshold)const {
+        // Find the largest interval
+        double max_gap = 0;
+        size_t index_of_max_gap = 0;
+        for (size_t i = 0; i < radii.size() - 1; i++) {
+            double gap = radii[i + 1] - radii[i];
+            if (gap > max_gap) {
+                max_gap = gap;
+                index_of_max_gap = i;
+            }
+        }
 
+        // Calculate the standard deviation of the intervals
+        double mean = max_gap / (radii.size() - 1);
+        double sum_sq_diff = 0;
+        for (size_t i = 0; i < radii.size() - 1; i++) {
+            double diff = radii[i + 1] - radii[i] - mean;
+            sum_sq_diff += diff * diff;
+        }
+        double stddev = std::sqrt(sum_sq_diff / (radii.size() - 1));
+
+        // Base case for recursion
+        if (max_gap < threshold || stddev < stddev_threshold) {
+            radii_segments.push_back(radii);
+            focal_lengths_segments.push_back(focal_lengths);
+            return;
+        }
+
+        // Recursive case: split at the largest gap
+        std::vector<double> left_radii(radii.begin(), radii.begin() + index_of_max_gap + 1);
+        std::vector<double> left_focal_lengths(focal_lengths.begin(), focal_lengths.begin() + index_of_max_gap + 1);
+        std::vector<double> right_radii(radii.begin() + index_of_max_gap + 1, radii.end());
+        std::vector<double> right_focal_lengths(focal_lengths.begin() + index_of_max_gap + 1, focal_lengths.end());
+
+        recursiveSplit(left_radii, left_focal_lengths, radii_segments, focal_lengths_segments, threshold, stddev_threshold);
+        recursiveSplit(right_radii, right_focal_lengths, radii_segments, focal_lengths_segments, threshold, stddev_threshold);
+    }
 inline void Camera::FitPieceWiseSpline(std::vector<double>& radii, std::vector<double>& focal_lengths) const{
   // Convert std::vector to Eigen vectors
   assert(radii.size() == focal_lengths.size());
@@ -875,6 +920,46 @@ inline double Camera::EvalGridFocalLength(double radius) const{
   }
 }
 
+inline void Camera::FitPIeceWiseSpline_binary(std::vector<double>& radii, std::vector<double>& focal_lengths) const{
+  assert(radii.size() == focal_lengths.size());
+  // Ensure that the radii are sorted in ascending order
+  std::vector<int> increasing_indices;
+  std::vector<double> new_radii;
+  std::vector<double> new_focal_lengths;
+  std::vector<std::vector<double>> uncalibrated_areas = {};
+  for (int i = 0; i < radii.size() - 1; i++) {
+    if(radii[i+1] > radii[i]) {
+      increasing_indices.push_back(i);
+    }
+  }
+  if (!increasing_indices.empty() && increasing_indices.back() != radii.size() - 1) {
+        increasing_indices.push_back(radii.size() - 1);
+    }
+  for(int i = 0; i < increasing_indices.size(); i++){
+    new_radii.push_back(radii[increasing_indices[i]]);
+    new_focal_lengths.push_back(focal_lengths[increasing_indices[i]]);
+  } 
+  std::vector<double> intervals = {};
+  for (int i = 0; i < new_radii.size()-1; i++) {
+    intervals.push_back(new_radii[i+1] - new_radii[i]);
+  }
+  double mean_interval = std::accumulate(intervals.begin(), intervals.end(), 0.0)/intervals.size();
+  double std_interval = 0.0;
+  for (int i = 0; i < intervals.size(); i++) {
+    std_interval += pow(intervals[i] - mean_interval, 2);
+  }
+  std_interval = sqrt(std_interval/intervals.size());
+  std::vector<std::vector<double>> radii_segments = {};
+  std::vector<std::vector<double>> focal_lengths_segments = {};
+  double threshold = mean_interval + 0.3*std_interval;
+  double std_threshold = 0.5*std_interval;
+  recursiveSplit(new_radii, new_focal_lengths, radii_segments, focal_lengths_segments, threshold, std_threshold);
+  std::cout << "radii_segments size: " << radii_segments.size() << std::endl;
+  for(int i = 0; i < radii_segments.size(); i++){
+    std::cout << "radii_segments[" << i << "] size: " << radii_segments[i].size() << std::endl;
+  }
+
+}
 
 double Camera::EvalFocalLength(double radius) const {return spline_(radius);}
 inline std::vector<double> Camera::GetRawRadii() const {return raw_radii_;}

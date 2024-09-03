@@ -571,7 +571,8 @@ bool IncrementalMapper::RegisterNextImage(const Options& options,
     camera.SetParams(database_cache_->Camera(image.CameraId()).Params());
     abs_pose_options.estimate_focal_length = !camera.HasPriorFocalLength();
     abs_pose_refinement_options.refine_focal_length = true;
-    abs_pose_refinement_options.refine_extra_params = true;
+    // abs_pose_refinement_options.refine_extra_params = true;
+    abs_pose_refinement_options.refine_extra_params = false;
   }
 
   if (!options.abs_pose_refine_focal_length) {
@@ -585,7 +586,17 @@ bool IncrementalMapper::RegisterNextImage(const Options& options,
 
   size_t num_inliers;
   std::vector<char> inlier_mask;
+  bool optimize_tz = true;
 
+  // check the number of registered images for each camera in num_reg_images_per_camera_;
+  for (image_t img_id : reconstruction_->RegImageIds()) {
+    camera_t cam_id = reconstruction_->Image(img_id).CameraId();
+    // related to min_num_reg_images
+    if(num_reg_images_per_camera_[cam_id] <=21) {
+      optimize_tz = false;
+      break;
+    }
+  }
   if (!EstimateAbsolutePose(abs_pose_options, tri_points2D, tri_points3D,
                             &image.Qvec(), &image.Tvec(), &camera, &num_inliers,  //qvev: quaternion vector for rotation, tvec: translation vector
                             &inlier_mask)) {
@@ -604,7 +615,7 @@ bool IncrementalMapper::RegisterNextImage(const Options& options,
 
   if (!RefineAbsolutePose(abs_pose_refinement_options, inlier_mask,
                           tri_points2D, tri_points3D, &image.Qvec(),
-                          &image.Tvec(), &camera)) {
+                          &image.Tvec(), &camera, optimize_tz)) {
 
     std::cout << "Pose refinement failed" << std::endl;
     return false;
@@ -697,7 +708,7 @@ IncrementalMapper::AdjustLocalBundle(
     const IncrementalTriangulator::Options& tri_options, const image_t image_id,
     const std::unordered_set<point3D_t>& point3D_ids) {
   CHECK_NOTNULL(reconstruction_);
-  CHECK(options.Check());
+  // CHECK(options.Check());
 
   LocalBundleAdjustmentReport report;
 
@@ -740,15 +751,15 @@ IncrementalMapper::AdjustLocalBundle(
     // Fix 7 DOF to avoid scale/rotation/translation drift in bundle adjustment.
     if (local_bundle.size() == 1) {
       ba_config.SetConstantPose(local_bundle[0]);
-      // ba_config.SetConstantTvec(image_id, {0});
+      ba_config.SetConstantTvec(image_id, {0});
     } else if (local_bundle.size() > 1) {
       const image_t image_id1 = local_bundle[local_bundle.size() - 1];
       const image_t image_id2 = local_bundle[local_bundle.size() - 2];
       ba_config.SetConstantPose(image_id1);
-      // if (!options.fix_existing_images ||
-      //     !existing_image_ids_.count(image_id2)) {
-      //   ba_config.SetConstantTvec(image_id2, {0});
-      // }
+      if (!options.fix_existing_images ||
+          !existing_image_ids_.count(image_id2)) {
+        ba_config.SetConstantTvec(image_id2, {0});
+      }
     }
 
     // Make sure, we refine all new and short-track 3D points, no matter if
@@ -847,10 +858,10 @@ bool IncrementalMapper::AdjustGlobalBundle(
 
   // Fix 7-DOFs of the bundle adjustment problem.
   ba_config.SetConstantPose(reg_image_ids[0]);
-  // if (!options.fix_existing_images ||
-  //     !existing_image_ids_.count(reg_image_ids[1])) {
-  //   ba_config.SetConstantTvec(reg_image_ids[1], {0});
-  // }
+  if (!options.fix_existing_images ||
+      !existing_image_ids_.count(reg_image_ids[1])) {
+    ba_config.SetConstantTvec(reg_image_ids[1], {0});
+  }
 
   // Run bundle adjustment.
   BundleAdjuster bundle_adjuster(ba_options, ba_config);

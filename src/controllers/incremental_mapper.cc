@@ -52,8 +52,10 @@ size_t TriangulateImage(const IncrementalMapperOptions& options,
 void AdjustGlobalBundle(const IncrementalMapperOptions& options,
                         IncrementalMapper* mapper, bool initial = false) {
   BundleAdjustmentOptions custom_ba_options = options.GlobalBundleAdjustment();
+  
 
   const size_t num_reg_images = mapper->GetReconstruction().NumRegImages();
+  // custom_ba_options.refine_extra_params = (num_reg_images > 20); 
 
   // Use stricter convergence criteria for first registered images.
   const size_t kMinNumRegImagesForFastBA = 10;
@@ -82,6 +84,8 @@ void IterativeLocalRefinement(const IncrementalMapperOptions& options,
                               IncrementalMapper* mapper) {
   std::cout << "  =>Entered Colmap Local bundle adjustment" << std::endl;
   auto ba_options = options.LocalBundleAdjustment();
+  size_t num_reg_images = mapper->GetReconstruction().NumRegImages();
+  // ba_options.refine_extra_params = (num_reg_images > 20); 
   for (int i = 0; i < options.ba_local_max_refinements; ++i) {
     const auto report = mapper->AdjustLocalBundle(
         options.Mapper(), ba_options, options.Triangulation(), image_id,
@@ -95,7 +99,7 @@ void IterativeLocalRefinement(const IncrementalMapperOptions& options,
     const double changed =
         (report.num_merged_observations + report.num_completed_observations +
          report.num_filtered_observations) /
-        static_cast<double>(report.num_adjusted_observations);
+        static_cast<double>(report.num_adjusted_observations + 1);
     std::cout << StringPrintf("  => Changed observations: %.6f", changed)
               << std::endl;
     if (changed < options.ba_local_max_refinement_change) {
@@ -217,8 +221,8 @@ void IterativeGlobalRefinement(const IncrementalMapperOptions& options,
   std::cout << "  =>Entered Colmap Global bundle adjustment" << std::endl;
   PrintHeading1("Retriangulation");
   CompleteAndMergeTracks(options, mapper);
-  std::cout << "  => Retriangulated observations: "
-            << mapper->Retriangulate(options.Triangulation()) << std::endl;
+  // std::cout << "  => Retriangulated observations: "
+  //           << mapper->Retriangulate(options.Triangulation()) << std::endl;
 
   for (int i = 0; i < options.ba_global_max_refinements; ++i) {
     const size_t num_observations =
@@ -297,7 +301,7 @@ size_t CompleteAndMergeTracks(const IncrementalMapperOptions& options,
       mapper->CompleteTracks(options.Triangulation());
   std::cout << "  => Completed observations: " << num_completed_observations
             << std::endl;
-  const size_t num_merged_observations =
+  const size_t num_merged_observations = 
       mapper->MergeTracks(options.Triangulation());
   std::cout << "  => Merged observations: " << num_merged_observations
             << std::endl;
@@ -323,7 +327,8 @@ IncrementalTriangulator::Options IncrementalMapperOptions::Triangulation()
   options.min_focal_length_ratio = min_focal_length_ratio;
   options.max_focal_length_ratio = max_focal_length_ratio;
   options.max_extra_param = max_extra_param;
-  options.min_num_reg_images = 12;
+  // related to min_num_reg_images
+  options.min_num_reg_images = 20;
   return options;
 }
 
@@ -629,6 +634,12 @@ void IncrementalMapperController::Reconstruct(
 
         if (reg_next_success) {
           TriangulateImage(*options_, next_image, &mapper);
+          // update camera params
+          for (const image_t img_id : reconstruction.RegImageIds()) {
+                Camera& camera = reconstruction.Camera(reconstruction.Image(img_id).CameraId());
+                camera.UpdateParams();
+              //   // std::cout<<"------- camera.Params(): -------"<< camera.Params()[2]<<std::endl;
+              }
 
           // Comment out below for implicit distortion bundle adjustment
           // if (reconstruction.NumRegImages() >= 8){

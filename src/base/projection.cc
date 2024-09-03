@@ -182,8 +182,9 @@ double CalculateSquaredReprojectionErrorFinal(const Eigen::Vector2d& point2D,
 
     // check that we project onto the correct half-plane
     if(dot_product < std::numeric_limits<double>::epsilon()) {
-      if(camera.ModelId() == Radial1DCameraModel::model_id || camera.ModelId() == ImplicitDistortionModel::model_id){
-      return std::numeric_limits<double>::max();}
+      // if(camera.ModelId() == Radial1DCameraModel::model_id ){
+      return std::numeric_limits<double>::max();
+      // }
     }
     proj_point2D = camera.WorldToImage(dot_product * n);
     // check if radii is not empty
@@ -233,38 +234,46 @@ double CalculateSquaredReprojectionErrorFinal(const Eigen::Vector2d& point2D,
       // std::cout << "plain radius: " << (point2D - pp).norm() << std::endl;
 
       // get the focal length for this radius
-      radius = (point2D - pp).norm();
+      // radius = (point2D - pp).norm();
       double focal_length = 0;
-      for (int i = 0; i < radii.size() - 1; i++) {
-        // std::cout << "radii " << i << " "<<radii[i] << std::endl;
-        if (radius >= radii[i] && radius <= radii[i+1]) {
-          // interpolate the focal length
+      // for (int i = 0; i < radii.size() - 1; i++) {
+      //   // std::cout << "radii " << i << " "<<radii[i] << std::endl;
+      //   if (radius >= radii[i] && radius <= radii[i+1]) {
+      //     // interpolate the focal length
 
-          focal_length = focal_lengths[i] + (focal_lengths[i+1] - focal_lengths[i]) * (radius - radii[i]) / (radii[i+1] - radii[i] + std::numeric_limits<double>::epsilon());
-          break;
-        }
-      }
-      // if the radius is smaller than the smallest radius, set the focal length to the smallest focal length
-      if (radius < radii[0]) {
-        focal_length = focal_lengths[0];
-      }
-      // if the radius is larger than the largest radius, set the focal length to the largest focal length
-      if (radius > radii[radii.size() - 1]) {
-        focal_length = focal_lengths[radii.size() - 1];
-      }
-      // if (camera.ModelId()==ImplicitDistortionModel::model_id){
-      //   tk::spline s = camera.GetSpline();
-      //   focal_length = s(radius);
+      //     focal_length = focal_lengths[i] + (focal_lengths[i+1] - focal_lengths[i]) * (radius - radii[i]) / (radii[i+1] - radii[i] + std::numeric_limits<double>::epsilon());
+      //     break;
+      //   }
       // }
+      // // if the radius is smaller than the smallest radius, set the focal length to the smallest focal length
+      // if (radius < radii[0]) {
+      //   focal_length = focal_lengths[0];
+      // }
+      // // if the radius is larger than the largest radius, set the focal length to the largest focal length
+      // if (radius > radii[radii.size() - 1]) {
+      //   focal_length = focal_lengths[radii.size() - 1];
+      // }
+      // std::cout << "radius: " << radius << std::endl; 
+      if (camera.ModelId()==ImplicitDistortionModel::model_id){
+        tk::spline s = camera.GetSpline();
+        if(!std::isnan(s(radius))){
+        focal_length = s(radius);}
+      }
+      // std::cout << "focal length in reproj error: " << focal_length << std::endl;
       // std::cout << "focal length: " << focal_length << std::endl;
       // proj_point2D(0) = proj_point3D.hnormalized()(0) * focal_length + pp(0);
       // proj_point2D(1) = proj_point3D.hnormalized()(1) * focal_length + pp(1);
-      if (focal_length > 100){
-      proj_point2D= proj_point3D.hnormalized() * focal_length + pp;
-      // std::cout<<"proj_point2D: "<<proj_point2D<<std::endl;
-      }else{
-        proj_point2D = camera.WorldToImage(proj_point3D.hnormalized());
+      // if (focal_length > 100){
+      if (int(focal_length)!=0){ 
+      proj_point2D= proj_point3D.hnormalized() * focal_length + pp;}else{
+        proj_point2D = camera.WorldToImage(dot_product * n);
       }
+      // std::cout << "proj_point2D: "<<proj_point2D<<std::endl;
+      // std::cout << "point2D: "<<point2D<<std::endl;
+      // std::cout<<"proj_point2D: "<<proj_point2D<<std::endl;
+      // }else{
+        // proj_point2D = camera.WorldToImage(proj_point3D.hnormalized());
+      // }
       // std::cout << "pp: " << pp << std::endl;
       // std::cout << "proj_point2D: " << proj_point2D << std::endl;
       // std::cout << "point2D: " << point2D << std::endl;
