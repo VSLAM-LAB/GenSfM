@@ -339,9 +339,9 @@ void Reconstruction::Normalize(const double extent, const double p0,
     return;
   }
   // check the number of images
-  // if(reg_image_ids_.size() <= 4){
+  if(reg_image_ids_.size() <= 20){
   NormalizeRadialCameras();
-  // }
+  }
 
   EIGEN_STL_UMAP(class Image*, Eigen::Vector3d) proj_centers;
 
@@ -483,7 +483,7 @@ void Reconstruction::NormalizeRadialCameras() {
       
     image.second.SetTvec(tvec);
     if(negative_focal) {
-      negative_focal_count++;
+      // negative_focal_count++;
     }
   }
 
@@ -860,10 +860,11 @@ std::vector<image_t> Reconstruction::FilterImages(
     const class Camera& camera = Camera(image.CameraId());
     if (image.NumPoints3D() == 0) {
       filtered_image_ids.push_back(image_id);
-    } else if (camera.HasBogusParams(min_focal_length_ratio,
-                                     max_focal_length_ratio, max_extra_param)) {
-      filtered_image_ids.push_back(image_id);
-    }
+    } 
+    // else if (camera.HasBogusParams(min_focal_length_ratio,
+    //                                  max_focal_length_ratio, max_extra_param)) {
+    //   filtered_image_ids.push_back(image_id);
+    // }
   }
 
   // Only de-register after iterating over reg_image_ids_ to avoid

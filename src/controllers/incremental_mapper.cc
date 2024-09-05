@@ -221,8 +221,8 @@ void IterativeGlobalRefinement(const IncrementalMapperOptions& options,
   std::cout << "  =>Entered Colmap Global bundle adjustment" << std::endl;
   PrintHeading1("Retriangulation");
   CompleteAndMergeTracks(options, mapper);
-  // std::cout << "  => Retriangulated observations: "
-  //           << mapper->Retriangulate(options.Triangulation()) << std::endl;
+  std::cout << "  => Retriangulated observations: "
+            << mapper->Retriangulate(options.Triangulation()) << std::endl;
 
   for (int i = 0; i < options.ba_global_max_refinements; ++i) {
     const size_t num_observations =
@@ -240,7 +240,7 @@ void IterativeGlobalRefinement(const IncrementalMapperOptions& options,
     }
   }
 
-  // FilterImages(options, mapper);
+  FilterImages(options, mapper);
 }
 
 void ExtractColors(const std::string& image_path, const image_t image_id,

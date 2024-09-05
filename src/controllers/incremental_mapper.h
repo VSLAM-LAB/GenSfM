@@ -184,8 +184,8 @@ size_t FilterPoints(const IncrementalMapperOptions& options,
                     IncrementalMapper* mapper);
 size_t FilterPointsFinal(const IncrementalMapperOptions& options,
                     IncrementalMapper* mapper);
-// size_t FilterImages(const IncrementalMapperOptions& options,
-                    // IncrementalMapper* mapper);
+size_t FilterImages(const IncrementalMapperOptions& options,
+                    IncrementalMapper* mapper);
 
 // Globally complete and merge tracks in mapper.
 size_t CompleteAndMergeTracks(const IncrementalMapperOptions& options,

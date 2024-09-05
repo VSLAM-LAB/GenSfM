@@ -711,6 +711,10 @@ IncrementalMapper::AdjustLocalBundle(
   // CHECK(options.Check());
 
   LocalBundleAdjustmentReport report;
+  Camera &camera_reg = reconstruction_->Camera(reconstruction_->Image(image_id).CameraId());
+  size_t camera_reg_images = num_reg_images_per_camera_[camera_reg.CameraId()];
+  // bool standard_triangulation = false;
+  bool standard_triangulation = camera_reg_images >= tri_options.min_num_reg_images;
 
   // Find images that have most 3D points with given image in common.
   const std::vector<image_t> local_bundle = FindLocalBundle(options, image_id);
@@ -794,7 +798,7 @@ IncrementalMapper::AdjustLocalBundle(
     report.num_completed_observations =
         triangulator_->CompleteTracks(tri_options, variable_point3D_ids);
     report.num_completed_observations +=
-        triangulator_->CompleteImage(tri_options, image_id);
+        triangulator_->CompleteImage(tri_options, image_id, standard_triangulation);
   }
 
   // Filter both the modified images and all changed 3D points to make sure
@@ -830,15 +834,15 @@ bool IncrementalMapper::AdjustGlobalBundle(
 
   //preparing for pose refinement
   
-  bool all_refinable = true;
-  for (const image_t image_id : reg_image_ids) {
-    Image image = reconstruction_->Image(image_id);
-    Camera camera = reconstruction_->Camera(image.CameraId());
-    if (camera.ModelId() != Radial1DCameraModel::model_id &&camera.ModelId() != ImplicitDistortionModel::model_id) {
-      all_refinable = false;
-      break;
-    }
-  }
+  // bool all_refinable = true;
+  // for (const image_t image_id : reg_image_ids) {
+  //   Image image = reconstruction_->Image(image_id);
+  //   Camera camera = reconstruction_->Camera(image.CameraId());
+  //   if (camera.ModelId() != Radial1DCameraModel::model_id &&camera.ModelId() != ImplicitDistortionModel::model_id) {
+  //     all_refinable = false;
+  //     break;
+  //   }
+  // }
 
 
   // Configure bundle adjustment.
@@ -1242,6 +1246,7 @@ bool IncrementalMapper::AdjustParallelGlobalBundle(
     const BundleAdjustmentOptions& ba_options,
     const ParallelBundleAdjuster::Options& parallel_ba_options, bool initial ) {
   CHECK_NOTNULL(reconstruction_);
+  std::cout<<"================= attention!! entered pba !!==========="<<std::endl;
 
   const std::vector<image_t>& reg_image_ids = reconstruction_->RegImageIds();
 

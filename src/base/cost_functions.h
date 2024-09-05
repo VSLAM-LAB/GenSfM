@@ -583,23 +583,23 @@ class BundleAdjustmentConstantPoseCostFunction<ImplicitDistortionModel> {
     //   residuals[1] = alpha * projection[1] - y_c;} 
     // std::cout <<"residuals[0] for full:"<<residuals[0]<<std::endl;
     // append radius , focal length and residuals to a file
-    // std::string filename = "residuals_2.txt";
-    // std::ofstream myfile(filename, std::ios_base::app);
+    std::string filename = "residuals_2.txt";
+    std::ofstream myfile(filename, std::ios_base::app);
     
   
-    // myfile << radius_double << " " << focal_length << " " << residuals[0] << " ";
+    myfile << radius_double << " " << focal_length << " " << ExtractScalar(residuals[0]) << " ";
 
-    // // Write all elements of sample_x separated by spaces
+    // Write all elements of sample_x separated by spaces
     // std::copy(std::begin(sample_x), std::end(sample_x), std::ostream_iterator<double>(myfile, " "));
     
-    // // Write all elements of sample_y separated by spaces
+    // Write all elements of sample_y separated by spaces
     // std::copy(std::begin(sample_y), std::end(sample_y), std::ostream_iterator<double>(myfile, " "));
 
-    // // End the line
-    // myfile << std::endl;
+    // End the line
+    myfile << std::endl;
 
-    // // Close the file
-    // myfile.close();
+    // Close the file
+    myfile.close();
 
 
 

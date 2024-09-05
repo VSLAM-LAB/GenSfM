@@ -79,7 +79,7 @@ class IncrementalTriangulator {
     bool ignore_two_view_tracks = true;
 
     //Minimum number of registered images to start standard triangulation
-    int min_num_reg_images = 12;
+    int min_num_reg_images = 20;
 
 
     // Thresholds for bogus camera parameters. Images with bogus camera
