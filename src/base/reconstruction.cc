@@ -339,6 +339,7 @@ void Reconstruction::Normalize(const double extent, const double p0,
     return;
   }
   // check the number of images
+  // min_num_reg_images related
   if(reg_image_ids_.size() <= 20){
   NormalizeRadialCameras();
   }
@@ -1433,9 +1434,10 @@ size_t Reconstruction::FilterPoints3DWithSmallTriangulationAngle(
     for (size_t i1 = 0; i1 < point3D.Track().Length(); ++i1) {
       const image_t image_id1 = point3D.Track().Element(i1).image_id;
       const class Camera &camera1 = Camera(Image(image_id1).CameraId());
+      // min_num_registered_images
       is_radial[i1] = (camera1.ModelId() == Radial1DCameraModel::model_id ||
-                      //  (camera1.ModelId() == ImplicitDistortionModel::model_id && num_registered_images<=20));
-                       camera1.ModelId() == ImplicitDistortionModel::model_id);
+                       (camera1.ModelId() == ImplicitDistortionModel::model_id && num_registered_images<=20));
+                      //  camera1.ModelId() == ImplicitDistortionModel::model_id);
                       // );
       
       Eigen::Vector3d proj_center1;
@@ -1557,7 +1559,8 @@ size_t Reconstruction::FilterPoints3DWithLargeReprojectionError(
       const double squared_reproj_error = CalculateSquaredReprojectionError(
           point2D.XY(), point3D.XYZ(), image.Qvec(), image.Tvec(), camera);
       // double squared_reproj_error = 0;
-      // if (num_registered_images<=40){
+      // // min_num_reg_images related
+      // if (num_registered_images<=20){
       //     squared_reproj_error = CalculateSquaredReprojectionError(
       //     point2D.XY(), point3D.XYZ(), image.Qvec(), image.Tvec(), camera);} else{
       //   squared_reproj_error = CalculateSquaredReprojectionErrorFinal(

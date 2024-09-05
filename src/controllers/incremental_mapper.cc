@@ -55,6 +55,7 @@ void AdjustGlobalBundle(const IncrementalMapperOptions& options,
   
 
   const size_t num_reg_images = mapper->GetReconstruction().NumRegImages();
+  // min_num_reg_images related
   // custom_ba_options.refine_extra_params = (num_reg_images > 20); 
 
   // Use stricter convergence criteria for first registered images.
@@ -85,6 +86,7 @@ void IterativeLocalRefinement(const IncrementalMapperOptions& options,
   std::cout << "  =>Entered Colmap Local bundle adjustment" << std::endl;
   auto ba_options = options.LocalBundleAdjustment();
   size_t num_reg_images = mapper->GetReconstruction().NumRegImages();
+  // min_num_reg_images related
   // ba_options.refine_extra_params = (num_reg_images > 20); 
   for (int i = 0; i < options.ba_local_max_refinements; ++i) {
     const auto report = mapper->AdjustLocalBundle(

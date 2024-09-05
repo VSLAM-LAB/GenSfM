@@ -769,11 +769,16 @@ size_t IncrementalTriangulator::Create(
       //   std::cerr << e.what() << '\n';
       //   pose_refined = pose;
       // }
-      if(points3D_xyz.size() < 4){
+      if(points3D_xyz.size() < 10){
         pose_refined = pose;}
+      // check the number of registrations
       
       else{pose_refined = pose_refinement(points2D_xy, points3D_xyz, cost_matrix, pp,pose, pose_refinement_options);}
-      pose_refined = pose;
+      // min_num_reg_images related
+      if( reconstruction_->NumRegImages() > 20){
+        pose_refined = pose;
+      }
+      
       // CameraPose pose_refined = pose_refinement(points2D_xy, points3D_xyz, cost_matrix, pp,pose, pose_refinement_options);
       // pose_refined = pose;
       filter_result_pose_refinement(points2D_xy, points3D_xyz, pose_refined, pp, pose_refinement_options);
@@ -920,9 +925,9 @@ size_t IncrementalTriangulator::Create(
   for (const auto& pair : camera_correspondences) {
     camera_t camera_id = pair.first;
     Camera &camera_this = reconstruction_->Camera(camera_id);
-    if(camera_this.GetRawRadii().size()>80){
-      continue;
-    }
+    // if(camera_this.GetRawRadii().size()>80){
+    //   continue;
+    // }
     std::vector<std::tuple<CameraPose,std::vector<Eigen::Vector2d>, std::vector<Eigen::Vector3d>> > correspondences = pair.second;
     std::vector<std::vector<Eigen::Vector2d>> points2D_this;
     std::vector<std::vector<Eigen::Vector3d>> points3D_this;
@@ -999,14 +1004,14 @@ size_t IncrementalTriangulator::Create(
    
     // if(radii.size() > 20 && radii[0] > 0){
       
-    // camera_this.SetRawRadii(radii);
-    camera_this.SetRawRadii(radii_list);
+    camera_this.SetRawRadii(radii);
+    // camera_this.SetRawRadii(radii_list);
     camera_this.SetTheta(theta);
-    // camera_this.SetFocalLengthParams(focal_lengths);
-    camera_this.SetFocalLengthParams(gt_focal_lengths);
+    camera_this.SetFocalLengthParams(focal_lengths);
+    // camera_this.SetFocalLengthParams(gt_focal_lengths);
     // std::cout << "Calibrated camera: " << camera_id << std::endl;
-    // camera_this.FitSpline(radii, focal_lengths);
-    camera_this.FitSpline(radii_list, gt_focal_lengths);
+    camera_this.FitSpline(radii, focal_lengths);
+    // camera_this.FitSpline(radii_list, gt_focal_lengths);
     // camera_this.FitPIeceWiseSpline_binary(radii, focal_lengths);
     // }
     // else{
@@ -1188,10 +1193,10 @@ size_t IncrementalTriangulator::Create(
   tri_options.residual_type =
       TriangulationEstimator::ResidualType::ANGULAR_ERROR;
   // if(full_error && standard_triangulation){
-  // if(standard_triangulation){
-  //   tri_options.residual_type = TriangulationEstimator::ResidualType::ANGULAR_ERROR_SPLITTING;
-  // // //   // std::cout << "================== Using full error=======================" << std::endl;}
-  // }
+  if(standard_triangulation){
+    tri_options.residual_type = TriangulationEstimator::ResidualType::ANGULAR_ERROR_SPLITTING;
+  // //   // std::cout << "================== Using full error=======================" << std::endl;}
+  }
   tri_options.ransac_options.max_error =
       DegToRad(options.create_max_angle_error);
   tri_options.ransac_options.confidence = 0.9999;
@@ -1207,10 +1212,10 @@ size_t IncrementalTriangulator::Create(
   // Setup estimation options for full estimation
   EstimateTriangulationOptions tri_options_full;
   tri_options_full.min_tri_angle = DegToRad(options.min_angle);
-  // tri_options_full.residual_type =
-  //     TriangulationEstimator::ResidualType::ANGULAR_ERROR_SPLITTING;
   tri_options_full.residual_type =
-      TriangulationEstimator::ResidualType::ANGULAR_ERROR;
+      TriangulationEstimator::ResidualType::ANGULAR_ERROR_SPLITTING;
+  // tri_options_full.residual_type =
+  //     TriangulationEstimator::ResidualType::ANGULAR_ERROR;
   tri_options_full.ransac_options.max_error =
       DegToRad(options.create_max_angle_error);
   tri_options_full.ransac_options.confidence = 0.9999;

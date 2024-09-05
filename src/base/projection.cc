@@ -192,44 +192,44 @@ double CalculateSquaredReprojectionErrorFinal(const Eigen::Vector2d& point2D,
       
       // std::cout << "Using full reprojection error" << std::endl;
       Eigen::Vector2d pp = Eigen::Vector2d(camera.PrincipalPointX(), camera.PrincipalPointY());
-      // double radius = (point2D - pp).norm();
+      double radius = (point2D - pp).norm();
       // //////////////// Calculating the theta of the point3D for mapping to the radius and thus focal length ///////////////////////
       double rho = proj_point3D.topRows<2>().norm();
       double z = proj_point3D(2);
       double theta_this = std::atan2(rho,z);
-      double radius;
+      // double radius;
       // std::cout << "theta size: " << theta.size() << std::endl;
       // std::cout << "radii size: " << radii.size() << std::endl;
 
-      if (theta_this <= theta[0]) {
-            // special case, extrpolate from first points
-            double dtheta = theta[1] - theta[0];
-            double alpha = (theta_this - theta[0]) / dtheta;
-            radius = (1.0 - alpha) * radii[0] + alpha * radii[1];
+      // if (theta_this <= theta[0]) {
+      //       // special case, extrpolate from first points
+      //       double dtheta = theta[1] - theta[0];
+      //       double alpha = (theta_this - theta[0]) / dtheta;
+      //       radius = (1.0 - alpha) * radii[0] + alpha * radii[1];
             
-        } else if (theta_this >= theta[theta.size()-1]) {
-            // special case, extrapolate from last points
-            double dtheta = theta[theta.size()-1] - theta[theta.size()-2];
-            double alpha = (theta_this - theta[theta.size()-2]) / dtheta;
-            radius = (1.0 - alpha) * radii[theta.size()-2] + alpha * radii[theta.size()-1];
+      //   } else if (theta_this >= theta[theta.size()-1]) {
+      //       // special case, extrapolate from last points
+      //       double dtheta = theta[theta.size()-1] - theta[theta.size()-2];
+      //       double alpha = (theta_this - theta[theta.size()-2]) / dtheta;
+      //       radius = (1.0 - alpha) * radii[theta.size()-2] + alpha * radii[theta.size()-1];
         
-        } else {
-            // we interpolate between the two neighboring calibration points
-            // concatenate theta and radii into a vector of pairs: theta_r
-            std::vector<std::pair<double,double>> theta_r;
-            for (size_t i = 0; i < radii.size(); i++) {
-                theta_r.push_back(std::make_pair(theta[i], radii[i]));
-            }
-            auto it = std::lower_bound(theta_r.begin(), theta_r.end(), std::make_pair(theta_this, std::numeric_limits<double>::lowest()));
+      //   } else {
+      //       // we interpolate between the two neighboring calibration points
+      //       // concatenate theta and radii into a vector of pairs: theta_r
+      //       std::vector<std::pair<double,double>> theta_r;
+      //       for (size_t i = 0; i < radii.size(); i++) {
+      //           theta_r.push_back(std::make_pair(theta[i], radii[i]));
+      //       }
+      //       auto it = std::lower_bound(theta_r.begin(), theta_r.end(), std::make_pair(theta_this, std::numeric_limits<double>::lowest()));
             
-            const std::pair<double,double> &theta_r1 = *it;
-            const std::pair<double,double> &theta_r0 = *(--it);
+      //       const std::pair<double,double> &theta_r1 = *it;
+      //       const std::pair<double,double> &theta_r0 = *(--it);
             
-            // Interpolate radius           
-            double dtheta = theta_r1.first - theta_r0.first;
-            double alpha = (theta_this - theta_r0.first) / dtheta;
-            radius = (1.0 - alpha) * theta_r0.second + alpha * theta_r1.second;
-        }
+      //       // Interpolate radius           
+      //       double dtheta = theta_r1.first - theta_r0.first;
+      //       double alpha = (theta_this - theta_r0.first) / dtheta;
+      //       radius = (1.0 - alpha) * theta_r0.second + alpha * theta_r1.second;
+      //   }
       // std::cout << "calculated radius: " << radius << std::endl;
       // std::cout << "plain radius: " << (point2D - pp).norm() << std::endl;
 
