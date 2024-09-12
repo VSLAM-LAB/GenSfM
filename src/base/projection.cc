@@ -181,11 +181,11 @@ double CalculateSquaredReprojectionErrorFinal(const Eigen::Vector2d& point2D,
     const double dot_product = n.dot(point2D_center);
 
     // check that we project onto the correct half-plane
-    if(dot_product < std::numeric_limits<double>::epsilon()) {
-      // if(camera.ModelId() == Radial1DCameraModel::model_id ){
-      return std::numeric_limits<double>::max();
-      // }
-    }
+    // if(dot_product < std::numeric_limits<double>::epsilon()) {
+    //   // if(camera.ModelId() == Radial1DCameraModel::model_id ){
+    //   return std::numeric_limits<double>::max();
+    //   // }
+    // }
     proj_point2D = camera.WorldToImage(dot_product * n);
     // check if radii is not empty
     if(radii.size()>=4) {

@@ -575,7 +575,7 @@ void IncrementalMapperController::Reconstruct(
 
       AdjustGlobalBundle(*options_, &mapper);
       FilterPoints(*options_, &mapper);
-      // FilterImages(*options_, &mapper);
+      FilterImages(*options_, &mapper);
 
       // Initial image pair failed to register.
       if (reconstruction.NumRegImages() == 0 ||

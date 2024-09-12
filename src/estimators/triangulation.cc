@@ -194,14 +194,14 @@ std::vector<TriangulationEstimator::M_t> TriangulationEstimator::EstimateStandar
     // We run all possible combinations of three points
 
     candidates.push_back(TriangulatePoint(
-      pose_data[0].proj_matrix_standard, pose_data[1].proj_matrix_standard,
-      point_data[0].point, point_data[1].point));  
+      pose_data[0].proj_matrix, pose_data[1].proj_matrix,
+      point_data[0].point_normalized_standard, point_data[1].point_normalized_standard));  
     candidates.push_back(TriangulatePoint(
-      pose_data[0].proj_matrix_standard, pose_data[2].proj_matrix_standard,
-      point_data[0].point, point_data[2].point));
+      pose_data[0].proj_matrix, pose_data[2].proj_matrix,
+      point_data[0].point_normalized_standard, point_data[2].point_normalized_standard));
     candidates.push_back(TriangulatePoint(
-      pose_data[1].proj_matrix_standard, pose_data[2].proj_matrix_standard,
-      point_data[1].point, point_data[2].point));
+      pose_data[1].proj_matrix, pose_data[2].proj_matrix,
+      point_data[1].point_normalized_standard, point_data[2].point_normalized_standard));
   
   } else {
     // This is a non-minimal sample (for refinement in RANSAC)
@@ -210,8 +210,8 @@ std::vector<TriangulationEstimator::M_t> TriangulationEstimator::EstimateStandar
     std::vector<Eigen::Vector2d> points;
     points.reserve(point_data.size());
     for (size_t i = 0; i < point_data.size(); ++i) {
-      proj_matrices.push_back(pose_data[i].proj_matrix_standard);
-      points.push_back(point_data[i].point);
+      proj_matrices.push_back(pose_data[i].proj_matrix);
+      points.push_back(point_data[i].point_normalized_standard);
     }
     candidates.push_back(TriangulateMultiViewPoint(proj_matrices, points));
   }
@@ -226,8 +226,8 @@ std::vector<TriangulationEstimator::M_t> TriangulationEstimator::EstimateStandar
     for (size_t i = 0; i < pose_data.size(); ++i) {
       if(pose_data[i].camera->ModelId() == Radial1DCameraModel::model_id || pose_data[i].camera->ModelId() == ImplicitDistortionModel::model_id) {
         Eigen::Vector2d n = pose_data[i].proj_matrix.topRows<2>() * xyz.homogeneous();
-        // cheiral_ok &= n.dot(point_data[i].point_normalized_standard) > 0;
-        cheiral_ok &= n.dot(point_data[i].point_normalized) > 0;
+        cheiral_ok &= n.dot(point_data[i].point_normalized_standard) > 0;
+        // cheiral_ok &= n.dot(point_data[i].point_normalized) > 0;
       } 
       else {
       cheiral_ok &= HasPointPositiveDepth(pose_data[i].proj_matrix_standard, xyz);
@@ -253,10 +253,10 @@ std::vector<TriangulationEstimator::M_t> TriangulationEstimator::EstimateStandar
         tri_angle_ok |= (tri_angle >= min_tri_angle_);
       }
     }
-    // if(!tri_angle_ok) {
-    //   // we have only pinhole-like cameras and poor triangulatiopn angle
-    //   continue;
-    // }
+    if(!tri_angle_ok) {
+      // we have only pinhole-like cameras and poor triangulatiopn angle
+      continue;
+    }
     // TODO: triangulation angle equivalent for radial cameras
     output.push_back(xyz);
   }

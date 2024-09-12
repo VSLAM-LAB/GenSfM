@@ -591,8 +591,8 @@ bool IncrementalMapper::RegisterNextImage(const Options& options,
   // check the number of registered images for each camera in num_reg_images_per_camera_;
   for (image_t img_id : reconstruction_->RegImageIds()) {
     camera_t cam_id = reconstruction_->Image(img_id).CameraId();
-    // related to min_num_reg_images
-    if(num_reg_images_per_camera_[cam_id] <=21) {
+    // min_num_reg_images related
+    if(num_reg_images_per_camera_[cam_id] <21) {
       optimize_tz = false;
       break;
     }
@@ -670,11 +670,11 @@ size_t IncrementalMapper::TriangulateImage(
   Camera &camera = reconstruction_->Camera(image.CameraId());
   // check how many registered images does the camera have
   // std::cout << "----------------- Camera " << camera.CameraId() << " has " << num_reg_images_per_camera_[camera.CameraId()] << " registered images ----------------------" << std::endl;
-  if (num_reg_images_per_camera_[camera.CameraId()] >= tri_options.min_num_reg_images) {
-    standard_triangulation = true;
-  } else {
-    standard_triangulation = false;
-  }
+  // if (num_reg_images_per_camera_[camera.CameraId()] >= tri_options.min_num_reg_images) {
+  //   standard_triangulation = true;
+  // } else {
+  //   standard_triangulation = false;
+  // }
   // standard_triangulation = false;
 
   if(standard_triangulation) {
@@ -714,7 +714,8 @@ IncrementalMapper::AdjustLocalBundle(
   Camera &camera_reg = reconstruction_->Camera(reconstruction_->Image(image_id).CameraId());
   size_t camera_reg_images = num_reg_images_per_camera_[camera_reg.CameraId()];
   // bool standard_triangulation = false;
-  bool standard_triangulation = camera_reg_images >= tri_options.min_num_reg_images;
+  // min_num_reg_images related
+  bool standard_triangulation = camera_reg_images >= tri_options.min_num_reg_images ;
 
   // Find images that have most 3D points with given image in common.
   const std::vector<image_t> local_bundle = FindLocalBundle(options, image_id);
@@ -829,7 +830,7 @@ bool IncrementalMapper::AdjustGlobalBundle(
                                        "bundle-adjustment";
 
   // Avoid degeneracies in bundle adjustment.
-  reconstruction_->FilterObservationsWithNegativeDepth();
+  // reconstruction_->FilterObservationsWithNegativeDepth();
   // reconstruction_->Normalize();
 
   //preparing for pose refinement

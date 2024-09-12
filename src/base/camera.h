@@ -954,10 +954,24 @@ inline void Camera::FitPIeceWiseSpline_binary(std::vector<double>& radii, std::v
   double threshold = mean_interval + 0.3*std_interval;
   double std_threshold = 0.5*std_interval;
   recursiveSplit(new_radii, new_focal_lengths, radii_segments, focal_lengths_segments, threshold, std_threshold);
-  std::cout << "radii_segments size: " << radii_segments.size() << std::endl;
+  std::cout << "----------radii_segments size: " << radii_segments.size() << std::endl;
   for(int i = 0; i < radii_segments.size(); i++){
-    std::cout << "radii_segments[" << i << "] size: " << radii_segments[i].size() << std::endl;
+    std::cout << "------------radii_segments[" << i << "] size: " << radii_segments[i].size() << std::endl;
   }
+  // print the beginning and end of the longest segment
+  // find the longest segment
+  int longest_segment = 0;
+  int longest_segment_size = 0;
+  for(int i = 0; i < radii_segments.size(); i++){
+    if(radii_segments[i].size() > longest_segment_size){
+      longest_segment = i;
+      longest_segment_size = radii_segments[i].size();
+    }
+  }
+  std::cout << "longest_segment: " << longest_segment << std::endl;
+  std::cout << "longest_segment_size: " << longest_segment_size << std::endl; 
+  std::cout << "longest_segment_begin: " << radii_segments[longest_segment].front() << std::endl;
+  std::cout << "longest_segment_end: " << radii_segments[longest_segment].back() << std::endl;
 
 }
 

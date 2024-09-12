@@ -340,7 +340,7 @@ void Reconstruction::Normalize(const double extent, const double p0,
   }
   // check the number of images
   // min_num_reg_images related
-  if(reg_image_ids_.size() <= 20){
+  if(reg_image_ids_.size() < 20){
   NormalizeRadialCameras();
   }
 
@@ -456,35 +456,35 @@ void Reconstruction::NormalizeRadialCameras() {
         EstimateRadialCameraForwardOffset(proj_matrix, points2D, points3D, &negative_focal);
     Eigen::Vector3d tvec = proj_matrix.col(3);
     
-    Eigen::Vector2d pp = Eigen::Vector2d(camera.PrincipalPointX(), camera.PrincipalPointY());
+    // Eigen::Vector2d pp = Eigen::Vector2d(camera.PrincipalPointX(), camera.PrincipalPointY());
 
   // Estimate the forward translation using implicit distortion model.
-    CameraPose implicit_pose ;
-    bool used_implicit = false;
-    if(points2D.size() > 0){
-      implicit_pose =
-    EstimateCameraForwardOffsetImplictDistortion(proj_matrix, points2D_original, 
-                                                points3D, pp);
-    used_implicit = true;
-      std::cout << "EstimateCameraForwardOffsetImplictDistortion:" << implicit_pose.t(2) <<std::endl;
-      std::cout << "EstimateRadialCameraForwardOffset:" << tz << " "<<tvec(2)<<std::endl;}
+    // CameraPose implicit_pose ;
+    // bool used_implicit = false;
+    // if(points2D.size() > 0){
+    //   implicit_pose =
+    // EstimateCameraForwardOffsetImplictDistortion(proj_matrix, points2D_original, 
+    //                                             points3D, pp);
+    // used_implicit = true;
+    //   std::cout << "EstimateCameraForwardOffsetImplictDistortion:" << implicit_pose.t(2) <<std::endl;
+    //   std::cout << "EstimateRadialCameraForwardOffset:" << tz << " "<<tvec(2)<<std::endl;}
       // check if implicit pose.t contains nan
 
-    // if(camera.ModelId()==Radial1DCameraModel::model_id || camera.ModelId()==ImplicitDistortionModel::model_id){
-     if(camera.ModelId()==Radial1DCameraModel::model_id || (camera.ModelId()==ImplicitDistortionModel::model_id && !used_implicit)){
+    if(camera.ModelId()==Radial1DCameraModel::model_id || camera.ModelId()==ImplicitDistortionModel::model_id){
+    //  if(camera.ModelId()==Radial1DCameraModel::model_id || (camera.ModelId()==ImplicitDistortionModel::model_id && !used_implicit)){
         tvec(2) += tz;}
-        else if (camera.ModelId()==ImplicitDistortionModel::model_id && used_implicit){
+        // else if (camera.ModelId()==ImplicitDistortionModel::model_id && used_implicit){
         
-        tvec = implicit_pose.t;
+        // tvec = implicit_pose.t;
         // tvec(2)+=implicit_pose.t(2);
         
-        image.second.SetQvec(implicit_pose.q_vec);
-        }
+        // image.second.SetQvec(implicit_pose.q_vec);
+        // }
       
       
     image.second.SetTvec(tvec);
     if(negative_focal) {
-      // negative_focal_count++;
+      negative_focal_count++;
     }
   }
 
@@ -505,6 +505,45 @@ void Reconstruction::NormalizeRadialCameras() {
       point.second.XYZ()(2) *= -1.0;
     }
   }
+  // estimate the forward translation using implicit distortion model
+  for (auto& image : images_) {
+    const class Camera& camera = Camera(image.second.CameraId());
+    if (camera.ModelId() != Radial1DCameraModel::model_id && camera.ModelId() != ImplicitDistortionModel::model_id){
+      all_radial = false;
+      continue;
+    }
+
+    std::vector<Eigen::Vector2d> points2D;
+    std::vector<Eigen::Vector3d> points3D;
+    std::vector<Eigen::Vector2d> points2D_original;
+    points2D.reserve(image.second.NumPoints3D());
+    points3D.reserve(image.second.NumPoints3D());
+    for (const Point2D& point2D : image.second.Points2D()) {
+      if (point2D.HasPoint3D()) {
+        points2D.push_back(camera.ImageToWorld(point2D.XY()));
+        points3D.push_back(Point3D(point2D.Point3DId()).XYZ());
+        points2D_original.push_back(point2D.XY());
+      }
+    }
+
+    Eigen::Matrix3x4d proj_matrix = image.second.ProjectionMatrix();
+    Eigen::Vector2d pp = Eigen::Vector2d(camera.PrincipalPointX(), camera.PrincipalPointY());
+    CameraPose implicit_pose ;
+    bool used_implicit = false;
+    if(points2D.size() > 10){
+      implicit_pose =
+    EstimateCameraForwardOffsetImplictDistortion(proj_matrix, points2D_original, 
+                                                points3D, pp);
+    used_implicit = true;}
+    if (camera.ModelId()==ImplicitDistortionModel::model_id && used_implicit){
+      image.second.SetQvec(implicit_pose.q_vec);
+      image.second.SetTvec(implicit_pose.t);
+    }
+
+
+    }
+
+
 
 }
 
@@ -1527,6 +1566,7 @@ size_t Reconstruction::FilterPoints3DWithLargeReprojectionError(
       continue;
     }
 
+
     class Point3D& point3D = Point3D(point3D_id);
 
     int num_constraints = 0;
@@ -1558,6 +1598,10 @@ size_t Reconstruction::FilterPoints3DWithLargeReprojectionError(
       size_t num_registered_images = reg_image_ids_.size();
       const double squared_reproj_error = CalculateSquaredReprojectionError(
           point2D.XY(), point3D.XYZ(), image.Qvec(), image.Tvec(), camera);
+      if(point3D_id == 2768){
+        std::cout << "/// ========== Squared reprojection error: ========== /// " << squared_reproj_error << std::endl;
+        std::cout << "/// ========== Image ID: ========== /// " << image.ImageId() << std::endl;
+      }
       // double squared_reproj_error = 0;
       // // min_num_reg_images related
       // if (num_registered_images<=20){
