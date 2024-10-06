@@ -167,7 +167,7 @@ void joint_pose_refinement_1D_radial(const std::vector<std::vector<Eigen::Vector
 
     for (size_t cam_k = 0; cam_k < num_cams; ++cam_k) {
         for (size_t i = 0; i < points2D[cam_k].size(); ++i) {
-            ceres::CostFunction* reg_cost = RadialReprojError::CreateCost(points2D[cam_k][i], points3D[cam_k][i]);
+            ceres::CostFunction* reg_cost = RadialReprojError_Implicit::CreateCost(points2D[cam_k][i], points3D[cam_k][i]);
             problem.AddResidualBlock(reg_cost, loss_function, qs[cam_k].coeffs().data(), ts[cam_k].data(), pp->data());
         }
     }

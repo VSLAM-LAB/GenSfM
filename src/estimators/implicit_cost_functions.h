@@ -37,10 +37,47 @@ struct RadialReprojError {
     static ceres::CostFunction* CreateCost(const Eigen::Vector2d &x, const Eigen::Vector3d &X) {
         return (new ceres::AutoDiffCostFunction<RadialReprojError, 2, 4, 3>(new RadialReprojError(x,X)));
     }
+    
 
 private:
     const Eigen::Vector2d& x;
     const Eigen::Vector3d& X;
+};
+
+struct RadialReprojError_Implicit { 
+    RadialReprojError_Implicit(const Eigen::Vector2d& x, const Eigen::Vector3d& X) : x_(x), X_(X) {}
+
+    template <typename T>
+    bool operator()(const T* const qvec, const T* const tvec, const T* const ppvec, T* residuals) const {
+        Eigen::Quaternion<T> q;
+        q.coeffs() << qvec[0], qvec[1], qvec[2], qvec[3];
+
+        Eigen::Matrix<T, 3, 1> Z = q.toRotationMatrix() * X_;
+
+        Eigen::Matrix<T, 2, 1> t;
+        t << tvec[0], tvec[1];
+        Eigen::Matrix<T, 2, 1> z = (Z.template topRows<2>() + t).normalized();
+
+        Eigen::Matrix<T, 2, 1> xc;
+        xc << T(x_(0)) - ppvec[0], T(x_(1)) - ppvec[1];
+
+        T alpha = z.dot(xc);
+        T lambda = ceres::log(T(1.0) + xc.norm());
+        
+        residuals[0] = lambda * (alpha * z(0) - xc(0));
+        residuals[1] = lambda * (alpha * z(1) - xc(1));
+        return true;
+    }
+
+    // Factory function
+    static ceres::CostFunction* CreateCost(const Eigen::Vector2d &x, const Eigen::Vector3d &X) {
+        return (new ceres::AutoDiffCostFunction<RadialReprojError_Implicit, 2, 4, 2, 2>(new RadialReprojError_Implicit(x, X)));
+    }
+    
+
+private:
+    const Eigen::Vector2d& x_;
+    const Eigen::Vector3d& X_;
 };
 
 // cost for a row of cost matrix

@@ -277,22 +277,43 @@ class BundleAdjustmentCostFunction<ImplicitDistortionModel> {
     // T focal_length = spline_focal_lengths(radius);
     double radius_double =ExtractScalar(radius);
     
-    double focal_length = spline_focal_lengths(radius_double);
+
+    T rho = sqrt(projection[0]*projection[2]*projection[0]*projection[2] + projection[1]*projection[2]*projection[1]*projection[2]);
+    T theta = ceres::atan2(rho, projection[2]);
+    
+    // 
+    // double focal_length = spline_focal_lengths(radius_double);
+    double r_calculated = spline_focal_lengths(ExtractScalar(theta));
+    double focal_length = r_calculated/tan(ExtractScalar(theta));
     // T focal_length_test = T(500);
+    // check if the calculated radius is within the range of the image boundary
+    if(r_calculated>0 && r_calculated < ExtractScalar(sqrt(camera_params[0]*camera_params[0] + camera_params[1]*camera_params[1]))){
     residuals[0] = projection[0] * T(focal_length) + T(camera_params[0]) - T(observed_x_);
     // residuals[0] = projection[0] * T(focal_length) * projection[2] + T(camera_params[0]);
     // residuals[0] = projection[0] * camera_params[12] + camera_params[0];
-    residuals[1] = projection[1] * T(focal_length) + T(camera_params[1]) - T(observed_y_);
-    // if(abs(residuals[0] > T(60)) || abs(residuals[1] > T(60))){
-     if(radius_double<130.7 || radius_double> 1238.25){
-      projection[0] *= projection[2];
+    residuals[1] = projection[1] * T(focal_length) + T(camera_params[1]) - T(observed_y_);}
+    else{
+      projection[0] *= projection[2]; 
       projection[1] *= projection[2];
       T dot_product = projection[0] * x_c + projection[1] * y_c;
       T alpha = dot_product /
               (projection[0] * projection[0] + projection[1] * projection[1]);
+
+      // Re-projection error.
+      // std::cout<<"sample_x[0]:"<<sample_x[0]<<std::endl;
       residuals[0] = alpha * projection[0] - x_c;
       residuals[1] = alpha * projection[1] - y_c;
-   }
+    }
+    // if(abs(residuals[0] > T(60)) || abs(residuals[1] > T(60))){
+  //    if(radius_double<130.7 || radius_double> 1238.25){
+  //     projection[0] *= projection[2];
+  //     projection[1] *= projection[2];
+  //     T dot_product = projection[0] * x_c + projection[1] * y_c;
+  //     T alpha = dot_product /
+  //             (projection[0] * projection[0] + projection[1] * projection[1]);
+  //     residuals[0] = alpha * projection[0] - x_c;
+  //     residuals[1] = alpha * projection[1] - y_c;
+  //  }
     // residuals[1] = projection[1] * T(focal_length) * projection[2] + T(camera_params[1]);
     // residuals[1] = projection[1] * camera_params[12] + camera_params[1];
     // ImplicitDistortionModel::WorldToImage(camera_params, projection[0], projection[1],
@@ -558,15 +579,18 @@ class BundleAdjustmentConstantPoseCostFunction<ImplicitDistortionModel> {
     // T radius = sqrt((projection[0]-camera_params[0]) * (projection[0]-camera_params[0])  + (projection[1]-camera_params[1]) * (projection[1]-camera_params[1]));
     // T radius = sqrt((projection[0]) * (projection[0])  + (projection[1]) * (projection[1]));
     double radius_double =ExtractScalar(radius);
-    // std::cout << "Radius: " << radius_double << std::endl;
-    // std::cout << sample_x[0] <<" "<<sample_x[1]<<" "<<sample_x[2]<<" "<<sample_x[3]<<" "<<sample_x[4]<<" "<<sample_x[5]<<" "<<sample_x[6]<<" "<<sample_x[7] <<" "<<sample_x[8]<<" "<<sample_x[9]<<" "<<sample_x[10]<< std::endl;
-    // std::cout << sample_y[0] <<" "<<sample_y[1]<<" "<<sample_y[2]<<" "<<sample_y[3]<<" "<<sample_y[4]<<" "<<sample_y[5]<<" "<<sample_y[6]<<" "<<sample_y[7] <<" "<<sample_y[8]<<" "<<sample_y[9]<<" "<<sample_y[10]<< std::endl;
-    // std::cout << "Radius: " << radius_double << std::endl;
-    double focal_length = spline_focal_lengths(radius_double);
+    
+    T rho = sqrt(projection[0]*projection[2]*projection[0]*projection[2] + projection[1]*projection[2]*projection[1]*projection[2]);
+    T theta = ceres::atan2(rho, projection[2]);
+    // double focal_length = spline_focal_lengths(radius_double);
+    double r_calculated = spline_focal_lengths(ExtractScalar(theta));
+    double focal_length = r_calculated/tan(ExtractScalar(theta));
+    
     // T focal_length_test = T(500);
     // std::cout << "Focal length: " << focal_length << std::endl;
     // std::cout << "projection[0]: " << projection[0] << std::endl;
     // residuals[0] = projection[0] * focal_length + camera_params[0];
+    if(r_calculated>0 && r_calculated < ExtractScalar(sqrt(camera_params[0]*camera_params[0]+camera_params[1]*camera_params[1]))){
     residuals[0] = projection[0] * T(focal_length)  + camera_params[0] - T(observed_x_);
  
     // residuals[0] = projection[0] * camera_params[12] + camera_params[0];
@@ -576,16 +600,28 @@ class BundleAdjustmentConstantPoseCostFunction<ImplicitDistortionModel> {
     // std::cout <<"observed_x_:"<<observed_x_<<std::endl;
     // residuals[1] = projection[1] * focal_length + camera_params[1];
     residuals[1] = projection[1] * T(focal_length)  + camera_params[1] - T(observed_y_);
-  //  if(abs(residuals[0] > T(60)) || abs(residuals[1] > T(60))){
-    if(radius_double<130.7 || radius_double> 1238.25){
-      projection[0] *= projection[2];
+    }else{
+      projection[0] *= projection[2]; 
       projection[1] *= projection[2];
       T dot_product = projection[0] * x_c + projection[1] * y_c;
       T alpha = dot_product /
               (projection[0] * projection[0] + projection[1] * projection[1]);
+
+      // Re-projection error.
+      // std::cout<<"sample_x[0]:"<<sample_x[0]<<std::endl;
       residuals[0] = alpha * projection[0] - x_c;
       residuals[1] = alpha * projection[1] - y_c;
-   }
+    }
+  // //  if(abs(residuals[0] > T(60)) || abs(residuals[1] > T(60))){
+  //   if(radius_double<130.7 || radius_double> 1238.25){
+  //     projection[0] *= projection[2];
+  //     projection[1] *= projection[2];
+  //     T dot_product = projection[0] * x_c + projection[1] * y_c;
+  //     T alpha = dot_product /
+  //             (projection[0] * projection[0] + projection[1] * projection[1]);
+  //     residuals[0] = alpha * projection[0] - x_c;
+  //     residuals[1] = alpha * projection[1] - y_c;
+  //  }
     // residuals[1] = projection[1] * camera_params[12] + camera_params[1];
 
     // residuals[0] -= T(observed_x_);

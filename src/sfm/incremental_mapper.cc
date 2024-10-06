@@ -582,21 +582,25 @@ bool IncrementalMapper::RegisterNextImage(const Options& options,
 
   if (!options.abs_pose_refine_extra_params) {
     abs_pose_refinement_options.refine_extra_params = false;
-  }
 
+  }
   size_t num_inliers;
   std::vector<char> inlier_mask;
   bool optimize_tz = true;
 
   // check the number of registered images for each camera in num_reg_images_per_camera_;
-  for (image_t img_id : reconstruction_->RegImageIds()) {
-    camera_t cam_id = reconstruction_->Image(img_id).CameraId();
+  for (image_t img_id_this : reconstruction_->RegImageIds()) {
+    camera_t cam_id = reconstruction_->Image(img_id_this).CameraId();
     // min_num_reg_images related
     if(num_reg_images_per_camera_[cam_id] <21) {
       optimize_tz = false;
       break;
     }
   }
+  if(num_reg_images_per_camera_[camera.CameraId()] <21) {
+    optimize_tz = false;
+  }
+  
   if (!EstimateAbsolutePose(abs_pose_options, tri_points2D, tri_points3D,
                             &image.Qvec(), &image.Tvec(), &camera, &num_inliers,  //qvev: quaternion vector for rotation, tvec: translation vector
                             &inlier_mask)) {
@@ -662,7 +666,17 @@ size_t IncrementalMapper::TriangulateImage(
   std::cout <<"image_id after iterating: " << image_id << std::endl;
   size_t num_registrations = reconstruction_->NumRegImages();
   std::cout << "num_registrations: " << num_registrations << std::endl;
-  bool standard_triangulation = (num_registrations >= tri_options.min_num_reg_images);
+  // min_num_reg_images related
+  // check the number of registered images for each camera in num_reg_images_per_camera_;
+  bool standard_triangulation = true;
+  for (image_t img_id_this : reconstruction_->RegImageIds()) {
+    camera_t cam_id = reconstruction_->Image(img_id_this).CameraId();
+    // min_num_reg_images related
+    if(num_reg_images_per_camera_[cam_id] <tri_options.min_num_reg_images) {
+      standard_triangulation = false;
+    }
+  }
+  
   std::cout << "Standard_Triangulation:" <<standard_triangulation<< std::endl;
   // bool standard_triangulation = (num_images_having_point3D >= tri_options.min_num_reg_images);
   // standard_triangulation = false;

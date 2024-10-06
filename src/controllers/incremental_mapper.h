@@ -84,7 +84,7 @@ struct IncrementalMapperOptions {
 
   // Which intrinsic parameters to optimize during the reconstruction.
   bool ba_refine_focal_length = true;
-  bool ba_refine_principal_point = false;
+  bool ba_refine_principal_point = true;
   bool ba_refine_extra_params = false;
 
   // The minimum number of residuals per bundle adjustment problem to

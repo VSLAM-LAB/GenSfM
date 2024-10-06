@@ -340,9 +340,40 @@ void Reconstruction::Normalize(const double extent, const double p0,
   }
   // check the number of images
   // min_num_reg_images related
-  if(reg_image_ids_.size() < 20){
-  NormalizeRadialCameras();
+  std::vector<std::pair<camera_t,size_t>> registered_num_images_per_camera= {};
+  bool normalize_radial = false;
+  size_t num_reg_images = 0;
+  // populate the number of registered images for each camera
+  for (const image_t img_id : reg_image_ids_) {
+    if (ExistsImage(img_id)) {
+      num_reg_images++;
+      bool found = false;
+      for (auto& pair : registered_num_images_per_camera) {
+        if (Image(img_id).CameraId() == pair.first) {
+          pair.second++;
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        registered_num_images_per_camera.push_back(std::make_pair(Image(img_id).CameraId(), 1));
+      }
+    }
+    
+  
+  
   }
+  // check if one of the cameras has only registered number of images <= 20
+  for (auto& pair : registered_num_images_per_camera) {
+    // related to min_num_reg_images
+    if (pair.second <= 20) {
+      normalize_radial = true;
+      break;
+    }
+  }
+  if(normalize_radial) {
+    NormalizeRadialCameras();
+  } 
 
   EIGEN_STL_UMAP(class Image*, Eigen::Vector3d) proj_centers;
 
