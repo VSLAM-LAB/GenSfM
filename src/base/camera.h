@@ -166,7 +166,7 @@ class Camera {
 
   inline void FitPIeceWiseSpline_binary(std::vector<double>& radii, std::vector<double>& focal_lengths) const;
   inline void FitSpline(std::vector<double>& radii,  std::vector<double>& focal_lengths) const ;
-  inline void FitSpline_theta_r(std::vector<double>& radii,  std::vector<double>& focal_lengths, std::vector<double> & principle_point) const;
+  inline void FitSpline_theta_r(std::vector<double>& radii,  std::vector<double>& focal_lengths, std::vector<double> & principle_point) ;
   inline void FitPieceWiseSpline(std::vector<double>& radii,  std::vector<double>& focal_lengths) const ;
   inline void FitGridSpline(std::vector<double>& radii, std::vector<double>& focal_lengths) const;
   inline double EvalFocalLength(double radius) const;
@@ -354,12 +354,12 @@ inline void Camera::FitSpline(std::vector<double>& radii, std::vector<double>& f
     for(int i = 0; i < degree; i++) {
       updated_params.push_back(used_y[i]);
     }
-    updated_params_ = updated_params;
+    // updated_params_ = updated_params;
     // SetParams(updated_params);
   }
 }
 
-inline void Camera::FitSpline_theta_r(std::vector<double>& radii, std::vector<double>& focal_lengths, std::vector<double> & principle_point) const{
+inline void Camera::FitSpline_theta_r(std::vector<double>& radii, std::vector<double>& focal_lengths, std::vector<double> & principle_point) {
   // Convert std::vector to Eigen vectors
   assert(radii.size() == focal_lengths.size());
 
@@ -389,7 +389,7 @@ inline void Camera::FitSpline_theta_r(std::vector<double>& radii, std::vector<do
   std::uniform_int_distribution<> dis(0, new_radii.size() - 1);
   tk::spline best_spline;
   const int max_iterations = 80;
-  const double threshold = 10.0;
+  const double threshold =5.0;
   int degree = 10;
   std::vector<int> indices ={};
   for (int i = 0; i < max_iterations; ++i){
@@ -465,7 +465,8 @@ inline void Camera::FitSpline_theta_r(std::vector<double>& radii, std::vector<do
       updated_params.push_back(used_y[i]);
     }
     updated_params_ = updated_params;
-    // SetParams(updated_params);
+    params_ = updated_params_;
+    SetParams(updated_params);
   }
 }
 inline void Camera::recursiveSplit(const std::vector<double>& radii, const std::vector<double>& focal_lengths,

@@ -43,6 +43,8 @@
 #include "util/misc.h"
 #include "util/threading.h"
 #include "util/timer.h"
+#include "estimators/implicit_camera_pose.h"
+#include "estimators/radial_absolute_pose.h"
 
 namespace colmap {
 
@@ -310,7 +312,7 @@ bool BundleAdjuster::Solve(Reconstruction* reconstruction, bool initial) {
 
   std::string solver_error;
   CHECK(solver_options.IsValid(&solver_error)) << solver_error;
-
+  solver_options.minimizer_progress_to_stdout = false;  
   ceres::Solve(solver_options, problem_.get(), &summary_);
 
   if (solver_options.minimizer_progress_to_stdout) {
@@ -359,6 +361,10 @@ void BundleAdjuster::AddImageToProblem(const image_t image_id,
                                        ceres::LossFunction* loss_function, bool initial) {
   Image& image = reconstruction->Image(image_id);
   Camera& camera = reconstruction->Camera(image.CameraId());
+  
+
+  
+  
   // check the number of registered images for the camera
   size_t num_reg_images = 0;
   std::vector<std::pair<camera_t,size_t>> registered_num_images_per_camera;
@@ -393,6 +399,77 @@ void BundleAdjuster::AddImageToProblem(const image_t image_id,
 
   // CostFunction assumes unit quaternions.
   image.NormalizeQvec();
+
+
+
+  // check if all the points of the current image are radial points
+  bool using_radial1d_reserve = using_radial1d;
+  std::vector<double> sample_x = {};
+  std::vector<double> sample_y = {};
+  for (int i = 2; i < 12; i++) {
+    sample_x.push_back(camera.Params()[i]);
+  }
+  for (int i = 12; i < 22; i++) {
+    sample_y.push_back(camera.Params()[i]);
+  }
+  tk::spline spline_focal_lengths;
+  spline_focal_lengths.set_points(sample_x, sample_y);
+  size_t num_3d_points = image.NumPoints3D();
+  size_t num_radial_points = 0;
+  std::vector<Eigen::Vector2d> points2D;
+  std::vector<Eigen::Vector3d> points3D;
+  points2D.reserve(num_3d_points);
+  points3D.reserve(num_3d_points);
+  for (const Point2D& point2D : image.Points2D()) {
+    if (point2D.HasPoint3D()) {
+      Point3D& point3D = reconstruction->Point3D(point2D.Point3DId());
+      points3D.push_back(point3D.XYZ());
+      points2D.push_back(camera.ImageToWorld(point2D.XY()));
+      // rotate 3D point from unit quaternion
+      Eigen::Quaterniond q(image.Qvec(0), image.Qvec(1), image.Qvec(2), image.Qvec(3));
+      Eigen::Vector3d t(image.Tvec(0), image.Tvec(1), image.Tvec(2));
+      Eigen::Vector3d projection = q * point3D.XYZ();
+      projection[0] += t[0];
+      projection[1] += t[1];
+      projection[2] += t[2];
+
+      projection[0] /= projection[2];
+      projection[1] /= projection[2];
+      double rho = sqrt(projection[0]*projection[2] * projection[0]*projection[2] + projection[1] *projection[2]* projection[1]*projection[2]);
+      double theta = atan2(rho, projection[2]);
+      double r_calculated = spline_focal_lengths(theta);
+      double focal_length = r_calculated/tan(theta);  
+      if((projection[0]*focal_length + camera.Params()[0] <= 0)||(projection[0]*focal_length + camera.Params()[0] >= sqrt(camera.Params()[0]*camera.Params()[0] + camera.Params()[1]*camera.Params()[1]))){
+        num_radial_points++;
+      }
+    }
+  }
+  std::cout<<"num_3d_points: "<<num_3d_points<<std::endl;
+  std::cout<<"num_radial_points: "<<num_radial_points<<std::endl;
+    // if((num_3d_points <= 0.2 * reconstruction->NumPoints3D()/reconstruction->NumImages() )){
+  // if((((num_3d_points - num_radial_points) / (num_3d_points +1)< 0.3)) || (num_3d_points <= 0.2 * reconstruction->NumPoints3D()/reconstruction->NumImages() )){
+  //   // if((num_3d_points - num_radial_points) / (num_3d_points +1)< 0.3){
+  //   image.SetUseRadial(true);
+  //   using_radial1d = true;
+  //   Eigen::Vector2d principal_point(camera.Params()[0], camera.Params()[1]);
+  //   Eigen::Matrix3x4d proj_matrix = image.ProjectionMatrix();
+  //   bool negative_focal = false;
+  //   double tz = EstimateRadialCameraForwardOffset(proj_matrix, points2D, points3D, &negative_focal);
+  //   Eigen::Vector3d tvec = proj_matrix.col(3);
+  //   tvec(2) = tz;
+  //   image.SetTvec(tvec);
+    
+  //   // if(points3D.size() > 30){
+  //   //   CameraPose implicit_pose = EstimateCameraForwardOffsetImplictDistortion(proj_matrix, points2D, points3D, principal_point);
+  //   //   // image.SetQvec(implicit_pose.q_vec);
+  //   //   image.SetTvec(implicit_pose.t);
+  //   // }
+  // }
+  // if(camera.GetRawRadii().size() == 0){
+  //   using_radial1d = using_radial1d_reserve;
+  // } 
+
+
 
   double* qvec_data = image.Qvec().data();
   double* tvec_data = image.Tvec().data();
@@ -462,6 +539,7 @@ void BundleAdjuster::AddImageToProblem(const image_t image_id,
 
   if (num_observations > 0) {
     camera_ids_.insert(image.CameraId());
+    std::cout << "num_observations: " << num_observations << std::endl;
 
     // Set pose parameterization.
     if (!constant_pose) {
@@ -527,6 +605,7 @@ void BundleAdjuster::AddPointToProblem(const point3D_t point3D_id,
       break;
     }
   }
+  bool using_radial1d_reserve = using_radial1d;
 
   // Is 3D point already fully contained in the problem? I.e. its entire track
   // is contained in `variable_image_ids`, `constant_image_ids`,
@@ -534,7 +613,7 @@ void BundleAdjuster::AddPointToProblem(const point3D_t point3D_id,
   if (point3D_num_observations_[point3D_id] == point3D.Track().Length()) {
     return;
   }
-
+  
   for (const auto& track_el : point3D.Track().Elements()) {
     // Skip observations that were already added in `FillImages`.
     if (config_.HasImage(track_el.image_id)) {
@@ -546,14 +625,31 @@ void BundleAdjuster::AddPointToProblem(const point3D_t point3D_id,
     Image& image = reconstruction->Image(track_el.image_id);
     Camera& camera = reconstruction->Camera(image.CameraId());
     const Point2D& point2D = image.Point2D(track_el.point2D_idx);
+    // if (image.NumPoints3D() <= 0.2 * reconstruction->NumPoints3D()/reconstruction->NumImages() ){
+    //   using_radial1d = true;
+    // }
 
-    // We do not want to refine the camera of images that are not
-    // part of `constant_image_ids_`, `constant_image_ids_`,
-    // `constant_x_image_ids_`.
+    
+
+    // // We do not want to refine the camera of images that are not
+    // // part of `constant_image_ids_`, `constant_image_ids_`,
+    // // `constant_x_image_ids_`.
     if (camera_ids_.count(image.CameraId()) == 0) {
       camera_ids_.insert(image.CameraId());
       config_.SetConstantCamera(image.CameraId());
     }
+    // size_t num_radial_points = 0;
+    // tk::spline spline_focal_lengths;
+    // std::vector<double> sample_x = {};
+    // std::vector<double> sample_y = {};
+    // for (int i = 2; i < 12; i++) {
+    //   sample_x.push_back(camera.Params()[i]);
+    // }
+    // for (int i = 12; i < 22; i++) {
+    //   sample_y.push_back(camera.Params()[i]);
+    // }
+    // Eigen::Quaterniond q(image.Qvec(0), image.Qvec(1), image.Qvec(2), image.Qvec(3));
+    // Eigen::Vector3d t(image.Tvec(0), image.Tvec(1), image.Tvec(2));
 
     ceres::CostFunction* cost_function = nullptr;
     if(using_radial1d){
@@ -580,10 +676,15 @@ void BundleAdjuster::ParameterizeCameras(Reconstruction* reconstruction) {
   const bool constant_camera = !options_.refine_focal_length &&
                                !options_.refine_principal_point &&
                                !options_.refine_extra_params;
+  std::cout<<"constant_camera: "<<constant_camera<<std::endl;
+  std::cout<<"size of camera_ids_: "<<camera_ids_.size()<<std::endl;  
+  std::cout << "options_.refine_extra_params: " << options_.refine_extra_params << std::endl;
   for (const camera_t camera_id : camera_ids_) {
     Camera& camera = reconstruction->Camera(camera_id);
+    std::cout << "ExtraParamsIdxs: " << camera.ExtraParamsIdxs().size() << std::endl;
 
     if (constant_camera || config_.IsConstantCamera(camera_id)) {
+      std::cout<<"config_IsConstantCamera(camera_id)"<<config_.IsConstantCamera(camera_id)<<std::endl;
       problem_->SetParameterBlockConstant(camera.ParamsData());
       continue;
     } else {
@@ -604,6 +705,8 @@ void BundleAdjuster::ParameterizeCameras(Reconstruction* reconstruction) {
         const_camera_params.insert(const_camera_params.end(),
                                    params_idxs.begin(), params_idxs.end());
       }
+      std::cout<<"const_camera_params.size(): "<<const_camera_params.size()<<std::endl;
+      std::cout<<"camera.NumParams(): "<<camera.NumParams()<<std::endl;
 
       if (const_camera_params.size() == camera.NumParams()) {
         problem_->SetParameterBlockConstant(camera.ParamsData());
@@ -952,7 +1055,7 @@ bool RigBundleAdjuster::Solve(Reconstruction* reconstruction,
 
   std::string solver_error;
   CHECK(solver_options.IsValid(&solver_error)) << solver_error;
-
+  solver_options.minimizer_progress_to_stdout = false;
   ceres::Solve(solver_options, problem_.get(), &summary_);
 
   if (solver_options.minimizer_progress_to_stdout) {

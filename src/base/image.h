@@ -67,6 +67,9 @@ class Image {
   // and after being used in reconstruction.
   void SetUp(const Camera& camera);
   void TearDown();
+  mutable bool use_radial_ = false;
+  inline bool UseRadial() const;
+  inline void SetUseRadial(const bool use_radial_);
 
   // Access the unique identifier of the image.
   inline image_t ImageId() const;
@@ -309,7 +312,8 @@ void Image::SetRegistered(const bool registered) { registered_ = registered; }
 point2D_t Image::NumPoints2D() const {
   return static_cast<point2D_t>(points2D_.size());
 }
-
+inline bool Image::UseRadial() const { return use_radial_; }
+inline void Image::SetUseRadial(const bool use_radial) { use_radial_ = use_radial; }
 point2D_t Image::NumPoints3D() const { return num_points3D_; }
 
 point2D_t Image::NumObservations() const { return num_observations_; }

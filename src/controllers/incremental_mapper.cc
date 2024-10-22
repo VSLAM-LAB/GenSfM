@@ -57,6 +57,7 @@ void AdjustGlobalBundle(const IncrementalMapperOptions& options,
   const size_t num_reg_images = mapper->GetReconstruction().NumRegImages();
   // min_num_reg_images related
   // custom_ba_options.refine_extra_params = (num_reg_images > 20); 
+  // options.Mapper().ba_refine_extra_params = (num_reg_images > 20);
 
   // Use stricter convergence criteria for first registered images.
   const size_t kMinNumRegImagesForFastBA = 10;
@@ -88,6 +89,7 @@ void IterativeLocalRefinement(const IncrementalMapperOptions& options,
   size_t num_reg_images = mapper->GetReconstruction().NumRegImages();
   // min_num_reg_images related
   // ba_options.refine_extra_params = (num_reg_images > 20); 
+  // options.Mapper().ba_refine_extra_params = (num_reg_images > 20);
   for (int i = 0; i < options.ba_local_max_refinements; ++i) {
     const auto report = mapper->AdjustLocalBundle(
         options.Mapper(), ba_options, options.Triangulation(), image_id,
@@ -225,6 +227,7 @@ void IterativeGlobalRefinement(const IncrementalMapperOptions& options,
   CompleteAndMergeTracks(options, mapper);
   std::cout << "  => Retriangulated observations: "
             << mapper->Retriangulate(options.Triangulation()) << std::endl;
+  // FilterImages(options, mapper);
 
   for (int i = 0; i < options.ba_global_max_refinements; ++i) {
     const size_t num_observations =
@@ -367,7 +370,7 @@ BundleAdjustmentOptions IncrementalMapperOptions::GlobalBundleAdjustment()
   options.solver_options.parameter_tolerance = 0.0;
   options.solver_options.max_num_iterations = ba_global_max_num_iterations;
   options.solver_options.max_linear_solver_iterations = 100;
-  options.solver_options.minimizer_progress_to_stdout = true;
+  options.solver_options.minimizer_progress_to_stdout = false;
   options.solver_options.num_threads = num_threads;
 #if CERES_VERSION_MAJOR < 2
   options.solver_options.num_linear_solver_threads = num_threads;
@@ -639,7 +642,9 @@ void IncrementalMapperController::Reconstruct(
           // update camera params
           for (const image_t img_id : reconstruction.RegImageIds()) {
                 Camera& camera = reconstruction.Camera(reconstruction.Image(img_id).CameraId());
+                std::cout<<"------- camera.Params(): -------"<< camera.Params()[3]<<std::endl;
                 camera.UpdateParams();
+                std::cout<<"------- camera.Params() after updating: -------"<< camera.Params()[3]<<std::endl;
               //   // std::cout<<"------- camera.Params(): -------"<< camera.Params()[2]<<std::endl;
               }
 
@@ -702,6 +707,11 @@ void IncrementalMapperController::Reconstruct(
 
           break;
         } else {
+          // for (const image_t img_id : reconstruction.RegImageIds()) {
+          //       Camera& camera = reconstruction.Camera(reconstruction.Image(img_id).CameraId());
+          //       camera.UpdateParams();
+          //     //   // std::cout<<"------- camera.Params(): -------"<< camera.Params()[2]<<std::endl;
+          //     }
           std::cout << "  => Could not register, trying another image."
                     << std::endl;
 

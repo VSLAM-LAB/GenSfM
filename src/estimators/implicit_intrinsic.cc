@@ -312,7 +312,7 @@ IntrinsicCalib calibrate_multi(const std::vector<std::vector<Eigen::Vector2d>> &
         double rms_tan = compute_tangential_error(points2D, points3D_cam, poses, calib.pp, fvec, threshold);
 
         double res = std::abs(rms_rad - rms_tan);
-        std::cout << "iter=" << iter << ", mu = " << mu << ", rms_rad=" << rms_rad << ", rms_tan=" << rms_tan << ", res=" << res <<  "\n";
+        // std::cout << "iter=" << iter << ", mu = " << mu << ", rms_rad=" << rms_rad << ", rms_tan=" << rms_tan << ", res=" << res <<  "\n";
 
         if (res < best_score) {
             best_calib = calib;

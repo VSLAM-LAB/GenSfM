@@ -714,8 +714,8 @@ int RunImageFilterer(int argc, char** argv) {
 
   const size_t num_reg_images = reconstruction.NumRegImages();
 
-  // reconstruction.FilterImages(min_focal_length_ratio, max_focal_length_ratio,
-                              // max_extra_param);
+  reconstruction.FilterImages(min_focal_length_ratio, max_focal_length_ratio,
+                              max_extra_param);
 
   std::vector<image_t> filtered_image_ids;
   for (const auto& image : reconstruction.Images()) {

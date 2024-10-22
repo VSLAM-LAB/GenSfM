@@ -586,7 +586,7 @@ bool IncrementalMapper::RegisterNextImage(const Options& options,
   }
   size_t num_inliers;
   std::vector<char> inlier_mask;
-  bool optimize_tz = true;
+  bool optimize_tz = false;
 
   // check the number of registered images for each camera in num_reg_images_per_camera_;
   for (image_t img_id_this : reconstruction_->RegImageIds()) {
@@ -610,6 +610,10 @@ bool IncrementalMapper::RegisterNextImage(const Options& options,
   if (num_inliers < static_cast<size_t>(options.abs_pose_min_num_inliers)) {
     return false;
   }
+
+  // report the inlier ratio and the image_id to the file
+  std::ofstream file("/home/yihan/cvg/implicit_radial_sfm/inlier_ratio.txt", std::ios_base::app);
+  file << num_inliers << " " << tri_points2D.size() << " " << tri_points3D.size() << " " << image_id << std::endl;
 
   //////////////////////////////////////////////////////////////////////////////
   // Pose refinement
@@ -666,7 +670,7 @@ size_t IncrementalMapper::TriangulateImage(
   std::cout <<"image_id after iterating: " << image_id << std::endl;
   size_t num_registrations = reconstruction_->NumRegImages();
   std::cout << "num_registrations: " << num_registrations << std::endl;
-  // min_num_reg_images related
+  
   // check the number of registered images for each camera in num_reg_images_per_camera_;
   bool standard_triangulation = true;
   for (image_t img_id_this : reconstruction_->RegImageIds()) {
@@ -680,16 +684,17 @@ size_t IncrementalMapper::TriangulateImage(
   std::cout << "Standard_Triangulation:" <<standard_triangulation<< std::endl;
   // bool standard_triangulation = (num_images_having_point3D >= tri_options.min_num_reg_images);
   // standard_triangulation = false;
+  // standard_triangulation = true;
   Image &image = reconstruction_->Image(image_id);
   Camera &camera = reconstruction_->Camera(image.CameraId());
   // check how many registered images does the camera have
   // std::cout << "----------------- Camera " << camera.CameraId() << " has " << num_reg_images_per_camera_[camera.CameraId()] << " registered images ----------------------" << std::endl;
-  // if (num_reg_images_per_camera_[camera.CameraId()] >= tri_options.min_num_reg_images) {
-  //   standard_triangulation = true;
-  // } else {
-  //   standard_triangulation = false;
-  // }
-  // standard_triangulation = false;
+  if (num_reg_images_per_camera_[camera.CameraId()] >= tri_options.min_num_reg_images) {
+    standard_triangulation = true;
+  } else {
+    standard_triangulation = false;
+  }
+  // standard_triangulation = true;
 
   if(standard_triangulation) {
     // std::cout << "Standard Triangulation Condition meeted, with num_reg_images_per_camera " << num_reg_images_per_camera_[camera.CameraId()]<<" min_num_reg_images:"<< tri_options.min_num_reg_images<< std::endl;
@@ -884,6 +889,7 @@ bool IncrementalMapper::AdjustGlobalBundle(
 
   // Run bundle adjustment.
   BundleAdjuster bundle_adjuster(ba_options, ba_config);
+  std::cout << "Whether to refine extra params: " << ba_options.refine_extra_params << std::endl;
   if (!bundle_adjuster.Solve(reconstruction_, initial)) {
     return false;
   }

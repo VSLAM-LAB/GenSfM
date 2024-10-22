@@ -135,6 +135,7 @@ size_t IncrementalTriangulator::TriangulateImage(const Options& options,
       corrs_data.push_back(ref_corr_data);
       // if(standard_triangulation){
       //   num_tris += Create(options, corrs_data, initial, false);
+      // 
       // } 
       num_tris += Create(options, corrs_data, initial, standard_triangulation, update_calibration);
     } else {
@@ -532,7 +533,7 @@ size_t IncrementalTriangulator::Retriangulate(const Options& options) {
         // Do not use larger triangulation threshold as this causes
         // significant drift when creating points (options vs. re_options).
         // std::cout << "=============================Retriangulating===========================" << std::endl;
-        num_tris += Create(options, corrs_data, false, standard_triangulation);
+        num_tris += Create(options, corrs_data,  standard_triangulation, false);
       }
       // Else both points have a 3D point, but we do not want to
       // merge points in retriangulation.
@@ -1236,7 +1237,7 @@ size_t IncrementalTriangulator::Create(
     EstimateTriangulation(tri_options_full, point_data,pose_data, &inlier_mask_full,
                           &xyz_full, initial, standard_triangulation);
   }
-  // standard_triangulation = true;
+  standard_triangulation = true;
 
   // Add inliers to estimated track.
   int num_constraints = 0;

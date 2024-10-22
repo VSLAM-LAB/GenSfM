@@ -86,7 +86,7 @@ bool EstimateRadialAbsolutePose(const AbsolutePoseEstimationOptions& options,
   // CHECK_EQ(camera->ModelId(), Radial1DCameraModel::model_id);
   CHECK(camera->ModelId() == Radial1DCameraModel::model_id ||
       camera->ModelId() == ImplicitDistortionModel::model_id);
-
+  
   // Subtract principal point
   std::vector<Eigen::Vector2d> points2D_N(points2D.size());
   for (size_t i = 0; i < points2D.size(); ++i) {
@@ -103,6 +103,9 @@ bool EstimateRadialAbsolutePose(const AbsolutePoseEstimationOptions& options,
 
   *num_inliers = report.support.num_inliers;
   *inlier_mask = report.inlier_mask;
+  // output the inlier ratio to a file
+  // std::ofstream file("~/cvg/implicit_radial_sfm/inliers.txt", std::ios_base::app);
+  
 
   if (*num_inliers == 0) {
     return false;
@@ -131,6 +134,8 @@ bool EstimateRadialAbsolutePose(const AbsolutePoseEstimationOptions& options,
   // std::ofstream file("/home/ivonne/radialsfm/tz.txt", std::ios_base::app);
   // file << tz << std::endl;
   // file.close();
+  // print out the image id
+  
   
   //principal point
   Eigen::Vector2d pp = Eigen::Vector2d(camera->PrincipalPointX(), camera->PrincipalPointY());

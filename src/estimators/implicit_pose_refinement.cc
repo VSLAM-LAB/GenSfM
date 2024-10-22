@@ -90,7 +90,8 @@ std::vector<CameraPose> pose_refinement_multi(
     ceres::Solver::Options options;
     options.max_num_iterations = 100;
     options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
-    options.minimizer_progress_to_stdout = refinement_opt.verbose; // true if you want more debug output
+    // options.minimizer_progress_to_stdout = refinement_opt.verbose; // true if you want more debug output
+    options.minimizer_progress_to_stdout = false; // true if you want more debug output
     options.num_threads = 8;
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
@@ -179,7 +180,8 @@ void joint_pose_refinement_1D_radial(const std::vector<std::vector<Eigen::Vector
 
     ceres::Solver::Options options;
     options.linear_solver_type = ceres::SPARSE_SCHUR;
-    options.minimizer_progress_to_stdout = opt.verbose;
+    // options.minimizer_progress_to_stdout = opt.verbose;
+    options.minimizer_progress_to_stdout = false;
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
 

@@ -339,7 +339,7 @@ void Reconstruction::Normalize(const double extent, const double p0,
     return;
   }
   // check the number of images
-  // min_num_reg_images related
+
   std::vector<std::pair<camera_t,size_t>> registered_num_images_per_camera= {};
   bool normalize_radial = false;
   size_t num_reg_images = 0;
@@ -364,15 +364,19 @@ void Reconstruction::Normalize(const double extent, const double p0,
   
   }
   // check if one of the cameras has only registered number of images <= 20
-  for (auto& pair : registered_num_images_per_camera) {
-    // related to min_num_reg_images
-    if (pair.second <= 20) {
-      normalize_radial = true;
-      break;
-    }
+  // for (auto& pair : registered_num_images_per_camera) {
+  //   // related to min_num_reg_images
+  //   if (pair.second <= 20) {
+  //     normalize_radial = true;
+  //     break;
+  //   }
+  // }
+  if(num_reg_images<=20){
+    normalize_radial = true;
   }
+
   if(normalize_radial) {
-    NormalizeRadialCameras();
+  NormalizeRadialCameras();
   } 
 
   EIGEN_STL_UMAP(class Image*, Eigen::Vector3d) proj_centers;
@@ -467,6 +471,18 @@ void Reconstruction::NormalizeRadialCameras() {
       all_radial = false;
       continue;
     }
+    // check the registered images for this camera
+    size_t num_registerd_images = 0;
+    for (const image_t img_id : reg_image_ids_) {
+      if (Image(img_id).CameraId() == camera.CameraId()) {
+        num_registerd_images++;
+      }
+    }
+    // min_num_reg_images related
+    // if((num_registerd_images > 20)&&!image.second.UseRadial()){
+      
+    //   continue;
+    // }
 
     std::vector<Eigen::Vector2d> points2D;
     std::vector<Eigen::Vector3d> points3D;
@@ -521,6 +537,7 @@ void Reconstruction::NormalizeRadialCameras() {
 
   // if we only have radial cameras and a majority have negative
   // psuedo-focal length, we flip the global z-axis
+  // if(NumRegImages()<20){
   if(all_radial && negative_focal_count > NumRegImages() / 2) {
     for(auto& image : images_) {
       Eigen::Matrix3d R = image.second.RotationMatrix();
@@ -536,6 +553,7 @@ void Reconstruction::NormalizeRadialCameras() {
       point.second.XYZ()(2) *= -1.0;
     }
   }
+  // }
   // estimate the forward translation using implicit distortion model
   for (auto& image : images_) {
     const class Camera& camera = Camera(image.second.CameraId());
@@ -543,6 +561,17 @@ void Reconstruction::NormalizeRadialCameras() {
       all_radial = false;
       continue;
     }
+    size_t num_registerd_images = 0;
+    for (const image_t img_id : reg_image_ids_) {
+      if (Image(img_id).CameraId() == camera.CameraId()) {
+        num_registerd_images++;
+      }
+    }
+    // min_num_reg_images related
+    // if((num_registerd_images > 20)&&!image.second.UseRadial()){
+      
+    //   continue;
+    // }
 
     std::vector<Eigen::Vector2d> points2D;
     std::vector<Eigen::Vector3d> points3D;
@@ -561,7 +590,7 @@ void Reconstruction::NormalizeRadialCameras() {
     Eigen::Vector2d pp = Eigen::Vector2d(camera.PrincipalPointX(), camera.PrincipalPointY());
     CameraPose implicit_pose ;
     bool used_implicit = false;
-    if(points2D.size() > 10){
+    if(points3D.size() > 20){
       implicit_pose =
     EstimateCameraForwardOffsetImplictDistortion(proj_matrix, points2D_original, 
                                                 points3D, pp);
@@ -1506,8 +1535,8 @@ size_t Reconstruction::FilterPoints3DWithSmallTriangulationAngle(
       const class Camera &camera1 = Camera(Image(image_id1).CameraId());
       // min_num_registered_images
       is_radial[i1] = (camera1.ModelId() == Radial1DCameraModel::model_id ||
-                       (camera1.ModelId() == ImplicitDistortionModel::model_id && num_registered_images<=20));
-                      //  camera1.ModelId() == ImplicitDistortionModel::model_id);
+                      //  (camera1.ModelId() == ImplicitDistortionModel::model_id && num_registered_images<=20));
+                       camera1.ModelId() == ImplicitDistortionModel::model_id);
                       // );
       
       Eigen::Vector3d proj_center1;

@@ -239,7 +239,10 @@ class BundleAdjustmentCostFunction<ImplicitDistortionModel> {
     projection[0] += tvec[0];
     projection[1] += tvec[1];
     projection[2] += tvec[2];
-
+    // insure that the projection[2] is not 0
+    // if(abs(projection[2])<T(0.0000001)){
+    //   projection[2] = T(0.0000001);
+    // }
     projection[0] /= projection[2]; 
     projection[1] /= projection[2]; 
 
@@ -280,6 +283,9 @@ class BundleAdjustmentCostFunction<ImplicitDistortionModel> {
 
     T rho = sqrt(projection[0]*projection[2]*projection[0]*projection[2] + projection[1]*projection[2]*projection[1]*projection[2]);
     T theta = ceres::atan2(rho, projection[2]);
+    // if (theta < T(0)) {
+    //   theta += T(2.0) * ceres::atan2(T(1), T(0));
+    // }
     
     // 
     // double focal_length = spline_focal_lengths(radius_double);
@@ -287,11 +293,14 @@ class BundleAdjustmentCostFunction<ImplicitDistortionModel> {
     double focal_length = r_calculated/tan(ExtractScalar(theta));
     // T focal_length_test = T(500);
     // check if the calculated radius is within the range of the image boundary
-    if(r_calculated>0 && r_calculated < ExtractScalar(sqrt(camera_params[0]*camera_params[0] + camera_params[1]*camera_params[1]))){
+    // if(r_calculated>0 && r_calculated < ExtractScalar(sqrt(camera_params[0]*camera_params[0] + camera_params[1]*camera_params[1]))){
+    // if((projection[0]*T(focal_length) + T(camera_params[0]))>T(0) && (projection[0]*T(focal_length) + T(camera_params[0]))<T(sqrt(camera_params[0]*camera_params[0] + camera_params[1]*camera_params[1]))){
+    if(r_calculated >= ExtractScalar(sample_y[0]) && r_calculated <= ExtractScalar(sample_y[sample_y.size()-1])){
     residuals[0] = projection[0] * T(focal_length) + T(camera_params[0]) - T(observed_x_);
     // residuals[0] = projection[0] * T(focal_length) * projection[2] + T(camera_params[0]);
     // residuals[0] = projection[0] * camera_params[12] + camera_params[0];
-    residuals[1] = projection[1] * T(focal_length) + T(camera_params[1]) - T(observed_y_);}
+    residuals[1] = projection[1] * T(focal_length) + T(camera_params[1]) - T(observed_y_);
+    }
     else{
       projection[0] *= projection[2]; 
       projection[1] *= projection[2];
@@ -301,8 +310,8 @@ class BundleAdjustmentCostFunction<ImplicitDistortionModel> {
 
       // Re-projection error.
       // std::cout<<"sample_x[0]:"<<sample_x[0]<<std::endl;
-      residuals[0] = alpha * projection[0] - x_c;
-      residuals[1] = alpha * projection[1] - y_c;
+      residuals[0] =alpha * projection[0] - x_c;
+      residuals[1] =alpha * projection[1] - y_c;
     }
     // if(abs(residuals[0] > T(60)) || abs(residuals[1] > T(60))){
   //    if(radius_double<130.7 || radius_double> 1238.25){
@@ -537,6 +546,9 @@ class BundleAdjustmentConstantPoseCostFunction<ImplicitDistortionModel> {
     projection[1] += T(ty_);
     projection[2] += T(tz_);
     // std::cout<<"tz_:"<<tz_<<std::endl;  
+    // if(abs(projection[2])<T(0.0000001)){
+    //   projection[2] = T(0.0000001);
+    // }
 
 
     // Project to image plane 
@@ -590,7 +602,9 @@ class BundleAdjustmentConstantPoseCostFunction<ImplicitDistortionModel> {
     // std::cout << "Focal length: " << focal_length << std::endl;
     // std::cout << "projection[0]: " << projection[0] << std::endl;
     // residuals[0] = projection[0] * focal_length + camera_params[0];
-    if(r_calculated>0 && r_calculated < ExtractScalar(sqrt(camera_params[0]*camera_params[0]+camera_params[1]*camera_params[1]))){
+    // if(r_calculated>0 && r_calculated < ExtractScalar(sqrt(camera_params[0]*camera_params[0]+camera_params[1]*camera_params[1]))){
+    // if((projection[0]*T(focal_length) + T(camera_params[0]))>T(0) && (projection[0]*T(focal_length) + T(camera_params[0]))<sqrt(camera_params[0]*camera_params[0] + camera_params[1]*camera_params[1])){
+     if(r_calculated >= ExtractScalar(sample_y[0]) && r_calculated <= ExtractScalar(sample_y[sample_y.size()-1])){
     residuals[0] = projection[0] * T(focal_length)  + camera_params[0] - T(observed_x_);
  
     // residuals[0] = projection[0] * camera_params[12] + camera_params[0];
@@ -647,7 +661,7 @@ class BundleAdjustmentConstantPoseCostFunction<ImplicitDistortionModel> {
     std::ofstream myfile(filename, std::ios_base::app);
     
   
-    myfile << radius_double << " " << focal_length << " " << ExtractScalar(residuals[0]) << " ";
+    myfile << ExtractScalar(theta) << " " << radius_double << " " << focal_length << " " << ExtractScalar(residuals[0]) << " " << ExtractScalar(projection[2]) << " " << ExtractScalar(camera_params[2]);
 
     // Write all elements of sample_x separated by spaces
     // std::copy(std::begin(sample_x), std::end(sample_x), std::ostream_iterator<double>(myfile, " "));
