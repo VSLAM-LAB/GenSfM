@@ -133,11 +133,41 @@ double CalculateSquaredReprojectionError(const Eigen::Vector2d& point2D,
 
     // check that we project onto the correct half-plane
     // if(fabs(dot_product) < std::numeric_limits<double>::epsilon()) {
+    // check if we have a focal length that can apply
+
+    // if (camera.GetRawRadii().empty()){
       if(dot_product < std::numeric_limits<double>::epsilon()) {
       // if(camera.ModelId() == Radial1DCameraModel::model_id){
         return std::numeric_limits<double>::max();
       // }
     }
+    // }else{
+    //   double rho = sqrt(proj_point3D[0]*proj_point3D[0]+proj_point3D[1]*proj_point3D[1]);
+    //   double theta = atan2(rho, proj_point3D[2]);
+    //   tk::spline theta_r ;
+    //   std::vector<double> sample_x = {};
+    //   std::vector<double> sample_y = {};
+    //   for (int i = 2; i < 12; i++){
+    //     sample_x.push_back(camera.Params()[i]);
+    //   }
+
+    //   for (int i = 12; i < 22; i++){
+    //     sample_y.push_back(camera.Params()[i]);
+    //   }
+    //   theta_r.set_points(sample_x, sample_y);
+    //   double r_calculated = theta_r(theta);
+    //   double focal_length = r_calculated / tan(theta);
+  
+    //   if(theta >= sample_x[0] && theta <= sample_x[sample_x.size()-1]){
+    //   if(dot_product/focal_length * abs(focal_length) < std::numeric_limits<double>::epsilon()){
+    //     return std::numeric_limits<double>::max();
+    //   }
+    //   }else{
+    //     if(dot_product < std::numeric_limits<double>::epsilon()){
+    //       return std::numeric_limits<double>::max();
+    //     }
+    //   }
+    // }
     proj_point2D = camera.WorldToImage(dot_product * n);
 
 
@@ -168,7 +198,8 @@ double CalculateSquaredReprojectionErrorFinal(const Eigen::Vector2d& point2D,
                                          const std::vector<double>& radii,
                                          const std::vector<double>& focal_lengths,
                                          const std::vector<double>& theta,
-                                         const Camera& camera) {                                         
+                                         const Camera& camera) {    
+  
   const Eigen::Vector3d proj_point3D =
       QuaternionRotatePoint(qvec, point3D) + tvec; //the 3D point in camera coordinate system
   
@@ -181,11 +212,38 @@ double CalculateSquaredReprojectionErrorFinal(const Eigen::Vector2d& point2D,
     const double dot_product = n.dot(point2D_center);
 
     // check that we project onto the correct half-plane
-    if(dot_product < std::numeric_limits<double>::epsilon()) {
-      // if(camera.ModelId() == Radial1DCameraModel::model_id ){
-      return std::numeric_limits<double>::max();
+    // if (camera.GetRawRadii().empty()){
+      if(dot_product < std::numeric_limits<double>::epsilon()) {
+      // if(camera.ModelId() == Radial1DCameraModel::model_id){
+        return std::numeric_limits<double>::max();
       // }
     }
+    // }else{
+    //   double rho = sqrt(proj_point3D[0]*proj_point3D[0]+proj_point3D[1]*proj_point3D[1]);
+    //   double theta = atan2(rho, proj_point3D[2]);
+    //   tk::spline theta_r ;
+    //   std::vector<double> sample_x = {};
+    //   std::vector<double> sample_y = {};
+    //   for (int i = 2; i < 12; i++){
+    //     sample_x.push_back(camera.Params()[i]);
+    //   }
+
+    //   for (int i = 12; i < 22; i++){
+    //     sample_y.push_back(camera.Params()[i]);
+    //   }
+    //   theta_r.set_points(sample_x, sample_y);
+    //   double r_calculated = theta_r(theta);
+    //   double focal_length = r_calculated / tan(theta);
+    //   if(theta >= sample_x[0] && theta <= sample_x[sample_x.size()-1]){
+    //   if(dot_product/focal_length < std::numeric_limits<double>::epsilon()){
+    //     return std::numeric_limits<double>::max();
+    //   }
+    //   }else{
+    //     if(dot_product < std::numeric_limits<double>::epsilon()){
+    //       return std::numeric_limits<double>::max();
+    //     }
+    //   }
+    // }
     proj_point2D = camera.WorldToImage(dot_product * n);
     // check if radii is not empty
     if(radii.size()>=4) {
@@ -313,7 +371,10 @@ double CalculateSquaredReprojectionErrorFinal(const Eigen::Vector2d& point2D,
 double CalculateSquaredReprojectionError(const Eigen::Vector2d& point2D,
                                          const Eigen::Vector3d& point3D,
                                          const Eigen::Matrix3x4d& proj_matrix,
-                                         const Camera& camera) {       
+                                         const Camera& camera) {   
+  Eigen::Matrix3d R = proj_matrix.leftCols<3>();
+  Eigen::Vector3d T = proj_matrix.rightCols<1>(); 
+  const Eigen::Vector3d proj_point3D = R*point3D + T;
 
   Eigen::Vector2d proj_point2D;
 
@@ -323,9 +384,38 @@ double CalculateSquaredReprojectionError(const Eigen::Vector2d& point2D,
     const double dot_product = n.dot(point2D_center);
 
     // check that we project onto the correct half-plane
-    if(dot_product < std::numeric_limits<double>::epsilon()) {
-    return std::numeric_limits<double>::max();
+    // if (camera.GetRawRadii().empty()){
+      if(dot_product < std::numeric_limits<double>::epsilon()) {
+      // if(camera.ModelId() == Radial1DCameraModel::model_id){
+        return std::numeric_limits<double>::max();
+      // }
     }
+    // }else{
+    //   double rho = sqrt(proj_point3D[0]*proj_point3D[0]+proj_point3D[1]*proj_point3D[1]);
+    //   double theta = atan2(rho, proj_point3D[2]);
+    //   tk::spline theta_r ;
+    //   std::vector<double> sample_x = {};
+    //   std::vector<double> sample_y = {};
+    //   for (int i = 2; i < 12; i++){
+    //     sample_x.push_back(camera.Params()[i]);
+    //   }
+
+    //   for (int i = 12; i < 22; i++){
+    //     sample_y.push_back(camera.Params()[i]);
+    //   }
+    //   theta_r.set_points(sample_x, sample_y);
+    //   double r_calculated = theta_r(theta);
+    //   double focal_length = r_calculated / tan(theta);
+    //   if(theta >= sample_x[0] && theta <= sample_x[sample_x.size()-1]){
+    //   if(dot_product/focal_length*abs(focal_length) < std::numeric_limits<double>::epsilon()){
+    //     return std::numeric_limits<double>::max();
+    //   }
+    //   }else{
+    //     if(dot_product < std::numeric_limits<double>::epsilon()){
+    //       return std::numeric_limits<double>::max();
+    //     }
+    //   }
+    // }
     proj_point2D = camera.WorldToImage(dot_product * n);
 
   } else {

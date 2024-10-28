@@ -440,8 +440,22 @@ size_t IncrementalTriangulator::Retriangulate(const Options& options) {
 
   size_t num_tris = 0;
   size_t num_registrations = reconstruction_->NumRegImages();
-  
+  // check the number of registered images per camera
+  std::map<camera_t, int> num_registrations_per_camera;
   bool standard_triangulation = (num_registrations >= options.min_num_reg_images);
+  for (const auto& image : reconstruction_->Images()) {
+    if (image.second.IsRegistered()) {
+      num_registrations_per_camera[image.second.CameraId()]++;
+    }
+  }
+  for (const auto& pair : num_registrations_per_camera) {
+    if (pair.second < options.min_num_reg_images) {
+      bool standard_triangulation = false;
+      break;
+    }
+  }
+  
+  
   // bool standard_triangulation = reconstruction_->NumPoints3D() == 0;
 
   ClearCaches();
@@ -533,7 +547,7 @@ size_t IncrementalTriangulator::Retriangulate(const Options& options) {
         // Do not use larger triangulation threshold as this causes
         // significant drift when creating points (options vs. re_options).
         // std::cout << "=============================Retriangulating===========================" << std::endl;
-        num_tris += Create(options, corrs_data,  standard_triangulation, false);
+        num_tris += Create(options, corrs_data, false, standard_triangulation, false);
       }
       // Else both points have a 3D point, but we do not want to
       // merge points in retriangulation.
@@ -1237,7 +1251,7 @@ size_t IncrementalTriangulator::Create(
     EstimateTriangulation(tri_options_full, point_data,pose_data, &inlier_mask_full,
                           &xyz_full, initial, standard_triangulation);
   }
-  standard_triangulation = true;
+  // standard_triangulation = true;
 
   // Add inliers to estimated track.
   int num_constraints = 0;

@@ -295,7 +295,7 @@ class BundleAdjustmentCostFunction<ImplicitDistortionModel> {
     // check if the calculated radius is within the range of the image boundary
     // if(r_calculated>0 && r_calculated < ExtractScalar(sqrt(camera_params[0]*camera_params[0] + camera_params[1]*camera_params[1]))){
     // if((projection[0]*T(focal_length) + T(camera_params[0]))>T(0) && (projection[0]*T(focal_length) + T(camera_params[0]))<T(sqrt(camera_params[0]*camera_params[0] + camera_params[1]*camera_params[1]))){
-    if(r_calculated >= ExtractScalar(sample_y[0]) && r_calculated <= ExtractScalar(sample_y[sample_y.size()-1])){
+    if(theta >= ExtractScalar(sample_x[0]) && theta <= ExtractScalar(sample_x[sample_x.size()-1])){
     residuals[0] = projection[0] * T(focal_length) + T(camera_params[0]) - T(observed_x_);
     // residuals[0] = projection[0] * T(focal_length) * projection[2] + T(camera_params[0]);
     // residuals[0] = projection[0] * camera_params[12] + camera_params[0];
@@ -604,7 +604,7 @@ class BundleAdjustmentConstantPoseCostFunction<ImplicitDistortionModel> {
     // residuals[0] = projection[0] * focal_length + camera_params[0];
     // if(r_calculated>0 && r_calculated < ExtractScalar(sqrt(camera_params[0]*camera_params[0]+camera_params[1]*camera_params[1]))){
     // if((projection[0]*T(focal_length) + T(camera_params[0]))>T(0) && (projection[0]*T(focal_length) + T(camera_params[0]))<sqrt(camera_params[0]*camera_params[0] + camera_params[1]*camera_params[1])){
-     if(r_calculated >= ExtractScalar(sample_y[0]) && r_calculated <= ExtractScalar(sample_y[sample_y.size()-1])){
+     if(theta >= ExtractScalar(sample_x[0]) && theta <= ExtractScalar(sample_x[sample_x.size()-1])){
     residuals[0] = projection[0] * T(focal_length)  + camera_params[0] - T(observed_x_);
  
     // residuals[0] = projection[0] * camera_params[12] + camera_params[0];

@@ -391,7 +391,7 @@ void BundleAdjuster::AddImageToProblem(const image_t image_id,
   // check if one of the cameras has only registered number of images <= 20
   for (auto& pair : registered_num_images_per_camera) {
     // related to min_num_reg_images
-    if (pair.second <= 20) {
+    if (pair.second <= 16) {
       using_radial1d = true;
       break;
     }
@@ -600,7 +600,7 @@ void BundleAdjuster::AddPointToProblem(const point3D_t point3D_id,
   }
   for (auto& pair : registered_num_images_per_camera) {
     // related to min_num_reg_images
-    if (pair.second <= 20) {
+    if (pair.second <= 16) {
       using_radial1d = true;
       break;
     }

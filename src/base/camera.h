@@ -48,6 +48,54 @@ namespace colmap {
 // between multiple images, e.g., if the same "physical" camera took multiple
 // pictures with the exact same lens and intrinsics (focal length, etc.).
 // This class has a specific distortion model defined by a camera model class.
+
+tk::spline ransac_spline(int max_iteration, int degree, double threshold, std::vector<double>radii, std::vector<double>focal_lengths){
+  int best_inliers_count = 0;
+  std::vector<double> best_coeffs;
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_int_distribution<> dis(0, radii.size() - 1);
+  tk::spline best_spline;
+  std::vector<int> indices;
+  for (int i = 0; i < max_iteration; ++i){
+    std::vector<std::pair<double, double>> samples;
+    indices.clear();
+    indices.push_back(0);
+    indices.push_back(radii.size()-1);
+    for (int j = 0; j < (degree -2); ++j) {
+      int idx = dis(gen);
+    //   ensure that the samples are unique
+        while(std::find(indices.begin(), indices.end(), idx) != indices.end()){
+            idx = dis(gen);
+        }
+        indices.push_back(idx);
+      // samples.emplace_back(radii[idx], focal_lengths[idx]);
+    }
+    for (int j = 0; j < indices.size(); j++) {
+      samples.emplace_back(radii[indices[j]], focal_lengths[indices[j]]);
+    }
+    std::sort(samples.begin(), samples.end());
+    std::vector<double> sample_x, sample_y;
+        for (const auto& pair : samples) {
+            sample_x.push_back(pair.first);
+            sample_y.push_back(pair.second);
+        }
+    tk::spline s;
+    s.set_points(sample_x, sample_y);
+    int inliers_count = 0;
+    for (size_t j = 0; j < radii.size(); ++j) {
+        double y_est = s(radii[j]);
+        if (fabs(y_est - focal_lengths[j]) < threshold) {
+            ++inliers_count;
+        }
+    }
+    if (inliers_count >= best_inliers_count) {
+            best_inliers_count = inliers_count;
+            best_spline = s;
+        }
+  }
+  return best_spline;
+}
 class Camera {
  public:
   Camera();
@@ -164,7 +212,7 @@ class Camera {
                         std::vector<std::vector<double>>& focal_lengths_segments, 
                         double threshold = 0.05, double stddev_threshold = 0.01) const;
 
-  inline void FitPIeceWiseSpline_binary(std::vector<double>& radii, std::vector<double>& focal_lengths) const;
+  inline void FitPIeceWiseSpline_binary(std::vector<double>& radii, std::vector<double>& focal_lengths, std::vector<double>& principal_point) ;
   inline void FitSpline(std::vector<double>& radii,  std::vector<double>& focal_lengths) const ;
   inline void FitSpline_theta_r(std::vector<double>& radii,  std::vector<double>& focal_lengths, std::vector<double> & principle_point) ;
   inline void FitPieceWiseSpline(std::vector<double>& radii,  std::vector<double>& focal_lengths) const ;
@@ -1032,7 +1080,7 @@ inline double Camera::EvalGridFocalLength(double radius) const{
   }
 }
 
-inline void Camera::FitPIeceWiseSpline_binary(std::vector<double>& radii, std::vector<double>& focal_lengths) const{
+inline void Camera::FitPIeceWiseSpline_binary(std::vector<double>& radii, std::vector<double>& focal_lengths, std::vector<double>& principal_point) {
   assert(radii.size() == focal_lengths.size());
   // Ensure that the radii are sorted in ascending order
   std::vector<int> increasing_indices;
@@ -1063,8 +1111,8 @@ inline void Camera::FitPIeceWiseSpline_binary(std::vector<double>& radii, std::v
   std_interval = sqrt(std_interval/intervals.size());
   std::vector<std::vector<double>> radii_segments = {};
   std::vector<std::vector<double>> focal_lengths_segments = {};
-  double threshold = mean_interval + 0.3*std_interval;
-  double std_threshold = 0.5*std_interval;
+  double threshold = mean_interval + 0.1*std_interval;
+  double std_threshold = 0.3*std_interval;
   recursiveSplit(new_radii, new_focal_lengths, radii_segments, focal_lengths_segments, threshold, std_threshold);
   std::cout << "----------radii_segments size: " << radii_segments.size() << std::endl;
   for(int i = 0; i < radii_segments.size(); i++){
@@ -1084,6 +1132,32 @@ inline void Camera::FitPIeceWiseSpline_binary(std::vector<double>& radii, std::v
   std::cout << "longest_segment_size: " << longest_segment_size << std::endl; 
   std::cout << "longest_segment_begin: " << radii_segments[longest_segment].front() << std::endl;
   std::cout << "longest_segment_end: " << radii_segments[longest_segment].back() << std::endl;
+  std::vector<double> calibrated_range = {focal_lengths_segments[longest_segment].front(), focal_lengths_segments[longest_segment].back()};
+  std::vector<double> radii_calibrated = radii_segments[longest_segment];
+  std::vector<double> focal_lengths_calibrated = focal_lengths_segments[longest_segment];
+  int max_it = 80;
+  int degree = 10;
+  double threshold_ransac = 5.0;
+  tk::spline best_spline = ransac_spline(max_it, degree, threshold_ransac, radii_calibrated, focal_lengths_calibrated);
+  std::vector<double> used_x;
+  std::vector<double> used_y;
+  if (ModelId()==ImplicitDistortionModel::model_id) {
+    used_x = best_spline.get_x();
+    used_y = best_spline.get_y();
+    std::vector<double> updated_params;
+    updated_params.push_back(principal_point[0]);
+    updated_params.push_back(principal_point[1]);
+    for (int i = 0; i < degree; i++) {
+      updated_params.push_back(used_x[i]);
+    }
+    for(int i = 0; i < degree; i++) {
+      updated_params.push_back(used_y[i]);
+    }
+    updated_params_ = updated_params;
+    params_ = updated_params_;
+    SetParams(updated_params);
+  }
+
 
 }
 

@@ -333,7 +333,7 @@ IncrementalTriangulator::Options IncrementalMapperOptions::Triangulation()
   options.max_focal_length_ratio = max_focal_length_ratio;
   options.max_extra_param = max_extra_param;
   // related to min_num_reg_images
-  options.min_num_reg_images = 20;
+  options.min_num_reg_images = 16;
   return options;
 }
 

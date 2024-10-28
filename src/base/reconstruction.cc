@@ -364,16 +364,16 @@ void Reconstruction::Normalize(const double extent, const double p0,
   
   }
   // check if one of the cameras has only registered number of images <= 20
-  // for (auto& pair : registered_num_images_per_camera) {
-  //   // related to min_num_reg_images
-  //   if (pair.second <= 20) {
-  //     normalize_radial = true;
-  //     break;
-  //   }
-  // }
-  if(num_reg_images<=20){
-    normalize_radial = true;
+  for (auto& pair : registered_num_images_per_camera) {
+    // related to min_num_reg_images
+    if (pair.second <= 16) {
+      normalize_radial = true;
+      break;
+    }
   }
+  // if(num_reg_images<=20){
+  //   normalize_radial = true;
+  // }
 
   if(normalize_radial) {
   NormalizeRadialCameras();
@@ -479,8 +479,8 @@ void Reconstruction::NormalizeRadialCameras() {
       }
     }
     // min_num_reg_images related
-    // if((num_registerd_images > 20)&&!image.second.UseRadial()){
-      
+    // // if((num_registerd_images > 20)&&!image.second.UseRadial()){
+    // if(num_registerd_images >= 20){
     //   continue;
     // }
 
@@ -537,7 +537,8 @@ void Reconstruction::NormalizeRadialCameras() {
 
   // if we only have radial cameras and a majority have negative
   // psuedo-focal length, we flip the global z-axis
-  // if(NumRegImages()<20){
+  // min_num_reg_images related
+  if(NumRegImages()<16){
   if(all_radial && negative_focal_count > NumRegImages() / 2) {
     for(auto& image : images_) {
       Eigen::Matrix3d R = image.second.RotationMatrix();
@@ -553,7 +554,7 @@ void Reconstruction::NormalizeRadialCameras() {
       point.second.XYZ()(2) *= -1.0;
     }
   }
-  // }
+  }
   // estimate the forward translation using implicit distortion model
   for (auto& image : images_) {
     const class Camera& camera = Camera(image.second.CameraId());
@@ -569,7 +570,7 @@ void Reconstruction::NormalizeRadialCameras() {
     }
     // min_num_reg_images related
     // if((num_registerd_images > 20)&&!image.second.UseRadial()){
-      
+    // if((num_registerd_images >= 20)){
     //   continue;
     // }
 
@@ -1535,8 +1536,8 @@ size_t Reconstruction::FilterPoints3DWithSmallTriangulationAngle(
       const class Camera &camera1 = Camera(Image(image_id1).CameraId());
       // min_num_registered_images
       is_radial[i1] = (camera1.ModelId() == Radial1DCameraModel::model_id ||
-                      //  (camera1.ModelId() == ImplicitDistortionModel::model_id && num_registered_images<=20));
-                       camera1.ModelId() == ImplicitDistortionModel::model_id);
+                       (camera1.ModelId() == ImplicitDistortionModel::model_id && camera1.GetRawRadii().size() == 0));
+                      //  camera1.ModelId() == ImplicitDistortionModel::model_id);
                       // );
       
       Eigen::Vector3d proj_center1;

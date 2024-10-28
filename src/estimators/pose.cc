@@ -115,18 +115,19 @@ bool EstimateRadialAbsolutePose(const AbsolutePoseEstimationOptions& options,
   // Note that this is not used during the reconstruction, but is only
   // for scale and visualizuation purposes
   std::vector<Eigen::Vector2d> inlier_points2D;
+  std::vector<Eigen::Vector2d> inlier_points2D_normalized;
   std::vector<Eigen::Vector3d> inlier_points3D;
   inlier_points2D.reserve(*num_inliers);
   inlier_points3D.reserve(*num_inliers);
   for (size_t i = 0; i < inlier_mask->size(); ++i) {
     if ((*inlier_mask)[i]) {
-      // inlier_points2D.push_back(points2D_N[i]); // normalizing 2D points within the implicit distortion model
+      inlier_points2D_normalized.push_back(points2D_N[i]); // normalizing 2D points within the implicit distortion model
       inlier_points2D.push_back(points2D[i]);
       inlier_points3D.push_back(points3D[i]);
     }
   }
   ;
-  double tz = EstimateRadialCameraForwardOffset(report.model, inlier_points2D,
+  double tz = EstimateRadialCameraForwardOffset(report.model, inlier_points2D_normalized,
                                                 inlier_points3D, nullptr);
   // print out tz
   // std::cout << "tz:   " << tz << std::endl;
@@ -135,7 +136,10 @@ bool EstimateRadialAbsolutePose(const AbsolutePoseEstimationOptions& options,
   // file << tz << std::endl;
   // file.close();
   // print out the image id
-  
+  // // Extract pose parameters.
+  *qvec = RotationMatrixToQuaternion(report.model.leftCols<3>());
+  *tvec = report.model.rightCols<1>();
+  (*tvec)(2) += tz;
   
   //principal point
   Eigen::Vector2d pp = Eigen::Vector2d(camera->PrincipalPointX(), camera->PrincipalPointY());
@@ -151,13 +155,13 @@ bool EstimateRadialAbsolutePose(const AbsolutePoseEstimationOptions& options,
   // file2 << tz_imp << std::endl;
   // file2.close();
 
-  // // Extract pose parameters.
-  // *qvec = RotationMatrixToQuaternion(report.model.leftCols<3>());
-  // *tvec = report.model.rightCols<1>();
+  
 
   // Extract pose parameters from implicit_pose
+  // if(inlier_points2D.size()>30){
   *qvec = implicit_pose.q_vec;
   *tvec = implicit_pose.t;
+  // }
   // print out report.model
   std::cout << "Report: " << report.model << std::endl;
   //print out qvec and tvec
