@@ -542,7 +542,8 @@ inline void Camera::recursiveSplit(const std::vector<double>& radii, const std::
         double stddev = std::sqrt(sum_sq_diff / (radii.size() - 1));
 
         // Base case for recursion
-        if (max_gap < threshold || stddev < stddev_threshold) {
+        // if (max_gap < threshold || stddev < stddev_threshold) {
+        if (max_gap < threshold){
             radii_segments.push_back(radii);
             focal_lengths_segments.push_back(focal_lengths);
             return;
@@ -1112,7 +1113,7 @@ inline void Camera::FitPIeceWiseSpline_binary(std::vector<double>& radii, std::v
   std::vector<std::vector<double>> radii_segments = {};
   std::vector<std::vector<double>> focal_lengths_segments = {};
   double threshold = mean_interval + 0.1*std_interval;
-  double std_threshold = 0.3*std_interval;
+  double std_threshold = 0.5*std_interval;
   recursiveSplit(new_radii, new_focal_lengths, radii_segments, focal_lengths_segments, threshold, std_threshold);
   std::cout << "----------radii_segments size: " << radii_segments.size() << std::endl;
   for(int i = 0; i < radii_segments.size(); i++){
