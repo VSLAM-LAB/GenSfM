@@ -159,10 +159,10 @@ bool EstimateRadialAbsolutePose(const AbsolutePoseEstimationOptions& options,
   
 
   // Extract pose parameters from implicit_pose
-  // if(inlier_points2D.size()>30){
+  if(inlier_points2D.size()>0){
   *qvec = implicit_pose.q_vec;
   *tvec = implicit_pose.t;
-  // }
+  }
   // print out report.model
   std::cout << "Report: " << report.model << std::endl;
   //print out qvec and tvec

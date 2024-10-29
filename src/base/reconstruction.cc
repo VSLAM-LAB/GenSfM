@@ -366,7 +366,7 @@ void Reconstruction::Normalize(const double extent, const double p0,
   // check if one of the cameras has only registered number of images <= 20
   for (auto& pair : registered_num_images_per_camera) {
     // related to min_num_reg_images
-    if (pair.second <= 16) {
+    if (pair.second < 16) {
       normalize_radial = true;
       break;
     }
@@ -538,7 +538,7 @@ void Reconstruction::NormalizeRadialCameras() {
   // if we only have radial cameras and a majority have negative
   // psuedo-focal length, we flip the global z-axis
   // min_num_reg_images related
-  if(NumRegImages()<16){
+  if(NumRegImages()<=16){
   if(all_radial && negative_focal_count > NumRegImages() / 2) {
     for(auto& image : images_) {
       Eigen::Matrix3d R = image.second.RotationMatrix();
@@ -591,7 +591,7 @@ void Reconstruction::NormalizeRadialCameras() {
     Eigen::Vector2d pp = Eigen::Vector2d(camera.PrincipalPointX(), camera.PrincipalPointY());
     CameraPose implicit_pose ;
     bool used_implicit = false;
-    if(points3D.size() > 20){
+    if(points3D.size() > 0){
       implicit_pose =
     EstimateCameraForwardOffsetImplictDistortion(proj_matrix, points2D_original, 
                                                 points3D, pp);

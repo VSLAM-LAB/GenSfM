@@ -79,7 +79,7 @@ class IncrementalTriangulator {
     bool ignore_two_view_tracks = true;
 
     //Minimum number of registered images to start standard triangulation
-    int min_num_reg_images = 20;
+    int min_num_reg_images = 16;
 
 
     // Thresholds for bogus camera parameters. Images with bogus camera
@@ -174,7 +174,7 @@ class IncrementalTriangulator {
 
   // Try to create a new 3D point from the given correspondences.
   size_t Create(const Options& options,
-                const std::vector<CorrData>& corrs_data, bool initial = false, bool standard_triangulation = false, bool update_calibration = false);
+                const std::vector<CorrData>& corrs_data, bool initial = false, bool standard_triangulation = false, bool update_calibration = false, bool false_update = false);
   // size_t CreateInitial(
   //   const Options& options, const std::vector<CorrData>& corrs_data);
   // Try to continue the 3D point with the given correspondences.

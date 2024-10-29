@@ -689,11 +689,11 @@ size_t IncrementalMapper::TriangulateImage(
   Camera &camera = reconstruction_->Camera(image.CameraId());
   // check how many registered images does the camera have
   // std::cout << "----------------- Camera " << camera.CameraId() << " has " << num_reg_images_per_camera_[camera.CameraId()] << " registered images ----------------------" << std::endl;
-  if (num_reg_images_per_camera_[camera.CameraId()] >= tri_options.min_num_reg_images) {
-    standard_triangulation = true;
-  } else {
-    standard_triangulation = false;
-  }
+  // if (num_reg_images_per_camera_[camera.CameraId()] >= tri_options.min_num_reg_images) {
+  //   standard_triangulation = true;
+  // } else {
+  //   standard_triangulation = false;
+  // }
   // standard_triangulation = true;
 
   if(standard_triangulation) {
