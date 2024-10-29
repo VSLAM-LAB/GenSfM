@@ -57,6 +57,7 @@ COLMAP_ADD_SOURCES(
     implicit_local_bundle_adjustment.h implicit_local_bundle_adjustment.cc
     implicit_pose_refinement.h implicit_pose_refinement.cc
     implicit_utils.h implicit_utils.cc
+    manifold.h
 
 )
 

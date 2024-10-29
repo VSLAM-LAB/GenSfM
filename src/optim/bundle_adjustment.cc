@@ -45,6 +45,7 @@
 #include "util/timer.h"
 #include "estimators/implicit_camera_pose.h"
 #include "estimators/radial_absolute_pose.h"
+#include "estimators/manifold.h"
 
 namespace colmap {
 
@@ -543,9 +544,7 @@ void BundleAdjuster::AddImageToProblem(const image_t image_id,
 
     // Set pose parameterization.
     if (!constant_pose) {
-      ceres::LocalParameterization* quaternion_parameterization =
-          new ceres::QuaternionParameterization;
-      problem_->SetParameterization(qvec_data, quaternion_parameterization);
+      SetQuaternionManifold(problem_.get(), qvec_data);
       if (config_.HasConstantTvec(image_id)) {
         std::vector<int> constant_tvec_idxs = config_.ConstantTvec(image_id);
 
@@ -558,17 +557,14 @@ void BundleAdjuster::AddImageToProblem(const image_t image_id,
           // if (initial) {
           // constant_tvec_idxs.push_back(2);}
         }
-        ceres::SubsetParameterization* tvec_parameterization =
-            new ceres::SubsetParameterization(3, constant_tvec_idxs);
-        problem_->SetParameterization(tvec_data, tvec_parameterization);
+        SetSubsetManifold(3, constant_tvec_idxs, problem_.get(), tvec_data);
       } else {
         // For radial cameras we fix the third parameter of the translation
         // if (camera.ModelId() == Radial1DCameraModel::model_id ||(camera.ModelId() == ImplicitDistortionModel::model_id&&num_reg_images<=20) ){
         if (camera.ModelId() == Radial1DCameraModel::model_id || (camera.ModelId() == ImplicitDistortionModel::model_id&&using_radial1d)){
         //  if (camera.ModelId() == Radial1DCameraModel::model_id || camera.ModelId() == ImplicitDistortionModel::model_id){
         // if (camera.ModelId() == Radial1DCameraModel::model_id){
-          problem_->SetParameterization(
-              tvec_data, new ceres::SubsetParameterization(3, {2}));
+          SetSubsetManifold(3, {2}, problem_.get(), tvec_data);
           // if(initial){
           // problem_->SetParameterization(
           //     tvec_data, new ceres::SubsetParameterization(3, {2}));
@@ -711,11 +707,7 @@ void BundleAdjuster::ParameterizeCameras(Reconstruction* reconstruction) {
       if (const_camera_params.size() == camera.NumParams()) {
         problem_->SetParameterBlockConstant(camera.ParamsData());
       } else if (const_camera_params.size() > 0) {
-        ceres::SubsetParameterization* camera_params_parameterization =
-            new ceres::SubsetParameterization(
-                static_cast<int>(camera.NumParams()), const_camera_params);
-        problem_->SetParameterization(camera.ParamsData(),
-                                      camera_params_parameterization);
+        SetSubsetManifold(static_cast<int>(camera.NumParams()), const_camera_params, problem_.get(), camera.ParamsData());
       }
     }
   }
@@ -1256,9 +1248,7 @@ void RigBundleAdjuster::AddImageToProblem(const image_t image_id,
     if (!constant_pose && constant_tvec) {
       const std::vector<int>& constant_tvec_idxs =
           config_.ConstantTvec(image_id);
-      ceres::SubsetParameterization* tvec_parameterization =
-          new ceres::SubsetParameterization(3, constant_tvec_idxs);
-      problem_->SetParameterization(tvec_data, tvec_parameterization);
+      SetSubsetManifold(3, constant_tvec_idxs, problem_.get(), tvec_data);
     }
   }
 }
@@ -1341,9 +1331,7 @@ void RigBundleAdjuster::ComputeCameraRigPoses(
 
 void RigBundleAdjuster::ParameterizeCameraRigs(Reconstruction* reconstruction) {
   for (double* qvec_data : parameterized_qvec_data_) {
-    ceres::LocalParameterization* quaternion_parameterization =
-        new ceres::QuaternionParameterization;
-    problem_->SetParameterization(qvec_data, quaternion_parameterization);
+    SetQuaternionManifold(problem_.get(), qvec_data);
   }
 }
 

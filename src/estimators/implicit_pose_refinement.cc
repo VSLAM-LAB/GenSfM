@@ -1,6 +1,7 @@
 #include "implicit_pose_refinement.h"
 #include "implicit_cost_functions.h"
 #include "implicit_utils.h"
+#include "manifold.h"
 #include <ceres/ceres.h>
 
 namespace colmap{
@@ -84,7 +85,7 @@ std::vector<CameraPose> pose_refinement_multi(
         double *q = qs[k].coeffs().data();
         double *t = ts[k].data();
 
-        problem.SetParameterization(q, new ceres::EigenQuaternionParameterization());
+        SetEigenQuaternionManifold(&problem, q);
     }
 
     ceres::Solver::Options options;
@@ -174,7 +175,7 @@ void joint_pose_refinement_1D_radial(const std::vector<std::vector<Eigen::Vector
     }
     
     for (size_t cam_k = 0; cam_k < num_cams; ++cam_k) {
-        problem.SetParameterization(qs[cam_k].coeffs().data(), new ceres::EigenQuaternionParameterization());
+        SetEigenQuaternionManifold(&problem, qs[cam_k].coeffs().data());
     }
 
 

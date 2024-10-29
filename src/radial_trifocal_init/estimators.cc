@@ -38,6 +38,7 @@
 #include "optim/loransac.h"
 #include "radial_trifocal_init/tensor.h"
 #include "util/misc.h"
+#include "estimators/manifold.h"
 
 namespace colmap {
 namespace init {
@@ -294,8 +295,6 @@ bool RefineRadialTrifocalTensor(
   // Triangulate 3D points (or rather directions)
   // and add to problem
   std::vector<Eigen::Vector3d> points3D(points2D_1.size());
-  ceres::LocalParameterization* point_parameterization = 
-      new ceres::HomogeneousVectorParameterization(3);
 
   for(size_t i = 0; i < points2D_1.size(); ++i) {
     const Eigen::Vector2d &x1 = points2D_1[i];
@@ -338,7 +337,7 @@ bool RefineRadialTrifocalTensor(
     problem.AddResidualBlock(RadialTrifocalCostFunction::Create(x3), nullptr,
                                  qvecs[2].data(), points3D[i].data());
 
-    problem.SetParameterization(points3D[i].data(), point_parameterization);
+    SetSphereManifold<3>(&problem, points3D[i].data());
 
     n_points++;
   }
@@ -347,12 +346,9 @@ bool RefineRadialTrifocalTensor(
     return false; 
   }
 
-  ceres::LocalParameterization* quaternion_parameterization = 
-      new ceres::QuaternionParameterization;
-
-  problem.SetParameterization(qvecs[0].data(), quaternion_parameterization);
-  problem.SetParameterization(qvecs[1].data(), quaternion_parameterization);
-  problem.SetParameterization(qvecs[2].data(), quaternion_parameterization);
+  SetQuaternionManifold(&problem, qvecs[0].data());
+  SetQuaternionManifold(&problem, qvecs[1].data());
+  SetQuaternionManifold(&problem, qvecs[2].data());
   problem.SetParameterBlockConstant(qvecs[0].data());
 
   ceres::Solver::Options options;

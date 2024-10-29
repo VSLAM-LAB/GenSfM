@@ -8,6 +8,7 @@
 #include "implicit_bundle_adjustment.h"
 #include "implicit_intrinsic.h"
 #include "implicit_utils.h"
+#include "manifold.h"
 
 namespace colmap {
     
@@ -172,7 +173,7 @@ double bundle_adjustment_inner(const std::vector<std::vector<Eigen::Vector2d>> &
             problem.AddParameterBlock(q, 4);
         }
 
-        problem.SetParameterization(q, new ceres::EigenQuaternionParameterization());
+        SetEigenQuaternionManifold(&problem, q);
 
         if (pointsInd[k].size() != points2D_center[k].size()) {
             std::cout << "size error" << std::endl;
