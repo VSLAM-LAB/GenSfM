@@ -29,6 +29,7 @@
 //
 // Author: Johannes L. Schoenberger (jsch-at-demuc-dot-de)
 
+#include "estimators/manifold.h"
 #include "estimators/pose.h"
 
 #include "base/camera_models.h"
@@ -357,9 +358,8 @@ bool RefineAbsolutePose(const AbsolutePoseRefinementOptions& options,
   if (problem.NumResiduals() > 0) {
     // Quaternion parameterization.
     *qvec = NormalizeQuaternion(*qvec);
-    ceres::LocalParameterization* quaternion_parameterization =
-        new ceres::QuaternionParameterization;
-    problem.SetParameterization(qvec_data, quaternion_parameterization);
+    SetQuaternionManifold(&problem, qvec_data);
+
   
     if (camera->ModelId() == Radial1DCameraModel::model_id ||
          (camera->ModelId() == ImplicitDistortionModel::model_id && !optimize_tz)) {
@@ -368,8 +368,7 @@ bool RefineAbsolutePose(const AbsolutePoseRefinementOptions& options,
     //  if (camera->ModelId() == Radial1DCameraModel::model_id) {
       // Only optimize over the first two elements of the translation vector for
       // radial cameras
-      problem.SetParameterization(tvec_data,
-                                  new ceres::SubsetParameterization(3, {2}));
+      SetSubsetManifold(3, {2}, &problem, tvec_data);
     }
 
     // Camera parameterization.
@@ -403,11 +402,8 @@ bool RefineAbsolutePose(const AbsolutePoseRefinementOptions& options,
       if (camera_params_const.size() == camera->NumParams()) {
         problem.SetParameterBlockConstant(camera->ParamsData());
       } else {
-        ceres::SubsetParameterization* camera_params_parameterization =
-            new ceres::SubsetParameterization(
-                static_cast<int>(camera->NumParams()), camera_params_const);
-        problem.SetParameterization(camera->ParamsData(),
-                                    camera_params_parameterization);
+        SetSubsetManifold(static_cast<int>(camera->NumParams()), camera_params_const, &problem, camera->ParamsData());
+        
       }
     }
   }
@@ -459,13 +455,9 @@ bool RefineRelativePose(const ceres::Solver::Options& options,
                              tvec->data());
   }
 
-  ceres::LocalParameterization* quaternion_parameterization =
-      new ceres::QuaternionParameterization;
-  problem.SetParameterization(qvec->data(), quaternion_parameterization);
+  SetQuaternionManifold(&problem, qvec->data());
 
-  ceres::HomogeneousVectorParameterization* homogeneous_parameterization =
-      new ceres::HomogeneousVectorParameterization(3);
-  problem.SetParameterization(tvec->data(), homogeneous_parameterization);
+  SetSphereManifold<3>(&problem, tvec->data());
 
   ceres::Solver::Summary summary;
   ceres::Solve(options, &problem, &summary);
