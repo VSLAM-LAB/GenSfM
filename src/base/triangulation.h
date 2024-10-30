@@ -60,6 +60,20 @@ Eigen::Vector3d TriangulatePoint(const Eigen::Matrix3x4d& proj_matrix1,
                                  const Eigen::Vector2d& point1,
                                  const Eigen::Vector2d& point2);
 
+// Triangulate point from a 2D point in one image and a 2D line in another image.
+// Combination of direct linear transform triangulation and 2D lines constraints.
+//
+// @param proj_matrix1   Projection matrix of the first image as 3x4 matrix.
+// @param proj_matrix2   Projection matrix of the second image as 3x4 matrix.
+// @param point1         2D point in first image.
+// @param line2          2D line in second image.
+//
+// @return               Triangulated 3D point.
+Eigen::Vector3d TriangulatePointLine(const Eigen::Matrix3x4d& proj_matrix1,
+                                 const Eigen::Matrix3x4d& proj_matrix2,
+                                 const Eigen::Vector2d& point1,
+                                 const Eigen::Vector3d& line2);
+
 // Triangulate multiple 3D points from multiple image correspondences.
 std::vector<Eigen::Vector3d> TriangulatePoints(
     const Eigen::Matrix3x4d& proj_matrix1,
@@ -87,6 +101,21 @@ Eigen::Vector3d TriangulateMultiViewPoint(
 Eigen::Vector3d TriangulateMultiViewPointFromLines(
     const std::vector<Eigen::Matrix3x4d>& proj_matrices,
     const std::vector<Eigen::Vector3d>& lines);
+
+// Triangulate point from multiple views minimizing the L2 error from 2D points and 2D lines
+// (2D point and 2D line to 3D point constraints)
+//
+// @param proj_matrices       Projection matrices of multi-view observations.
+// @param points              Image observations of multi-view observations.
+// @param lines               Image observations of multi-view observations.
+// @param is_point            Flag indicating if the observation is a point or a line.
+//
+// @return                    Estimated 3D point.
+Eigen::Vector3d TriangulateMultiViewPointFromPointsLines(
+    const std::vector<Eigen::Matrix3x4d>& proj_matrices,
+    const std::vector<Eigen::Vector2d>& points,
+    const std::vector<Eigen::Vector3d>& lines,
+    const std::vector<bool>& is_point);
 
 // Triangulate optimal 3D point from corresponding image point observations by
 // finding the optimal image observations.
