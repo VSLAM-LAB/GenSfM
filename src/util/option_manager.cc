@@ -194,6 +194,7 @@ void OptionManager::AddLogOptions() {
     return;
   }
   added_log_options_ = true;
+  FLAGS_v = 0;
 
   AddAndRegisterDefaultOption("log_to_stderr", &FLAGS_logtostderr);
   AddAndRegisterDefaultOption("log_level", &FLAGS_v);
