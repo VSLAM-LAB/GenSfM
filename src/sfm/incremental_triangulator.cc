@@ -1202,13 +1202,13 @@ size_t IncrementalTriangulator::Create(
     pose_data[i].proj_center = corr_data.image->ProjectionCenter();
     
     pose_data[i].camera = corr_data.camera;
-    std::cout<<"camera id: "<<corr_data.camera->CameraId()<<std::endl;
+    // std::cout<<"camera id: "<<corr_data.camera->CameraId()<<std::endl;
     
     pose_data[i].image = corr_data.image;
     std::vector<double> raw_radii = corr_data.camera->GetRawRadii();
     // std::vector<double> thetas = corr_data.camera->GetTheta();
-    std::cout<<"Get RawRadii size "<<corr_data.camera->GetRawRadii().size()<<std::endl;
-    std::cout<<"raw_radii size: "<<raw_radii.size()<<std::endl;
+    // std::cout<<"Get RawRadii size "<<corr_data.camera->GetRawRadii().size()<<std::endl;
+    // std::cout<<"raw_radii size: "<<raw_radii.size()<<std::endl;
   
     std::vector<double> thetas = corr_data.camera->GetTheta();
     // std::cout<<"raw_radii size: "<<raw_radii.size()<<std::endl;
@@ -1217,7 +1217,7 @@ size_t IncrementalTriangulator::Create(
       radial_count++;
     }
     double radius = point_data[i].point_normalized.norm();
-    std::cout<<"radius: "<<radius<<std::endl;
+    // std::cout<<"radius: "<<radius<<std::endl;
     if(radius < corr_data.camera->Params()[12] || radius > corr_data.camera->Params()[21]){
       radial_count++;
     }
@@ -1235,7 +1235,7 @@ size_t IncrementalTriangulator::Create(
     std::string filename ="radii_focal_lengths_" + std::to_string(corr_data.image_id) + "_" + timestamp + ".txt";
     std::vector<double> focal_lengths_splined;
           
-    std::cout<<"linspacing"<<std::endl;
+    // std::cout<<"linspacing"<<std::endl;
     Eigen::VectorXd points = Eigen::VectorXd::LinSpaced(100, raw_radii[0], raw_radii[raw_radii.size() - 1]);
     // std::cout<<"linspaced"<<std::endl;  
     std_points = std::vector<double>(points.data(), points.data() + points.size());
@@ -1263,7 +1263,7 @@ size_t IncrementalTriangulator::Create(
     }
     file.close();
     }
-    std::cout<<"file created "<<std::endl;
+    // std::cout<<"file created "<<std::endl;
     
     // find the two radii that the current radius is between
     double focal_length = 20;
@@ -1287,7 +1287,7 @@ size_t IncrementalTriangulator::Create(
 
     // double focal_length_splined = corr_data.image->EvalFocalLength(radius);
     double focal_length_splined = corr_data.camera->EvalFocalLength(radius);
-    std::cout << "Estimated Focal Length Splined: " << focal_length_splined << std::endl;
+    // std::cout << "Estimated Focal Length Splined: " << focal_length_splined << std::endl;
     // std::cout << "Estimated Focal Length: " << focal_length << std::endl;
     // save the interpolated focal length to the previous txt file
     

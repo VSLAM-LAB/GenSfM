@@ -114,14 +114,14 @@ macro(COLMAP_ADD_LIBRARY TARGET_NAME)
     add_library(${TARGET_NAME} ${ARGN})
     set_target_properties(${TARGET_NAME} PROPERTIES FOLDER
         ${COLMAP_TARGETS_ROOT_FOLDER}/${FOLDER_NAME})
-    install(TARGETS ${TARGET_NAME} DESTINATION lib/colmap/)
+    # install(TARGETS ${TARGET_NAME} DESTINATION lib/colmap/)
 endmacro(COLMAP_ADD_LIBRARY)
 macro(COLMAP_ADD_STATIC_LIBRARY TARGET_NAME)
     # ${ARGN} will store the list of source files passed to this function.
     add_library(${TARGET_NAME} STATIC ${ARGN})
     set_target_properties(${TARGET_NAME} PROPERTIES FOLDER
         ${COLMAP_TARGETS_ROOT_FOLDER}/${FOLDER_NAME})
-    install(TARGETS ${TARGET_NAME} DESTINATION lib/colmap)
+    # install(TARGETS ${TARGET_NAME} DESTINATION lib/colmap)
 endmacro(COLMAP_ADD_STATIC_LIBRARY)
 
 # Replacement for the normal cuda_add_library() command. The syntax remains the
@@ -132,14 +132,14 @@ macro(COLMAP_ADD_CUDA_LIBRARY TARGET_NAME)
     cuda_add_library(${TARGET_NAME} ${ARGN})
     set_target_properties(${TARGET_NAME} PROPERTIES FOLDER
         ${COLMAP_TARGETS_ROOT_FOLDER}/${FOLDER_NAME})
-    install(TARGETS ${TARGET_NAME} DESTINATION lib/colmap/)
+    # install(TARGETS ${TARGET_NAME} DESTINATION lib/colmap/)
 endmacro(COLMAP_ADD_CUDA_LIBRARY)
 macro(COLMAP_ADD_STATIC_CUDA_LIBRARY TARGET_NAME)
     # ${ARGN} will store the list of source files passed to this function.
     cuda_add_library(${TARGET_NAME} STATIC ${ARGN})
     set_target_properties(${TARGET_NAME} PROPERTIES FOLDER
         ${COLMAP_TARGETS_ROOT_FOLDER}/${FOLDER_NAME})
-    install(TARGETS ${TARGET_NAME} DESTINATION lib/colmap/)
+    # install(TARGETS ${TARGET_NAME} DESTINATION lib/colmap/)
 endmacro(COLMAP_ADD_STATIC_CUDA_LIBRARY)
 
 # Replacement for the normal add_executable() command. The syntax remains the
