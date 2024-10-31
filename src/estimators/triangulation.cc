@@ -437,9 +437,10 @@ bool EstimateTriangulation(
     initial = true;
   }
    
-  decltype(auto) report = standard_triangulation ?
-                        ransac.EstimateStandard(point_data, pose_data, initial) :
-                        ransac.Estimate(point_data, pose_data, initial);
+  // decltype(auto) report = standard_triangulation ?
+  //                       ransac.EstimateStandard(point_data, pose_data, initial) :
+  //                       ransac.Estimate(point_data, pose_data, initial);
+  decltype(auto) report = ransac.Estimate(point_data, pose_data, initial);
   if (!report.success) {
     return false;
   }

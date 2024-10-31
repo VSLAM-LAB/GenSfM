@@ -52,37 +52,6 @@ Eigen::Vector3d TriangulatePoint(const Eigen::Matrix3x4d& proj_matrix1,
   return svd.matrixV().col(3).hnormalized();
 }
 
-Eigen::Vector3d TriangulatePointLine(const Eigen::Matrix3x4d& proj_matrix1,
-                                 const Eigen::Matrix3x4d& proj_matrix2,
-                                 const Eigen::Vector2d& point1,
-                                 const Eigen::Vector3d& line2) {
-  // Version 1: with SVD
-  Eigen::Matrix<double, 3, 4> A;
-
-  A.row(0) = point1(0) * proj_matrix1.row(2) - proj_matrix1.row(0);
-  A.row(1) = point1(1) * proj_matrix1.row(2) - proj_matrix1.row(1);
-  A.row(2) = line2.transpose() * proj_matrix2;
-
-  Eigen::JacobiSVD<Eigen::Matrix<double, 3, 4>> svd(A, Eigen::ComputeFullV);
-  return svd.matrixV().col(3).hnormalized();
-  
-  // // Version 2: with Eigen::SelfAdjointEigenSolver
-  // Eigen::Matrix4d A = Eigen::Matrix4d::Zero();
-
-  // const Eigen::Vector3d point = point1.homogeneous().normalized();
-  // const Eigen::Matrix3x4d term =
-  //     proj_matrix1 - point * point.transpose() * proj_matrix1;
-  // A += term.transpose() * term;
-
-  // Eigen::Vector4d plane = proj_matrix2.transpose() * line2;
-  // plane = plane / plane.topRows<3>().norm();    
-  // A += plane * plane.transpose();
-
-  // Eigen::SelfAdjointEigenSolver<Eigen::Matrix4d> eigen_solver(A);
-
-  // return eigen_solver.eigenvectors().col(0).hnormalized();
-}
-
 std::vector<Eigen::Vector3d> TriangulatePoints(
     const Eigen::Matrix3x4d& proj_matrix1,
     const Eigen::Matrix3x4d& proj_matrix2,
@@ -136,37 +105,6 @@ Eigen::Vector3d TriangulateMultiViewPointFromLines(
   Eigen::SelfAdjointEigenSolver<Eigen::Matrix4d> eigen_solver(A);
 
   return eigen_solver.eigenvectors().col(0).hnormalized();
-}
-
-
-Eigen::Vector3d TriangulateMultiViewPointFromPointsLines(
-    const std::vector<Eigen::Matrix3x4d>& proj_matrices,
-    const std::vector<Eigen::Vector2d>& points,
-    const std::vector<Eigen::Vector3d>& lines,
-    const std::vector<bool>& is_point) {
-
-  CHECK_EQ(proj_matrices.size(), points.size());
-  CHECK_EQ(proj_matrices.size(), lines.size());
-  CHECK_EQ(proj_matrices.size(), is_point.size());
-  
-  Eigen::Matrix4d A;
-  for (size_t i = 0; i < proj_matrices.size(); i++) {
-    if(is_point[i]){
-      const Eigen::Vector3d point = points[i].homogeneous().normalized();
-      const Eigen::Matrix3x4d term =
-          proj_matrices[i] - point * point.transpose() * proj_matrices[i];
-      A += term.transpose() * term;
-    } else {
-      Eigen::Vector4d plane = proj_matrices[i].transpose() * lines[i];
-      plane = plane / plane.topRows<3>().norm();    
-      A += plane * plane.transpose();
-    }
-  }
-
-  Eigen::SelfAdjointEigenSolver<Eigen::Matrix4d> eigen_solver(A);
-
-  return eigen_solver.eigenvectors().col(0).hnormalized();
-
 }
 
 
