@@ -73,6 +73,8 @@ class TriangulationEstimator {
     double focal_length = 1;
     // Normalized image observation for standard triangulation
     Eigen::Vector2d point_normalized_standard;
+
+    bool is_radial = false;
   };
 
   struct PoseData {
