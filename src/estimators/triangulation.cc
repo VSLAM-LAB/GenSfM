@@ -116,6 +116,9 @@ std::vector<TriangulationEstimator::M_t> TriangulationEstimator::Estimate(
     }
 
   } else { // triangulation with radial cameras involved
+    // If we have only two points and two radial cameras, we can not triangulate
+    if (point_data.size() == 2 && radial_count == 2)
+      return candidates;
     // For minimal mixed cases, we run all possible combinations of three points if mixed case is involved
     if (point_data.size() == 3 && radial_count < 3) {
       for (size_t i = 0; i < 3; i++) {
@@ -452,6 +455,18 @@ bool EstimateTriangulation(
   CHECK_GE(point_data.size(), 2);
   CHECK_EQ(point_data.size(), pose_data.size());
   options.Check();
+  if (point_data.size() == 2) {
+    TriangulationEstimator estimator;
+    std::vector<Eigen::Vector3d> xyzs = estimator.Estimate(point_data, pose_data, initial);
+    if (xyzs.empty()) {
+      return false;
+    }
+    else {
+      *xyz = xyzs[0];
+      inlier_mask->resize(point_data.size(), true);
+      return true;
+    }
+  }
   // std::coust << "Initial in EstimateTriangulation: " << initial << std::endl;
 
   // Robustly estimate track using LORANSAC.

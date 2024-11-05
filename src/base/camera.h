@@ -223,6 +223,7 @@ class Camera {
 
   inline double EvalFocalLength(const Eigen::Vector2d& image_point) const;
   inline bool IsFullyCalibrated(const Eigen::Vector2d& image_point) const;
+  inline void SetCalibrated(bool calibrated);
 
  private:
   // The unique identifier of the camera. If the identifier is not specified
@@ -244,6 +245,8 @@ class Camera {
   // Whether there is a safe prior for the focal length,
   // e.g. manually provided or extracted from EXIF
   bool prior_focal_length_;
+
+  bool is_fully_calibrated_ = false;
 
   ////// --------------------% TODO: Add the following functions into new camera model %------------------ //////
   mutable std::vector<double> focal_length_params_;
@@ -1114,7 +1117,7 @@ inline void Camera::FitPIeceWiseSpline_binary(std::vector<double>& radii, std::v
   std_interval = sqrt(std_interval/intervals.size());
   std::vector<std::vector<double>> radii_segments = {};
   std::vector<std::vector<double>> focal_lengths_segments = {};
-  double threshold = mean_interval + 0.1*std_interval;
+  double threshold = mean_interval + std_interval;
   double std_threshold = 0.5*std_interval;
   recursiveSplit(new_radii, new_focal_lengths, radii_segments, focal_lengths_segments, threshold, std_threshold);
   // std::cout << "----------radii_segments size: " << radii_segments.size() << std::endl;
@@ -1189,14 +1192,17 @@ inline bool Camera::IsFullyCalibrated(const Eigen::Vector2d& image_point) const 
   Eigen::Vector2d image_point_norm = ImageToWorld(image_point);
   double radius = image_point_norm.norm();
 
-  if(raw_radii_.size() < 20 || (raw_radii_.size() > 20 && raw_radii_[0] < 0))
-    return false;
-  else if (radius < params_[12] || radius > params_[21])
+  // if(raw_radii_.size() < 20 || (raw_radii_.size() > 20 && raw_radii_[0] < 0))
+  //   return false;
+  if (!is_fully_calibrated_ || (radius < params_[12] || radius > params_[21]))
     return false;
   else
     return true;
 }
 
+void Camera::SetCalibrated(bool calibrated) {
+  is_fully_calibrated_ = calibrated;
+}
 }  // namespace colmap
 
 #endif  // COLMAP_SRC_BASE_CAMERA_H_
