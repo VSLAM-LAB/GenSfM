@@ -604,10 +604,14 @@ bool IncrementalMapper::RegisterNextImage(const Options& options,
   if (!EstimateAbsolutePose(abs_pose_options, tri_points2D, tri_points3D,
                             &image.Qvec(), &image.Tvec(), &camera, &num_inliers,  //qvev: quaternion vector for rotation, tvec: translation vector
                             &inlier_mask)) {
+    std::cout << "EstimateAbsolutePose failed" << std::endl;
     return false;
   }
 
   if (num_inliers < static_cast<size_t>(options.abs_pose_min_num_inliers)) {
+    std::cout << "num_inliers: " << num_inliers << std::endl;
+    std::cout << "Insufficient inliers" << std::endl;
+    std::cout << "options.abs_pose_min_num_inliers: " << options.abs_pose_min_num_inliers << std::endl;
     return false;
   }
 
@@ -629,12 +633,14 @@ bool IncrementalMapper::RegisterNextImage(const Options& options,
     return false;
   }
 
+
   //////////////////////////////////////////////////////////////////////////////
   // Continue tracks
   //////////////////////////////////////////////////////////////////////////////
 
   reconstruction_->RegisterImage(image_id);
   RegisterImageEvent(image_id);
+
 
   for (size_t i = 0; i < inlier_mask.size(); ++i) {
     if (inlier_mask[i]) {
@@ -648,6 +654,9 @@ bool IncrementalMapper::RegisterNextImage(const Options& options,
       }
     }
   }
+
+  AdjustCameraPose(options, image_id);
+  // TODO: filter 3D points by reprojection error
 
   return true;
 }
@@ -1262,6 +1271,93 @@ IncrementalMapper::ImplicitAdjustLocalBundle(const Options& options,
 }
 
  
+bool IncrementalMapper::AdjustCameraPose(const Options& options, 
+                          const image_t image_id, bool initial) {
+
+
+  const std::vector<image_t>& reg_image_ids = reconstruction_->RegImageIds();
+
+  CHECK_GE(reg_image_ids.size(), 2) << "At least two images must be "
+                                       "registered for global "
+                                       "bundle-adjustment";
+
+  // Avoid degeneracies in bundle adjustment.
+  reconstruction_->FilterObservationsWithNegativeDepth();
+  reconstruction_->Normalize();
+
+  // Concerned camera_id
+  camera_t camera_id = reconstruction_->Image(image_id).CameraId();
+
+  // Collect the image with the same camera_id
+  std::vector<image_t> reg_image_ids_same_camera;
+  reg_image_ids_same_camera.emplace_back(image_id);
+  for (const image_t image_id_curr : reg_image_ids) {
+    if (image_id_curr == image_id) {
+      continue;
+    }
+    if (reconstruction_->Image(image_id_curr).CameraId() == camera_id) {
+      reg_image_ids_same_camera.push_back(image_id_curr);
+    }
+  }
+  
+
+  //extracting points3D
+  std::vector<std::vector<Eigen::Vector3d>> points3D;
+  
+  //populating camera poses
+  std::vector<CameraPose> poses;
+  for (const image_t image_id : reg_image_ids_same_camera) {
+      Image& image = reconstruction_->Image(image_id);
+      // image.NormalizeQvec();
+      Eigen::Vector4d q(image.Qvec());
+      Eigen::Vector3d t(image.Tvec());
+      poses.push_back(CameraPose(q, t));
+  }
+
+  std::vector<std::vector<Eigen::Vector2d>> points2D;
+
+  for (const image_t image_id_curr : reg_image_ids_same_camera) {
+    const Image& image = reconstruction_->Image(image_id_curr);
+    std::vector<Eigen::Vector2d> imagePoints2D;
+    std::vector<Eigen::Vector3d> imagePoints3D;
+
+    for (const Point2D& point2D : image.Points2D()) {
+        if (!point2D.HasPoint3D()) {
+            continue;
+        }
+        imagePoints2D.push_back(point2D.XY());
+        imagePoints3D.push_back(reconstruction_->Point3D(point2D.Point3DId()).XYZ());
+    }
+
+    points2D.push_back(imagePoints2D);
+    points3D.push_back(imagePoints3D);
+  }
+
+
+  // principal point from a random camera
+  Eigen::Vector2d principal_point(reconstruction_->Camera(camera_id).PrincipalPointX(),
+                                  reconstruction_->Camera(camera_id).PrincipalPointY());
+  // cost matrix options
+  CostMatrixOptions cm_opt;
+  PoseRefinementOptions refinement_opt;
+
+  for (size_t i = 0; i < 2; i++) {
+    // build up cost matrix
+    CostMatrix costMatrix = build_cost_matrix_multi(points2D, cm_opt, principal_point);
+
+    CameraPose pose = pose_refinement_multi_point2d_single_image(points2D, points3D, costMatrix, principal_point, poses, 0, refinement_opt);
+    poses[0] = pose;
+
+    // Update camera pose with two iterations
+    filter_result_pose_refinement_multi(points2D, points3D, poses, principal_point, refinement_opt);
+
+  }
+  // Update camera pose
+  reconstruction_->Image(image_id).SetQvec(poses[0].q_vec);
+  reconstruction_->Image(image_id).SetTvec(poses[0].t);
+
+  return true;
+}
 
 bool IncrementalMapper::AdjustParallelGlobalBundle(
     const BundleAdjustmentOptions& ba_options,

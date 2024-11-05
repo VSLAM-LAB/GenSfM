@@ -260,12 +260,12 @@ BundleAdjuster::BundleAdjuster(const BundleAdjustmentOptions& options,
 
 bool BundleAdjuster::Solve(Reconstruction* reconstruction, bool initial) {
   CHECK_NOTNULL(reconstruction);
-  std::cout<<"reconstruction check succeed"<<std::endl;
+  // std::cout<<"reconstruction check succeed"<<std::endl;
   CHECK(!problem_) << "Cannot use the same BundleAdjuster multiple times";
-  std::cout<<"problem check succeed"<<std::endl;
+  // std::cout<<"problem check succeed"<<std::endl;
 
   problem_.reset(new ceres::Problem());
-  std::cout<<"camera_ids_: "<<camera_ids_.size()<<std::endl;
+  // std::cout<<"camera_ids_: "<<camera_ids_.size()<<std::endl;
 
   ceres::LossFunction* loss_function = options_.CreateLossFunction();
   // for (const image_t img_id : reconstruction->RegImageIds()) {
@@ -274,10 +274,10 @@ bool BundleAdjuster::Solve(Reconstruction* reconstruction, bool initial) {
   //   // std::cout<<"------- camera.Params(): -------"<< camera.Params()[2]<<std::endl;
   // }
   SetUp(reconstruction, loss_function, initial);
-  std::cout<<"Setup done"<<std::endl;
+  // std::cout<<"Setup done"<<std::endl;
 
   if (problem_->NumResiduals() == 0) {
-    std::cout<<"numResiduals()"<<problem_->NumResiduals()<<std::endl;
+    // std::cout<<"numResiduals()"<<problem_->NumResiduals()<<std::endl;
     return false;
   }
 
@@ -317,8 +317,10 @@ bool BundleAdjuster::Solve(Reconstruction* reconstruction, bool initial) {
   ceres::Solve(solver_options, problem_.get(), &summary_);
 
   if (solver_options.minimizer_progress_to_stdout) {
-    std::cout << std::endl;
+    // std::cout << std::endl;
   }
+
+  std::cout << "problem_->NumResiduals(): " << problem_->NumResiduals() << std::endl;
 
   if (options_.print_summary) {
     PrintHeading2("Bundle adjustment report");
@@ -445,8 +447,8 @@ void BundleAdjuster::AddImageToProblem(const image_t image_id,
       }
     }
   }
-  std::cout<<"num_3d_points: "<<num_3d_points<<std::endl;
-  std::cout<<"num_radial_points: "<<num_radial_points<<std::endl;
+  // std::cout<<"num_3d_points: "<<num_3d_points<<std::endl;
+  // std::cout<<"num_radial_points: "<<num_radial_points<<std::endl;
     // if((num_3d_points <= 0.2 * reconstruction->NumPoints3D()/reconstruction->NumImages() )){
   // if((((num_3d_points - num_radial_points) / (num_3d_points +1)< 0.3)) || (num_3d_points <= 0.2 * reconstruction->NumPoints3D()/reconstruction->NumImages() )){
   //   // if((num_3d_points - num_radial_points) / (num_3d_points +1)< 0.3){
@@ -540,7 +542,7 @@ void BundleAdjuster::AddImageToProblem(const image_t image_id,
 
   if (num_observations > 0) {
     camera_ids_.insert(image.CameraId());
-    std::cout << "num_observations: " << num_observations << std::endl;
+    // std::cout << "num_observations: " << num_observations << std::endl;
 
     // Set pose parameterization.
     if (!constant_pose) {
@@ -672,15 +674,15 @@ void BundleAdjuster::ParameterizeCameras(Reconstruction* reconstruction) {
   const bool constant_camera = !options_.refine_focal_length &&
                                !options_.refine_principal_point &&
                                !options_.refine_extra_params;
-  std::cout<<"constant_camera: "<<constant_camera<<std::endl;
-  std::cout<<"size of camera_ids_: "<<camera_ids_.size()<<std::endl;  
-  std::cout << "options_.refine_extra_params: " << options_.refine_extra_params << std::endl;
+  // std::cout<<"constant_camera: "<<constant_camera<<std::endl;
+  // std::cout<<"size of camera_ids_: "<<camera_ids_.size()<<std::endl;  
+  // std::cout << "options_.refine_extra_params: " << options_.refine_extra_params << std::endl;
   for (const camera_t camera_id : camera_ids_) {
     Camera& camera = reconstruction->Camera(camera_id);
-    std::cout << "ExtraParamsIdxs: " << camera.ExtraParamsIdxs().size() << std::endl;
+    // std::cout << "ExtraParamsIdxs: " << camera.ExtraParamsIdxs().size() << std::endl;
 
     if (constant_camera || config_.IsConstantCamera(camera_id)) {
-      std::cout<<"config_IsConstantCamera(camera_id)"<<config_.IsConstantCamera(camera_id)<<std::endl;
+      // std::cout<<"config_IsConstantCamera(camera_id)"<<config_.IsConstantCamera(camera_id)<<std::endl;
       problem_->SetParameterBlockConstant(camera.ParamsData());
       continue;
     } else {
@@ -701,8 +703,8 @@ void BundleAdjuster::ParameterizeCameras(Reconstruction* reconstruction) {
         const_camera_params.insert(const_camera_params.end(),
                                    params_idxs.begin(), params_idxs.end());
       }
-      std::cout<<"const_camera_params.size(): "<<const_camera_params.size()<<std::endl;
-      std::cout<<"camera.NumParams(): "<<camera.NumParams()<<std::endl;
+      // std::cout<<"const_camera_params.size(): "<<const_camera_params.size()<<std::endl;
+      // std::cout<<"camera.NumParams(): "<<camera.NumParams()<<std::endl;
 
       if (const_camera_params.size() == camera.NumParams()) {
         problem_->SetParameterBlockConstant(camera.ParamsData());

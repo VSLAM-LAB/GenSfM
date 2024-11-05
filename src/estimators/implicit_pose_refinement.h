@@ -47,6 +47,13 @@ struct PoseRefinementOptions {
                                 const CostMatrix &cost_matrix, const Eigen::Vector2d &pp,
                                 const std::vector<CameraPose> &initial_poses, PoseRefinementOptions refinement_opt);
 
+    CameraPose pose_refinement_multi_point2d_single_image(
+                                const std::vector<std::vector<Eigen::Vector2d>> &points2D, 
+                                const std::vector<std::vector<Eigen::Vector3d>> &points3D,
+                                const CostMatrix &cost_matrix, const Eigen::Vector2d &pp,
+                                const std::vector<CameraPose> &initial_poses,
+                                int image_id, PoseRefinementOptions refinement_opt);
+
     // Refines camera pose using a fixed non-parametric intrinsic calibration
     CameraPose non_parametric_pose_refinement(const std::vector<Eigen::Vector2d> &points2D, 
                                 const std::vector<Eigen::Vector3d> &points3D,
