@@ -289,6 +289,7 @@ size_t IncrementalTriangulator::CompleteImage(const Options& options,
     pose_data.resize(corrs_data.size());
 
     std::vector<Camera> cameras_temp(corrs_data.size());
+    bool is_calibrated = false;
     for (size_t i = 0; i < corrs_data.size(); ++i) {
       const CorrData& corr_data = corrs_data[i];
       point_data[i].point = corr_data.point2D->XY();
@@ -312,6 +313,8 @@ size_t IncrementalTriangulator::CompleteImage(const Options& options,
         point_data[i].is_radial = true;
         continue;
       }
+      
+      is_calibrated = true;
 
       double focal_length = 0;
       focal_length = corr_data.camera->EvalFocalLength(radius);
@@ -392,11 +395,12 @@ size_t IncrementalTriangulator::CompleteImage(const Options& options,
       if (inlier_mask[i]) {
         const CorrData& corr_data = corrs_data[i];
         track.AddElement(corr_data.image_id, corr_data.point2D_idx);
-        if (standard_triangulation){
-          num_constraints += (corr_data.camera->ModelId() == Radial1DCameraModel::model_id || corr_data.camera->ModelId() == ImplicitDistortionModel::model_id) ? 2 : 2;
-        }else{
-          num_constraints += (corr_data.camera->ModelId() == Radial1DCameraModel::model_id || corr_data.camera->ModelId() == ImplicitDistortionModel::model_id) ? 1 : 2;
-        }
+        num_constraints += (pose_data[i].camera->IsFullyCalibrated(corr_data.point2D->XY())) ? 2 : 1;
+        // if (standard_triangulation){
+        //   num_constraints += (corr_data.camera->ModelId() == Radial1DCameraModel::model_id || corr_data.camera->ModelId() == ImplicitDistortionModel::model_id) ? 2 : 2;
+        // }else{
+        //   num_constraints += (corr_data.camera->ModelId() == Radial1DCameraModel::model_id || corr_data.camera->ModelId() == ImplicitDistortionModel::model_id) ? 1 : 2;
+        // }
         // num_constraints += (corr_data.camera->ModelId() == Radial1DCameraModel::model_id) ? 1 : 2;
       }
     }
@@ -562,7 +566,7 @@ size_t IncrementalTriangulator::Retriangulate(const Options& options) {
         correspondence_graph_->FindCorrespondencesBetweenImages(image_id1,
                                                                 image_id2);
 
-    std::cout << "Correspondences found " << corrs.size() << std::endl;
+    // std::cout << "Correspondences found " << corrs.size() << std::endl;
     for (const auto& corr : corrs) {
       const Point2D& point2D1 = image1.Point2D(corr.point2D_idx1);
       const Point2D& point2D2 = image2.Point2D(corr.point2D_idx2);
@@ -745,10 +749,10 @@ std::vector<double> IdentifyCalibratedArea(Camera camera, std::vector<double>& r
   double threshold = mean_interval + 0.1*std_interval;
   double std_threshold = 0.5*std_interval;
   camera.recursiveSplit(new_radii, new_focal_lengths, radii_segments, focal_lengths_segments, threshold, std_threshold);
-  std::cout << "----------radii_segments size: " << radii_segments.size() << std::endl;
-  for(int i = 0; i < radii_segments.size(); i++){
-    std::cout << "------------radii_segments[" << i << "] size: " << radii_segments[i].size() << std::endl;
-  }
+  // std::cout << "----------radii_segments size: " << radii_segments.size() << std::endl;
+  // for(int i = 0; i < radii_segments.size(); i++){
+  //   std::cout << "------------radii_segments[" << i << "] size: " << radii_segments[i].size() << std::endl;
+  // }
   // print the beginning and end of the longest segment
   // find the longest segment
   int longest_segment = 0;
@@ -1177,8 +1181,8 @@ size_t IncrementalTriangulator::Create(
     // if(radii.size() > 0.7*camera_this.GetRawRadii().size() && radii[0] > 0){
     // if(camera_this.GetRawRadii().size() == 0|| ((calibrated_area[1] - calibrated_area[0]) >= (camera_this.Params()[11] - camera_this.Params()[2]))&&radii.size()>0 || false_update){
     if(camera_this.GetRawRadii().size() == 0 || ((calibrated_area[1] >= camera_this.Params()[11]) && (calibrated_area[0] <= camera_this.Params()[2]) && radii.size()>0)|| false_update){
-    std::cout<<"updated calibration"<<std::endl;
-    std::cout<<"radii size: "<<radii.size()<<std::endl;
+    // std::cout<<"updated calibration"<<std::endl;
+    // std::cout<<"radii size: "<<radii.size()<<std::endl;
     camera_this.SetRawRadii(radii);
     // camera_this.SetRawRadii(radii_list);
     camera_this.SetTheta(theta);
@@ -1230,6 +1234,7 @@ size_t IncrementalTriangulator::Create(
   int count = 0;
   int radial_count = 0;
   std::vector<Camera> cameras_temp(create_corrs_data.size());
+  bool is_calibrated = false;
   for (size_t i = 0; i < create_corrs_data.size(); ++i) {
     
     const CorrData& corr_data = create_corrs_data[i];
@@ -1250,23 +1255,31 @@ size_t IncrementalTriangulator::Create(
   
     std::vector<double> thetas = corr_data.camera->GetTheta();
     // std::cout<<"raw_radii size: "<<raw_radii.size()<<std::endl;
-    if(raw_radii.size() <20 ||(raw_radii.size() > 20 && raw_radii[0]<0)){
-      // std::cout<<"Standard Triangulation not possible"<<std::endl;
-      radial_count++;
-      point_data[i].is_radial = true;
-      continue;
-    }
+    // if(raw_radii.size() <20 ||(raw_radii.size() > 20 && raw_radii[0]<0)){
+    //   // std::cout<<"Standard Triangulation not possible"<<std::endl;
+    //   radial_count++;
+    //   point_data[i].is_radial = true;
+    //   continue;
+    // }
     double radius = point_data[i].point_normalized.norm();
-    // std::cout<<"radius: "<<radius<<std::endl;
-    if(radius < corr_data.camera->Params()[12] || radius > corr_data.camera->Params()[21]){
-      radial_count++;
-      point_data[i].is_radial = true;
-    } else {
-      point_data[i].is_radial = false;
-    }
-    if (point_data[i].is_radial || !standard_triangulation) {
+    // // std::cout<<"radius: "<<radius<<std::endl;
+    // if(radius < corr_data.camera->Params()[12] || radius > corr_data.camera->Params()[21]){
+    //   radial_count++;
+    //   point_data[i].is_radial = true;
+    //   continue;
+    // } 
+    // if (!corr_data.camera->IsFullyCalibrated(point_data[i].point) || !standard_triangulation) {
+    //   point_data[i].is_radial = true;
+    //   continue;
+    // }
+    bool is_calibrated = corr_data.camera->IsFullyCalibrated(point_data[i].point);
+    // if (is_calibrated && !standard_triangulation) {
+      // std::cout << "!!!!!!!!!!!!WARNING!!!!!!!!!!!!!!!! Point is in the calibrated area while it not in the standard calibration mode" << std::endl; 
+    // }
+  
+    if (!is_calibrated)
       continue;
-    }
+    
     // Construct temporary camera for triangulation.
     // if(standard_triangulation){
     // std::cout<<"Standard Triangulation possible by raw radii"<<std::endl;
@@ -1448,6 +1461,7 @@ size_t IncrementalTriangulator::Create(
                              &xyz, initial, false)) {
     return 0;
   }
+
   // Eigen::Vector3d xyz_full;
   // std::vector<char> inlier_mask_full;
 
@@ -1465,7 +1479,8 @@ size_t IncrementalTriangulator::Create(
     if (inlier_mask[i]) {
       const CorrData& corr_data = create_corrs_data[i];
       track.AddElement(corr_data.image_id, corr_data.point2D_idx);
-      num_constraints += ((corr_data.camera->ModelId() == Radial1DCameraModel::model_id || corr_data.camera->ModelId() == ImplicitDistortionModel::model_id) && point_data[i].is_radial) ? 1 : 2;
+      num_constraints += (pose_data[i].camera->IsFullyCalibrated(corr_data.point2D->XY())) ? 2 : 1;
+
       // if(standard_triangulation){
       //   num_constraints += (corr_data.camera->ModelId() == Radial1DCameraModel::model_id || corr_data.camera->ModelId() == ImplicitDistortionModel::model_id) ? 2 : 2;
       //   // num_constraints += (corr_data.camera->ModelId() == Radial1DCameraModel::model_id || corr_data.camera->ModelId() == ImplicitDistortionModel::model_id) ? 1 : 2;
