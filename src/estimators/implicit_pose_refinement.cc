@@ -82,6 +82,8 @@ std::vector<CameraPose> pose_refinement_multi(
 
     // Setup parameterizations and constant parameter blocks
     for (size_t k = 0; k < n_img; ++k) {
+        if (!problem.HasParameterBlock(qs[k].coeffs().data()))
+            continue;
         double *q = qs[k].coeffs().data();
         double *t = ts[k].data();
 
@@ -166,7 +168,9 @@ CameraPose pose_refinement_multi_point2d_single_image(
     for (size_t k = 0; k < n_img; ++k) {
         double *q = qs[k].coeffs().data();
         double *t = ts[k].data();
-
+        
+        if (!problem.HasParameterBlock(q))
+            continue;
         SetEigenQuaternionManifold(&problem, q);
 
         if (k != image_id) {
@@ -216,6 +220,27 @@ void filter_result_pose_refinement_multi(std::vector<std::vector<Eigen::Vector2d
     for (int i = 0; i < points2D.size(); i++) {
         int ori_size = points2D[i].size();
         exclude_outliers(fs_diff[i], points2D[i], points3D[i], true, refinement_opt.filter_thres);
+        counter += ori_size - points2D[i].size();
+    }
+    // std::cout << "filtered number of entries: " << counter << std::endl;
+}
+
+void filter_result_pose_refinement_multi(std::vector<std::vector<Eigen::Vector2d>> &points2D,
+                                std::vector<std::vector<Eigen::Vector3d>> &points3D,
+                                const std::vector<CameraPose>& poses, const Eigen::Vector2d &pp, 
+                                std::vector<std::vector<bool>>& is_outlier_multi,
+                                PoseRefinementOptions refinement_opt) {
+
+    std::vector<std::vector<double>> fs_diff;
+    calculate_fmed_diff(points2D, points3D, poses, pp, fs_diff);
+
+    is_outlier_multi.clear();
+    is_outlier_multi.resize(points2D.size());
+    
+    int counter = 0;
+    for (int i = 0; i < points2D.size(); i++) {
+        int ori_size = points2D[i].size();
+        exclude_outliers(fs_diff[i], points2D[i], points3D[i], true, refinement_opt.filter_thres, &(is_outlier_multi[i]));
         counter += ori_size - points2D[i].size();
     }
     // std::cout << "filtered number of entries: " << counter << std::endl;

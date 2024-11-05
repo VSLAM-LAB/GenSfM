@@ -40,6 +40,7 @@
 #include "base/spline.h"
 #include "base/camera_models.h"
 
+#include "util/math.h"
 #include "util/types.h"
 
 namespace colmap {
@@ -224,6 +225,7 @@ class Camera {
   inline double EvalFocalLength(const Eigen::Vector2d& image_point) const;
   inline bool IsFullyCalibrated(const Eigen::Vector2d& image_point) const;
   inline void SetCalibrated(bool calibrated);
+  inline bool IsCalibrated() const;
 
  private:
   // The unique identifier of the camera. If the identifier is not specified
@@ -1119,6 +1121,7 @@ inline void Camera::FitPIeceWiseSpline_binary(std::vector<double>& radii, std::v
   std::vector<std::vector<double>> focal_lengths_segments = {};
   double threshold = mean_interval + std_interval;
   double std_threshold = 0.5*std_interval;
+  threshold = std::max(threshold, DegToRad(0.1));
   recursiveSplit(new_radii, new_focal_lengths, radii_segments, focal_lengths_segments, threshold, std_threshold);
   // std::cout << "----------radii_segments size: " << radii_segments.size() << std::endl;
   for(int i = 0; i < radii_segments.size(); i++){
@@ -1203,6 +1206,11 @@ inline bool Camera::IsFullyCalibrated(const Eigen::Vector2d& image_point) const 
 void Camera::SetCalibrated(bool calibrated) {
   is_fully_calibrated_ = calibrated;
 }
+
+bool Camera::IsCalibrated() const {
+  return is_fully_calibrated_;
+}
+
 }  // namespace colmap
 
 #endif  // COLMAP_SRC_BASE_CAMERA_H_

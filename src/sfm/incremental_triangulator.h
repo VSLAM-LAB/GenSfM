@@ -133,6 +133,8 @@ class IncrementalTriangulator {
   // Merge tracks of all 3D points.
   // Returns the number of merged observations.
   size_t MergeAllTracks(const Options& options);
+  
+  int CalibrateCamera(const Options& options);
 
   // Perform retriangulation for under-reconstructed image pairs. Under-
   // reconstruction usually occurs in the case of a drifting reconstruction.

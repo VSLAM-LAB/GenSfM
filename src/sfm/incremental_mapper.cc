@@ -655,8 +655,9 @@ bool IncrementalMapper::RegisterNextImage(const Options& options,
     }
   }
 
-  AdjustCameraPose(options, image_id);
-  // TODO: filter 3D points by reprojection error
+  if(num_reg_images_per_camera_[camera.CameraId()] > 16) {
+    AdjustCameraPose(options, image_id);
+  }
 
   return true;
 }
@@ -708,6 +709,9 @@ size_t IncrementalMapper::TriangulateImage(
   if(standard_triangulation) {
     // std::cout << "Standard Triangulation Condition meeted, with num_reg_images_per_camera " << num_reg_images_per_camera_[camera.CameraId()]<<" min_num_reg_images:"<< tri_options.min_num_reg_images<< std::endl;
     std::cout << "Standard Triangulation Condition meeted, with num_images_having_point3D " << num_images_having_point3D<<" min_num_reg_images:"<< tri_options.min_num_reg_images<< std::endl;
+    if (!camera.IsCalibrated()) {
+      triangulator_->CalibrateCamera(tri_options);
+    }
   }
   return triangulator_->TriangulateImage(tri_options, image_id, initial, standard_triangulation);
 }
@@ -1341,6 +1345,7 @@ bool IncrementalMapper::AdjustCameraPose(const Options& options,
   CostMatrixOptions cm_opt;
   PoseRefinementOptions refinement_opt;
 
+  std::vector<bool> is_outlier_final(points2D[0].size(), false);
   for (size_t i = 0; i < 2; i++) {
     // build up cost matrix
     CostMatrix costMatrix = build_cost_matrix_multi(points2D, cm_opt, principal_point);
@@ -1349,7 +1354,16 @@ bool IncrementalMapper::AdjustCameraPose(const Options& options,
     poses[0] = pose;
 
     // Update camera pose with two iterations
-    filter_result_pose_refinement_multi(points2D, points3D, poses, principal_point, refinement_opt);
+    std::vector<std::vector<bool>> is_outlier_multi;
+    filter_result_pose_refinement_multi(points2D, points3D, poses, principal_point, is_outlier_multi, refinement_opt);
+
+    int counter = 0;
+    for (size_t j = 0; j < is_outlier_final.size(); j++) {
+      if (is_outlier_final[j])
+        continue;
+      is_outlier_final[j] = is_outlier_multi[0][counter];
+      counter++;
+    }
 
   }
   // Update camera pose
@@ -1358,6 +1372,10 @@ bool IncrementalMapper::AdjustCameraPose(const Options& options,
 
   return true;
 }
+
+int IncrementalMapper::CalibrateCamera(const IncrementalTriangulator::Options &tri_opt) {
+  return triangulator_->CalibrateCamera(tri_opt);
+} 
 
 bool IncrementalMapper::AdjustParallelGlobalBundle(
     const BundleAdjustmentOptions& ba_options,

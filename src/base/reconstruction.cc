@@ -929,8 +929,7 @@ size_t Reconstruction::FilterObservationsWithNegativeDepth() {
       if (point2D.HasPoint3D()) {
         const class Point3D& point3D = Point3D(point2D.Point3DId());
 
-        if (camera.ModelId() == Radial1DCameraModel::model_id || camera.ModelId() == ImplicitDistortionModel::model_id
-            ){
+        if (!camera.IsFullyCalibrated(point2D.XY())){
           // For radial cameras we instead check the half-plane constraint
           const Eigen::Vector2d n =
               proj_matrix.topRows<2>() * point3D.XYZ().homogeneous();
@@ -941,7 +940,14 @@ size_t Reconstruction::FilterObservationsWithNegativeDepth() {
             num_filtered += 1;
           }
         } else {
-          if (!HasPointPositiveDepth(proj_matrix, point3D.XYZ())) {
+          bool is_behind = false;
+          if (camera.ModelId() != ImplicitDistortionModel::model_id) {
+            double focal_length = camera.EvalFocalLength(point2D.XY());
+            is_behind = (HasPointPositiveDepth(proj_matrix, point3D.XYZ()) != (focal_length > 0));
+          } else {
+            is_behind = !HasPointPositiveDepth(proj_matrix, point3D.XYZ());
+          }
+          if (is_behind) {
             DeleteObservation(image_id, point2D_idx);
             num_filtered += 1;
           }

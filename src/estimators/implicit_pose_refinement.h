@@ -69,6 +69,12 @@ struct PoseRefinementOptions {
                                 std::vector<std::vector<Eigen::Vector3d>> &points3D,
                                 const std::vector<CameraPose>& poses, const Eigen::Vector2d &pp, 
                                 PoseRefinementOptions refinement_opt);
+
+    void filter_result_pose_refinement_multi(std::vector<std::vector<Eigen::Vector2d>> &points2D,
+                                std::vector<std::vector<Eigen::Vector3d>> &points3D,
+                                const std::vector<CameraPose>& poses, const Eigen::Vector2d &pp, 
+                                std::vector<std::vector<bool>>& is_outlier_multi,
+                                PoseRefinementOptions refinement_opt);
     struct PoseRefinement1DRadialOptions {
         bool weight_residuals = true;
         bool verbose = false;

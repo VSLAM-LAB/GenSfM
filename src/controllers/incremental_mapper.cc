@@ -670,6 +670,10 @@ void IncrementalMapperController::Reconstruct(
                   options_->ba_global_points_ratio * ba_prev_num_points ||
               reconstruction.NumPoints3D() >=
                   options_->ba_global_points_freq + ba_prev_num_points) {
+            
+            // Only Calibrate camera before global bundle adjustment
+            mapper.CalibrateCamera(options_->Triangulation());
+
             // ImplicitIterativeGlobalBA(*options_, &mapper);
             IterativeGlobalRefinement(*options_, &mapper);
             // ImplicitIterativeGlobalBA(*options_, &mapper);

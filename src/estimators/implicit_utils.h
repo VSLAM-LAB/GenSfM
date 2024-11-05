@@ -4,6 +4,7 @@
 #include <vector>
 #include <Eigen/Dense>
 #include "implicit_camera_pose.h"
+#include <iostream>
 namespace colmap{
 double median(std::vector<double> v);
 
@@ -16,7 +17,7 @@ double median(std::vector<double> v);
 
     // items to be points2D, points3D, pointsInd
     template <typename T1, typename T2>
-    double exclude_outliers(std::vector<double> dist, std::vector<T1>& pointsItem1, std::vector<T2>& pointsItem2, bool use_threshold = false, double min_thres = 10) {
+    double exclude_outliers(std::vector<double> dist, std::vector<T1>& pointsItem1, std::vector<T2>& pointsItem2, bool use_threshold = false, double min_thres = 10, std::vector<bool>* is_outlier=nullptr) {
         double thres = 1.4826 * 3 * median(dist); // 3 times scaled MAD (according to MATLAB)
         if (use_threshold)
             thres = std::max(thres, min_thres); // set the maximum distance to be at at least some value
@@ -24,16 +25,22 @@ double median(std::vector<double> v);
         auto ite1 = pointsItem1.begin();
         auto ite2 = pointsItem2.begin();
         int counter = 0;
+        if (is_outlier) {
+            is_outlier->clear();
+            is_outlier->resize(pointsItem1.size(), false);
+        }
         while (ite1 != pointsItem1.end()) {
             if (dist[counter] > thres) {
                 pointsItem1.erase(ite1);
                 pointsItem2.erase(ite2);
+                if (is_outlier)
+                    is_outlier->at(counter) = true;
             }
             else {
                 ite1++;
                 ite2++;
             }
-
+            
             counter++;
         }
         return thres;
