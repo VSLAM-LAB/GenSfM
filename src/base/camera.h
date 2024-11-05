@@ -49,13 +49,13 @@ namespace colmap {
 // pictures with the exact same lens and intrinsics (focal length, etc.).
 // This class has a specific distortion model defined by a camera model class.
 
-tk::spline ransac_spline(int max_iteration, int degree, double threshold, std::vector<double>radii, std::vector<double>focal_lengths){
+tk::spline<double> ransac_spline(int max_iteration, int degree, double threshold, std::vector<double>radii, std::vector<double>focal_lengths){
   int best_inliers_count = 0;
   std::vector<double> best_coeffs;
   std::random_device rd;
   std::mt19937 gen(rd());
   std::uniform_int_distribution<> dis(0, radii.size() - 1);
-  tk::spline best_spline;
+  tk::spline<double> best_spline;
   std::vector<int> indices;
   for (int i = 0; i < max_iteration; ++i){
     std::vector<std::pair<double, double>> samples;
@@ -80,7 +80,7 @@ tk::spline ransac_spline(int max_iteration, int degree, double threshold, std::v
             sample_x.push_back(pair.first);
             sample_y.push_back(pair.second);
         }
-    tk::spline s;
+    tk::spline<double> s;
     s.set_points(sample_x, sample_y);
     int inliers_count = 0;
     for (size_t j = 0; j < radii.size(); ++j) {
@@ -202,7 +202,7 @@ class Camera {
   inline std::vector<double> GetFocalLengthParams() const;
   inline void SetFocalLengthParams(const std::vector<double>& focal_length_params) const;
   inline std::vector<double> GetRawRadii() const; 
-  inline tk::spline GetSpline() const;
+  inline tk::spline<double> GetSpline() const;
   inline std::vector<std::vector<double>> GetIntervals() const;
   inline void SetRawRadii(const std::vector<double>& raw_radii) const;
   inline std::vector<double> GetTheta() const;
@@ -247,9 +247,9 @@ class Camera {
   mutable std::vector<double> focal_length_params_;
   mutable std::vector<double> raw_radii_;
   mutable std::vector<double> theta_;
-  mutable tk::spline spline_;
-  mutable std::vector<tk::spline> piece_splines_; 
-  mutable std::vector<tk::spline> grid_splines_;
+  mutable tk::spline<double> spline_;
+  mutable std::vector<tk::spline<double>> piece_splines_; 
+  mutable std::vector<tk::spline<double>> grid_splines_;
   mutable std::vector<double> updated_params_;
   mutable std::vector<std::vector<double>> intervals_;
   mutable std::vector<double> grids_; 
@@ -332,7 +332,7 @@ inline void Camera::FitSpline(std::vector<double>& radii, std::vector<double>& f
   std::random_device rd;
   std::mt19937 gen(rd());
   std::uniform_int_distribution<> dis(0, new_radii.size() - 1);
-  tk::spline best_spline;
+  tk::spline<double> best_spline;
   const int max_iterations = 80;
   const double threshold = 10.0;
   int degree = 10;
@@ -349,7 +349,7 @@ inline void Camera::FitSpline(std::vector<double>& radii, std::vector<double>& f
             sample_x.push_back(pair.first);
             sample_y.push_back(pair.second);
         }
-    tk::spline s;
+    tk::spline<double> s;
     s.set_points(sample_x, sample_y);
     int inliers_count = 0;
     for (size_t j = 0; j < new_radii.size(); ++j) {
@@ -435,7 +435,7 @@ inline void Camera::FitSpline_theta_r(std::vector<double>& radii, std::vector<do
   std::random_device rd;
   std::mt19937 gen(rd());
   std::uniform_int_distribution<> dis(0, new_radii.size() - 1);
-  tk::spline best_spline;
+  tk::spline<double> best_spline;
   const int max_iterations = 80;
   const double threshold =5.0;
   int degree = 10;
@@ -458,7 +458,7 @@ inline void Camera::FitSpline_theta_r(std::vector<double>& radii, std::vector<do
             sample_x.push_back(pair.first);
             sample_y.push_back(pair.second);
         }
-    tk::spline s;
+    tk::spline<double> s;
     s.set_points(sample_x, sample_y);
     int inliers_count = 0;
     for (size_t j = 0; j < new_radii.size(); ++j) {
@@ -591,7 +591,7 @@ inline void Camera::FitPieceWiseSpline(std::vector<double>& radii, std::vector<d
   std::random_device rd;
   std::mt19937 gen(rd());
   std::uniform_int_distribution<> dis(0, new_radii.size() - 1);
-  tk::spline best_spline;
+  tk::spline<double> best_spline;
   const int max_iterations = 40;
   const double threshold = 20.0;
   int degree = 10;
@@ -616,7 +616,7 @@ inline void Camera::FitPieceWiseSpline(std::vector<double>& radii, std::vector<d
             // std::cout << "sample_x: " << pair.first << std::endl;
             sample_y.push_back(pair.second);
         }
-    tk::spline s;
+    tk::spline<double> s;
     s.set_points(sample_x, sample_y);
     // std::cout << "s fitted" << std::endl;
     int inliers_count = 0;
@@ -757,7 +757,8 @@ std::cout << "new_radii_segments size: " << new_radii_segments.size() << std::en
     }
 
   // Fit the piece-wise splines
-  std::vector<tk::spline> splines;
+  // std::vector<<tk::spline<double>>> splines;
+  std::vector<tk::spline<double>> splines;
   int piecewise_max_it = 10;
   for (size_t i = 0; i < new_radii_segments.size(); ++i) {
       // tk::spline s;
@@ -769,7 +770,7 @@ std::cout << "new_radii_segments size: " << new_radii_segments.size() << std::en
           // using ransac technique to fit the spline
           std::uniform_int_distribution<> dis_piece(0, new_radii_segments[i].size() - 1);
           int best_piece_inliers_count = 0;
-          tk::spline best_piece_spline;
+          tk::spline<double> best_piece_spline;
           for (int j = 0; j < piecewise_max_it; ++j) {
               std::vector<std::pair<double, double>> samples_piece;
               piece_indices.clear();
@@ -795,7 +796,7 @@ std::cout << "new_radii_segments size: " << new_radii_segments.size() << std::en
                   sample_x_piece.push_back(pair.first);
                   sample_y_piece.push_back(pair.second);
               }
-              tk::spline s_piece;
+              tk::spline<double> s_piece;
 
               s_piece.set_points(sample_x_piece, sample_y_piece);
               std::cout << "s_piece fitted" << std::endl;
@@ -813,7 +814,7 @@ std::cout << "new_radii_segments size: " << new_radii_segments.size() << std::en
           }
           splines.push_back(best_piece_spline);
       }else if (new_radii_segments[i].size() <= degree && new_radii_segments[i].size() > 2){
-        tk::spline s;
+        tk::spline<double> s;
         s.set_points(new_radii_segments[i], new_focal_lengths_segments[i]);
         splines.push_back(s);
       }else{
@@ -887,7 +888,7 @@ inline void Camera::FitGridSpline(std::vector<double>& radii, std::vector<double
   std::random_device rd;
   std::mt19937 gen(rd());
   std::uniform_int_distribution<> dis(0, new_radii.size() - 1);
-  tk::spline best_spline;
+  tk::spline<double> best_spline;
   const int max_iterations = 40;
   const double threshold = 20.0;
   int degree = 10;
@@ -912,7 +913,7 @@ inline void Camera::FitGridSpline(std::vector<double>& radii, std::vector<double
             // std::cout << "sample_x: " << pair.first << std::endl;
             sample_y.push_back(pair.second);
         }
-    tk::spline s;
+    tk::spline<double> s;
     s.set_points(sample_x, sample_y);
     // std::cout << "s fitted" << std::endl;
     int inliers_count = 0;
@@ -992,7 +993,7 @@ inline void Camera::FitGridSpline(std::vector<double>& radii, std::vector<double
   grids_ = grid_points;
   // fit a separate spline for each grid point
   if (grid_points.size() > 1) {
-    std::vector<tk::spline> grid_splines;
+    std::vector<tk::spline<double>> grid_splines;
     for (size_t i = 0; i < grid_points.size() - 1; ++i) {
       std::vector<double> grid_radii;
       std::vector<double> grid_focal_lengths;
@@ -1006,7 +1007,7 @@ inline void Camera::FitGridSpline(std::vector<double>& radii, std::vector<double
       // using ransac technique to fit the spline
       std::uniform_int_distribution<> dis_grid(0, grid_radii.size() - 1);
       int best_grid_inliers_count = 0;
-      tk::spline best_grid_spline;
+      tk::spline<double> best_grid_spline;
       std::vector<int> grid_indices;
       for (int j = 0; j < grid_max_it; ++j) {
         std::vector<std::pair<double, double>> samples_grid;
@@ -1027,7 +1028,7 @@ inline void Camera::FitGridSpline(std::vector<double>& radii, std::vector<double
           sample_x_grid.push_back(pair.first);
           sample_y_grid.push_back(pair.second);
         }
-        tk::spline s_grid;
+        tk::spline<double> s_grid;
         s_grid.set_points(sample_x_grid, sample_y_grid);
         int grid_inliers_count = 0;
         for (size_t k = 0; k < grid_radii.size(); ++k) {
@@ -1042,7 +1043,7 @@ inline void Camera::FitGridSpline(std::vector<double>& radii, std::vector<double
         }
       }grid_splines.push_back(best_grid_spline);
       }else{
-        tk::spline best_grid_spline;
+        tk::spline<double> best_grid_spline;
         best_grid_spline.set_points(grid_radii, grid_focal_lengths);
         grid_splines.push_back(best_grid_spline);  
       }
@@ -1112,7 +1113,7 @@ inline void Camera::FitPIeceWiseSpline_binary(std::vector<double>& radii, std::v
   std_interval = sqrt(std_interval/intervals.size());
   std::vector<std::vector<double>> radii_segments = {};
   std::vector<std::vector<double>> focal_lengths_segments = {};
-  double threshold = mean_interval + 0.1*std_interval;
+  double threshold = mean_interval + std_interval;
   double std_threshold = 0.5*std_interval;
   recursiveSplit(new_radii, new_focal_lengths, radii_segments, focal_lengths_segments, threshold, std_threshold);
   std::cout << "----------radii_segments size: " << radii_segments.size() << std::endl;
@@ -1139,7 +1140,7 @@ inline void Camera::FitPIeceWiseSpline_binary(std::vector<double>& radii, std::v
   int max_it = 80;
   int degree = 10;
   double threshold_ransac = 5.0;
-  tk::spline best_spline = ransac_spline(max_it, degree, threshold_ransac, radii_calibrated, focal_lengths_calibrated);
+  tk::spline<double> best_spline = ransac_spline(max_it, degree, threshold_ransac, radii_calibrated, focal_lengths_calibrated);
   std::vector<double> used_x;
   std::vector<double> used_y;
   if (ModelId()==ImplicitDistortionModel::model_id) {
@@ -1167,7 +1168,7 @@ inline std::vector<double> Camera::GetRawRadii() const {return raw_radii_;}
 inline void Camera::SetRawRadii(const std::vector<double>& raw_radii) const {raw_radii_ = raw_radii;}
 inline std::vector<double> Camera::GetTheta() const {return theta_;}
 inline void Camera::SetTheta(const std::vector<double>& theta) const {theta_ = theta;}
-inline tk::spline Camera::GetSpline() const {return spline_;}
+inline tk::spline<double> Camera::GetSpline() const {return spline_;}
 inline std::vector<std::vector<double>> Camera::GetIntervals() const {return intervals_;}
 
 

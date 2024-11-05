@@ -313,7 +313,7 @@ double CalculateSquaredReprojectionErrorFinal(const Eigen::Vector2d& point2D,
       // }
       // std::cout << "radius: " << radius << std::endl; 
       if (camera.ModelId()==ImplicitDistortionModel::model_id){
-        tk::spline s = camera.GetSpline();
+        tk::spline<double> s = camera.GetSpline();
         if(!std::isnan(s(radius))){
         focal_length = s(radius);}
       }

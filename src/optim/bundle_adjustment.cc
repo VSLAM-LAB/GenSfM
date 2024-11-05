@@ -413,7 +413,7 @@ void BundleAdjuster::AddImageToProblem(const image_t image_id,
   for (int i = 12; i < 22; i++) {
     sample_y.push_back(camera.Params()[i]);
   }
-  tk::spline spline_focal_lengths;
+  tk::spline <double> spline_focal_lengths;
   spline_focal_lengths.set_points(sample_x, sample_y);
   size_t num_3d_points = image.NumPoints3D();
   size_t num_radial_points = 0;

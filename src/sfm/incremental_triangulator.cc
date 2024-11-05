@@ -742,7 +742,7 @@ std::vector<double> IdentifyCalibratedArea(Camera camera, std::vector<double>& r
   std_interval = sqrt(std_interval/intervals.size());
   std::vector<std::vector<double>> radii_segments = {};
   std::vector<std::vector<double>> focal_lengths_segments = {};
-  double threshold = mean_interval + 0.1*std_interval;
+  double threshold = mean_interval + std_interval;
   double std_threshold = 0.5*std_interval;
   camera.recursiveSplit(new_radii, new_focal_lengths, radii_segments, focal_lengths_segments, threshold, std_threshold);
   std::cout << "----------radii_segments size: " << radii_segments.size() << std::endl;
