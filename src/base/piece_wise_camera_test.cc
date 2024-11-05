@@ -10,13 +10,13 @@
 #include <algorithm>
 
 #include "spline.h" 
-tk::spline ransac_spline(int max_iteration, int degree, double threshold, std::vector<double>radii, std::vector<double>focal_lengths){
+tk::spline<double> ransac_spline(int max_iteration, int degree, double threshold, std::vector<double>radii, std::vector<double>focal_lengths){
   int best_inliers_count = 0;
   std::vector<double> best_coeffs;
   std::random_device rd;
   std::mt19937 gen(rd());
   std::uniform_int_distribution<> dis(0, radii.size() - 1);
-  tk::spline best_spline;
+  tk::spline<double> best_spline;
   std::vector<int> indices;
   for (int i = 0; i < max_iteration; ++i){
     std::vector<std::pair<double, double>> samples;
