@@ -64,13 +64,20 @@ std::vector<TriangulationEstimator::M_t> TriangulationEstimator::Estimate(
 
   // Check if any of the cameras in this sample is a 1D radial camera
   bool have_radial = false;
+  std::vector<bool> is_radial;
+  int radial_count = 0;
   for(const auto &p : pose_data) {
     if(p.camera->ModelId() == Radial1DCameraModel::model_id || p.camera->ModelId() == ImplicitDistortionModel::model_id){
+      is_radial.push_back(true);
+      radial_count++;
       have_radial = true;
       // full triangulation
       // have_radial = false;
-      break;
+      // break;
+    } else {
+      is_radial.push_back(false);
     }
+    
   }
   // print the value of have_radial
   // std::cout << "Initial in Triangulation Estimator: " << initial << std::endl;
@@ -109,13 +116,38 @@ std::vector<TriangulationEstimator::M_t> TriangulationEstimator::Estimate(
     }
 
   } else { // triangulation with radial cameras involved
-
+    // If we have only two points and two radial cameras, we can not triangulate
+    if (point_data.size() == 2 && radial_count == 2)
+      return candidates;
+    // For minimal mixed cases, we run all possible combinations of three points if mixed case is involved
+    if (point_data.size() == 3 && radial_count < 3) {
+      for (size_t i = 0; i < 3; i++) {
+        std::vector<Eigen::Vector3d> lines;
+        std::vector<Eigen::Matrix3x4d> proj_matrices;
+        for (size_t k = 0; k < 2; k++) {
+          proj_matrices.push_back(pose_data[i].proj_matrix);
+          int curr_idx = (i + 1 + k) % 3;
+          if (is_radial[curr_idx]) {
+            // add line corresponding to the radial line
+            lines.emplace_back(point_data[curr_idx].point_normalized(1), -point_data[curr_idx].point_normalized(0), 0.0);
+          } else {        
+            // add two lines corresponding to x/y coordinates
+            lines.emplace_back(1.0, 0.0, -point_data[curr_idx].point_normalized(0));
+            proj_matrices.push_back(pose_data[curr_idx].proj_matrix);        
+            lines.emplace_back(0.0, 1.0, -point_data[curr_idx].point_normalized(1));
+          }
+        }
+        if (lines.size() == 4) {
+          candidates.push_back(TriangulateMultiViewPointFromLines(proj_matrices, lines));
+        }
+      }
+    }
     std::vector<Eigen::Vector3d> lines;
     std::vector<Eigen::Matrix3x4d> proj_matrices;
 
     for (size_t i = 0; i < point_data.size(); ++i) {
       proj_matrices.push_back(pose_data[i].proj_matrix);
-      if(pose_data[i].camera->ModelId() == Radial1DCameraModel::model_id || pose_data[i].camera->ModelId() == ImplicitDistortionModel::model_id){
+      if (is_radial[i]) {
         // add line corresponding to the radial line
         lines.emplace_back(point_data[i].point_normalized(1), -point_data[i].point_normalized(0), 0.0);
       } else {        
@@ -136,7 +168,7 @@ std::vector<TriangulationEstimator::M_t> TriangulationEstimator::Estimate(
     // check cheirality for each camera (or half-plane constraint for radial cameras)
     bool cheiral_ok = true;
     for (size_t i = 0; i < pose_data.size(); ++i) {
-      if(pose_data[i].camera->ModelId() == Radial1DCameraModel::model_id || pose_data[i].camera->ModelId() == ImplicitDistortionModel::model_id) {
+      if (is_radial[i]) {
         Eigen::Vector2d n = pose_data[i].proj_matrix.topRows<2>() * xyz.homogeneous();
         cheiral_ok &= n.dot(point_data[i].point_normalized) > 0;
       } else {
@@ -150,11 +182,11 @@ std::vector<TriangulationEstimator::M_t> TriangulationEstimator::Estimate(
     bool tri_angle_ok = false;
     // check point-based triangulation angle
     for (size_t i = 0; i < pose_data.size(); ++i) {
-      if(pose_data[i].camera->ModelId() == Radial1DCameraModel::model_id || pose_data[i].camera->ModelId() == ImplicitDistortionModel::model_id) {
+      if (is_radial[i]) {
         continue;
       }
       for (size_t j = 0; j < i; ++j) {
-        if(pose_data[j].camera->ModelId() == Radial1DCameraModel::model_id || pose_data[j].camera->ModelId() == ImplicitDistortionModel::model_id){
+        if(is_radial[j]){
           continue;
         }
         const double tri_angle = CalculateTriangulationAngle(
@@ -423,6 +455,18 @@ bool EstimateTriangulation(
   CHECK_GE(point_data.size(), 2);
   CHECK_EQ(point_data.size(), pose_data.size());
   options.Check();
+  if (point_data.size() == 2) {
+    TriangulationEstimator estimator;
+    std::vector<Eigen::Vector3d> xyzs = estimator.Estimate(point_data, pose_data, initial);
+    if (xyzs.empty()) {
+      return false;
+    }
+    else {
+      *xyz = xyzs[0];
+      inlier_mask->resize(point_data.size(), true);
+      return true;
+    }
+  }
   // std::coust << "Initial in EstimateTriangulation: " << initial << std::endl;
 
   // Robustly estimate track using LORANSAC.

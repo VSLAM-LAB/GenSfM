@@ -929,8 +929,7 @@ size_t Reconstruction::FilterObservationsWithNegativeDepth() {
       if (point2D.HasPoint3D()) {
         const class Point3D& point3D = Point3D(point2D.Point3DId());
 
-        if (camera.ModelId() == Radial1DCameraModel::model_id || camera.ModelId() == ImplicitDistortionModel::model_id
-            ){
+        if (!camera.IsFullyCalibrated(point2D.XY())){
           // For radial cameras we instead check the half-plane constraint
           const Eigen::Vector2d n =
               proj_matrix.topRows<2>() * point3D.XYZ().homogeneous();
@@ -941,7 +940,14 @@ size_t Reconstruction::FilterObservationsWithNegativeDepth() {
             num_filtered += 1;
           }
         } else {
-          if (!HasPointPositiveDepth(proj_matrix, point3D.XYZ())) {
+          bool is_behind = false;
+          if (camera.ModelId() != ImplicitDistortionModel::model_id) {
+            double focal_length = camera.EvalFocalLength(point2D.XY());
+            is_behind = (HasPointPositiveDepth(proj_matrix, point3D.XYZ()) != (focal_length > 0));
+          } else {
+            is_behind = !HasPointPositiveDepth(proj_matrix, point3D.XYZ());
+          }
+          if (is_behind) {
             DeleteObservation(image_id, point2D_idx);
             num_filtered += 1;
           }
@@ -1634,9 +1640,9 @@ size_t Reconstruction::FilterPoints3DWithLargeReprojectionError(
     for (const auto& track_el : point3D.Track().Elements()) {
       const class Image& image = Image(track_el.image_id);
       const class Camera& camera = Camera(image.CameraId());
-      if (camera.ModelId() == Radial1DCameraModel::model_id) {
-        // num_constraints += 1;
-        num_constraints += 2;
+      if (!camera.IsFullyCalibrated(image.Point2D(track_el.point2D_idx).XY())) {
+        num_constraints += 1;
+        // num_constraints += 2;
       } else {
         num_constraints += 2;
       }
@@ -1659,10 +1665,10 @@ size_t Reconstruction::FilterPoints3DWithLargeReprojectionError(
       size_t num_registered_images = reg_image_ids_.size();
       const double squared_reproj_error = CalculateSquaredReprojectionError(
           point2D.XY(), point3D.XYZ(), image.Qvec(), image.Tvec(), camera);
-      if(point3D_id == 2768){
-        std::cout << "/// ========== Squared reprojection error: ========== /// " << squared_reproj_error << std::endl;
-        std::cout << "/// ========== Image ID: ========== /// " << image.ImageId() << std::endl;
-      }
+      // if(point3D_id == 2768){
+      //   std::cout << "/// ========== Squared reprojection error: ========== /// " << squared_reproj_error << std::endl;
+      //   std::cout << "/// ========== Image ID: ========== /// " << image.ImageId() << std::endl;
+      // }
       // double squared_reproj_error = 0;
       // // min_num_reg_images related
       // if (num_registered_images<=20){
@@ -1674,8 +1680,10 @@ size_t Reconstruction::FilterPoints3DWithLargeReprojectionError(
         track_els_to_delete.push_back(track_el);
 
         num_constraints -= 
-            // (camera.ModelId() == Radial1DCameraModel::model_id) ? 1 : 2;
-            (camera.ModelId() == Radial1DCameraModel::model_id) ? 2 : 2;
+            // (camera.ModelId() == Radial1DCameraModel::model_id || camera.ModelId() == ImplicitDistortionModel::model_id) ? 1 : 2;
+            (!camera.IsFullyCalibrated(image.Point2D(track_el.point2D_idx).XY())) ? 1 : 2;
+
+            // (camera.ModelId() == Radial1DCameraModel::model_id) ? 2 : 2;
       } else {
         reproj_error_sum += std::sqrt(squared_reproj_error);
       }
@@ -1717,13 +1725,14 @@ size_t Reconstruction::FilterPoints3DWithLargeReprojectionErrorFinal(
     for (const auto& track_el : point3D.Track().Elements()) {
       const class Image& image = Image(track_el.image_id);
       const class Camera& camera = Camera(image.CameraId());
-      if (camera.ModelId() == Radial1DCameraModel::model_id || camera.ModelId() == ImplicitDistortionModel::model_id) {
-        // num_constraints += 1;
-        if (camera.GetRawRadii().size() > 0) {
-          num_constraints += 2;
-        } else {
-          num_constraints += 2;
-        }
+      // if (camera.ModelId() == Radial1DCameraModel::model_id || camera.ModelId() == ImplicitDistortionModel::model_id) {
+      if (!camera.IsFullyCalibrated(image.Point2D(track_el.point2D_idx).XY())) {
+        num_constraints += 1;
+        // if (camera.GetRawRadii().size() > 0) {
+        //   num_constraints += 2;
+        // } else {
+        //   num_constraints += 2;
+        // }
        
       } else {
         num_constraints += 2;
@@ -1731,7 +1740,7 @@ size_t Reconstruction::FilterPoints3DWithLargeReprojectionErrorFinal(
     }
     // Remove underconstrained points
     if (num_constraints < 4) {
-      // DeletePoint3D(point3D_id);
+      DeletePoint3D(point3D_id);
       num_filtered += point3D.Track().Length();
       continue;
     }
@@ -1750,18 +1759,20 @@ size_t Reconstruction::FilterPoints3DWithLargeReprojectionErrorFinal(
           point2D.XY(), point3D.XYZ(), image.Qvec(), image.Tvec(), camera.GetRawRadii(), camera.GetFocalLengthParams(), camera.GetTheta(), camera);
       original_error_sum += std::sqrt(squared_reproj_error);
       if (squared_reproj_error > max_squared_reproj_error ) {
-        // track_els_to_delete.push_back(track_el);
-        if (camera.GetRawRadii().size() > 0) {
-           num_constraints -= (camera.ModelId() == Radial1DCameraModel::model_id) ? 2 : 2;
-        } else {
-          if (camera.ModelId() == Radial1DCameraModel::model_id) {
-              num_constraints -= 1;
-          } else if (camera.ModelId() == ImplicitDistortionModel::model_id) {
+        // // track_els_to_delete.push_back(track_el);
+        // if (camera.GetRawRadii().size() > 0) {
+        //    num_constraints -= (camera.ModelId() == Radial1DCameraModel::model_id) ? 2 : 2;
+        // } else {
+          // if (camera.ModelId() == Radial1DCameraModel::model_id) {
+          //     num_constraints -= 1;
+          // } else if (camera.ModelId() == ImplicitDistortionModel::model_id) {
+          //     num_constraints -= 1;
+          if (!camera.IsFullyCalibrated(image.Point2D(track_el.point2D_idx).XY())) {
               num_constraints -= 1;
           } else {
               num_constraints -= 2;
           }
-        }
+        // }
         
       } 
       // else {
@@ -1779,8 +1790,8 @@ size_t Reconstruction::FilterPoints3DWithLargeReprojectionErrorFinal(
     // std::cout << "/// ========== Original error sum: ========== /// " << original_error_sum << std::endl;
 
     if (num_constraints < 4) {
-      // num_filtered += point3D.Track().Length();
-      // DeletePoint3D(point3D_id);
+      num_filtered += point3D.Track().Length();
+      DeletePoint3D(point3D_id);
     
     } else {
       num_filtered += track_els_to_delete.size();
@@ -1791,7 +1802,7 @@ size_t Reconstruction::FilterPoints3DWithLargeReprojectionErrorFinal(
     }
     num_track += track_els_total.size(); 
   }
-  std::cout << "total track: " <<num_track<< std::endl;
+  // std::cout << "total track: " <<num_track<< std::endl;
 
   return num_filtered;
   // return track_els_to_delete.size()

@@ -82,6 +82,8 @@ std::vector<CameraPose> pose_refinement_multi(
 
     // Setup parameterizations and constant parameter blocks
     for (size_t k = 0; k < n_img; ++k) {
+        if (!problem.HasParameterBlock(qs[k].coeffs().data()))
+            continue;
         double *q = qs[k].coeffs().data();
         double *t = ts[k].data();
 
@@ -105,6 +107,92 @@ std::vector<CameraPose> pose_refinement_multi(
         output.push_back(pose);
     }
     return output;
+}
+
+CameraPose pose_refinement_multi_point2d_single_image(
+                                const std::vector<std::vector<Eigen::Vector2d>> &points2D, 
+                                const std::vector<std::vector<Eigen::Vector3d>> &points3D,
+                                const CostMatrix &cost_matrix, const Eigen::Vector2d &pp,
+                                const std::vector<CameraPose> &initial_poses,
+                                int image_id, PoseRefinementOptions refinement_opt) {
+
+    size_t n_img = points2D.size();
+    if (image_id < 0 || image_id >= n_img) {
+        std::cerr << "Invalid image_id" << std::endl;
+    }
+
+    std::vector<std::vector<Eigen::Vector2d>> points2D_center = points2D;
+     for (size_t cam_k = 0; cam_k < n_img; ++cam_k) {
+        for (size_t i = 0; i < points2D[cam_k].size(); ++i) {
+            points2D_center[cam_k][i] -= pp;
+        }
+     }
+
+    std::vector<Eigen::Quaterniond> qs;
+    std::vector<Eigen::Vector3d> ts;
+
+    for (size_t k = 0; k < n_img; ++k) {
+        qs.emplace_back(initial_poses[k].q());
+        ts.emplace_back(initial_poses[k].t);
+    }
+
+    ceres::Problem problem;
+    
+    // Radial projection error
+    ceres::LossFunction* loss_function_radial = setup_loss_function(refinement_opt.loss_radial, refinement_opt.loss_scale_radial);        
+
+    for (size_t cam_k = 0; cam_k < n_img; ++cam_k) {
+        for (size_t i = 0; i < points2D[cam_k].size(); ++i) {
+            ceres::CostFunction* reg_cost = RadialReprojError::CreateCost(points2D_center[cam_k][i], points3D[cam_k][i]);
+            problem.AddResidualBlock(reg_cost, loss_function_radial, qs[cam_k].coeffs().data(), ts[cam_k].data());
+        }
+        }
+
+    // This is used for setting up the dynamic parameter vectors
+    // (workaround for having duplicate parameters in the blocks)
+    std::vector<std::vector<double*>> params(cost_matrix.pt_index.size());
+    
+    // Implicit distortion cost (the cost matrix, regularization)
+    ceres::LossFunction* loss_function_dist = setup_loss_function(refinement_opt.loss_dist, refinement_opt.loss_scale_dist);        
+
+
+    for (size_t i = 0; i < cost_matrix.pt_index.size(); ++i) {
+        ceres::CostFunction* reg_cost = CostMatrixRowCost::CreateCost(
+                points2D_center, points3D, cost_matrix.pt_index[i], cost_matrix.cam_index[i],
+                cost_matrix.values[i], qs, ts, params[i]);
+
+        problem.AddResidualBlock(reg_cost, loss_function_dist, params[i]);
+    }
+
+    // Setup parameterizations and constant parameter blocks
+    for (size_t k = 0; k < n_img; ++k) {
+        double *q = qs[k].coeffs().data();
+        double *t = ts[k].data();
+        
+        if (!problem.HasParameterBlock(q))
+            continue;
+        SetEigenQuaternionManifold(&problem, q);
+
+        if (k != image_id) {
+            problem.SetParameterBlockConstant(q);
+            problem.SetParameterBlockConstant(t);
+        }
+    }
+
+    ceres::Solver::Options options;
+    options.max_num_iterations = 100;
+    options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
+    // options.minimizer_progress_to_stdout = refinement_opt.verbose; // true if you want more debug output
+    options.minimizer_progress_to_stdout = false; // true if you want more debug output
+    options.num_threads = 8;
+    ceres::Solver::Summary summary;
+    ceres::Solve(options, &problem, &summary);
+
+    CameraPose pose;
+    pose.q(qs[image_id]);
+    pose.t = ts[image_id];
+    // output.push_back(pose);
+    return pose;
 }
 
 void filter_result_pose_refinement(std::vector<Eigen::Vector2d> &points2D,
@@ -132,6 +220,27 @@ void filter_result_pose_refinement_multi(std::vector<std::vector<Eigen::Vector2d
     for (int i = 0; i < points2D.size(); i++) {
         int ori_size = points2D[i].size();
         exclude_outliers(fs_diff[i], points2D[i], points3D[i], true, refinement_opt.filter_thres);
+        counter += ori_size - points2D[i].size();
+    }
+    // std::cout << "filtered number of entries: " << counter << std::endl;
+}
+
+void filter_result_pose_refinement_multi(std::vector<std::vector<Eigen::Vector2d>> &points2D,
+                                std::vector<std::vector<Eigen::Vector3d>> &points3D,
+                                const std::vector<CameraPose>& poses, const Eigen::Vector2d &pp, 
+                                std::vector<std::vector<bool>>& is_outlier_multi,
+                                PoseRefinementOptions refinement_opt) {
+
+    std::vector<std::vector<double>> fs_diff;
+    calculate_fmed_diff(points2D, points3D, poses, pp, fs_diff);
+
+    is_outlier_multi.clear();
+    is_outlier_multi.resize(points2D.size());
+    
+    int counter = 0;
+    for (int i = 0; i < points2D.size(); i++) {
+        int ori_size = points2D[i].size();
+        exclude_outliers(fs_diff[i], points2D[i], points3D[i], true, refinement_opt.filter_thres, &(is_outlier_multi[i]));
         counter += ori_size - points2D[i].size();
     }
     // std::cout << "filtered number of entries: " << counter << std::endl;

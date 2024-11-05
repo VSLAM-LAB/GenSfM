@@ -47,6 +47,13 @@ struct PoseRefinementOptions {
                                 const CostMatrix &cost_matrix, const Eigen::Vector2d &pp,
                                 const std::vector<CameraPose> &initial_poses, PoseRefinementOptions refinement_opt);
 
+    CameraPose pose_refinement_multi_point2d_single_image(
+                                const std::vector<std::vector<Eigen::Vector2d>> &points2D, 
+                                const std::vector<std::vector<Eigen::Vector3d>> &points3D,
+                                const CostMatrix &cost_matrix, const Eigen::Vector2d &pp,
+                                const std::vector<CameraPose> &initial_poses,
+                                int image_id, PoseRefinementOptions refinement_opt);
+
     // Refines camera pose using a fixed non-parametric intrinsic calibration
     CameraPose non_parametric_pose_refinement(const std::vector<Eigen::Vector2d> &points2D, 
                                 const std::vector<Eigen::Vector3d> &points3D,
@@ -61,6 +68,12 @@ struct PoseRefinementOptions {
     void filter_result_pose_refinement_multi(std::vector<std::vector<Eigen::Vector2d>> &points2D,
                                 std::vector<std::vector<Eigen::Vector3d>> &points3D,
                                 const std::vector<CameraPose>& poses, const Eigen::Vector2d &pp, 
+                                PoseRefinementOptions refinement_opt);
+
+    void filter_result_pose_refinement_multi(std::vector<std::vector<Eigen::Vector2d>> &points2D,
+                                std::vector<std::vector<Eigen::Vector3d>> &points3D,
+                                const std::vector<CameraPose>& poses, const Eigen::Vector2d &pp, 
+                                std::vector<std::vector<bool>>& is_outlier_multi,
                                 PoseRefinementOptions refinement_opt);
     struct PoseRefinement1DRadialOptions {
         bool weight_residuals = true;

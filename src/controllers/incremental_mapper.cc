@@ -638,6 +638,8 @@ void IncrementalMapperController::Reconstruct(
             mapper.RegisterNextImage(options_->Mapper(), next_image_id);
 
         if (reg_next_success) {
+          std::cout << "Qvec: " << reconstruction.Image(next_image_id).Qvec().transpose() << std::endl;
+          std::cout << "Tvec: " << reconstruction.Image(next_image_id).Tvec().transpose() << std::endl;
           TriangulateImage(*options_, next_image, &mapper);
           // update camera params
           for (const image_t img_id : reconstruction.RegImageIds()) {
@@ -668,6 +670,10 @@ void IncrementalMapperController::Reconstruct(
                   options_->ba_global_points_ratio * ba_prev_num_points ||
               reconstruction.NumPoints3D() >=
                   options_->ba_global_points_freq + ba_prev_num_points) {
+            
+            // Only Calibrate camera before global bundle adjustment
+            mapper.CalibrateCamera(options_->Triangulation());
+
             // ImplicitIterativeGlobalBA(*options_, &mapper);
             IterativeGlobalRefinement(*options_, &mapper);
             // ImplicitIterativeGlobalBA(*options_, &mapper);
