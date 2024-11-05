@@ -370,8 +370,8 @@ inline void Image::FitSpline(std::vector<double>& radii, std::vector<double>& fo
     new_radii.push_back(radii[increasing_indices[i]]);
     new_focal_lengths.push_back(focal_lengths[increasing_indices[i]]);
   }
-  std::cout << "new_radii size: " << new_radii.size() << std::endl;
-  std::cout << "new_focal_lengths size: " << new_focal_lengths.size() << std::endl;
+  // std::cout << "new_radii size: " << new_radii.size() << std::endl;
+  // std::cout << "new_focal_lengths size: " << new_focal_lengths.size() << std::endl;
 
   // use ransac technique to fit the spline
   int best_inliers_count = 0;
@@ -405,8 +405,8 @@ inline void Image::FitSpline(std::vector<double>& radii, std::vector<double>& fo
       auto min_max_x = std::minmax_element(sample_x.begin(), sample_x.end());
       auto x = s.get_x();
       auto min_max_x_s = std::minmax_element(x.begin(), x.end());
-      std::cout << "Min x value: " << *min_max_x.first << ", Max x value: " << *min_max_x.second << std::endl;
-      std::cout << "Min x value for s: " << *min_max_x_s.first << ", Max x value for s: " << *min_max_x_s.second << std::endl;
+      // std::cout << "Min x value: " << *min_max_x.first << ", Max x value: " << *min_max_x.second << std::endl;
+      // std::cout << "Min x value for s: " << *min_max_x_s.first << ", Max x value for s: " << *min_max_x_s.second << std::endl;
         // if (s.get_x().empty()) {
         //     continue;
         // }
@@ -420,8 +420,8 @@ inline void Image::FitSpline(std::vector<double>& radii, std::vector<double>& fo
         }
         
         // double y_est = s(new_radii[j]);
-        std::cout << "j: " << j << "new_radii[j]" << new_radii[j]<< std::endl;
-        std::cout << "y_est for s: " << y_est << std::endl;
+        // std::cout << "j: " << j << "new_radii[j]" << new_radii[j]<< std::endl;
+        // std::cout << "y_est for s: " << y_est << std::endl;
         if (fabs(y_est - new_focal_lengths[j]) < threshold) {
             ++inliers_count;
         }
@@ -436,7 +436,7 @@ inline void Image::FitSpline(std::vector<double>& radii, std::vector<double>& fo
     for (size_t j = 0; j < new_radii.size(); ++j) {
       
         double y_est = best_spline(new_radii[j]);
-        std::cout << "y_est for best_spline: " << y_est << std::endl;
+        // std::cout << "y_est for best_spline: " << y_est << std::endl;
         if (fabs(y_est - new_focal_lengths[j]) < threshold) {
             inliers_x.push_back(new_radii[j]);
             inliers_y.push_back(new_focal_lengths[j]);
