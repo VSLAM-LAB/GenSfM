@@ -289,6 +289,7 @@ bool BundleAdjuster::Solve(Reconstruction* reconstruction, bool initial) {
   const size_t num_images = config_.NumImages();
   if (num_images <= kMaxNumImagesDirectDenseSolver) {
     solver_options.linear_solver_type = ceres::DENSE_SCHUR;
+    // solver_options.linear_solver_type = ceres::SPARSE_SCHUR;
   } else if (num_images <= kMaxNumImagesDirectSparseSolver) {
     solver_options.linear_solver_type = ceres::SPARSE_SCHUR;
   } else {  // Indirect sparse (preconditioned CG) solver.

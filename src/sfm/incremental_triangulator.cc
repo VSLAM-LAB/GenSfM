@@ -797,9 +797,20 @@ std::vector<double> movingAverage(const std::vector<double>& data, int window_si
 
 int IncrementalTriangulator::CalibrateCamera(const Options& options) {
   // Only calibrate cameras if there are enough registered images.
-  if (reconstruction_->RegImageIds().size() < options.min_num_reg_images) {
-    return 0;
+  // check the number of registrated images per camera
+  std::map<camera_t, size_t> num_reg_images_per_camera;
+  for (const auto& image_id : reconstruction_->RegImageIds()) {
+    const Image& image = reconstruction_->Image(image_id);
+    num_reg_images_per_camera[image.CameraId()] += 1;
   }
+  for (const auto& pair : num_reg_images_per_camera) {
+    if (pair.second < options.min_num_reg_images) {
+      return 0;
+    }
+  }
+  // if (reconstruction_->RegImageIds().size() < options.min_num_reg_images) {
+  //   return 0;
+  // }
 
   // check the number of registrated images per camera 
   std::unordered_map<camera_t, std::vector<image_t>> camera_images;
@@ -817,6 +828,7 @@ int IncrementalTriangulator::CalibrateCamera(const Options& options) {
   CostMatrixOptions cm_options;
   for (auto &[camera_id, camera_const]: reconstruction_->Cameras()) {
     Camera& camera = reconstruction_->Camera(camera_id);
+    std::cout << "!!! camera_id: " << camera_id << std::endl;
 
     // extracting points3D
     std::vector<std::vector<Eigen::Vector3d>> points3D;
@@ -849,20 +861,44 @@ int IncrementalTriangulator::CalibrateCamera(const Options& options) {
       points2D.push_back(imagePoints2D);
       points3D.push_back(imagePoints3D);
     }
+    if(points2D.size() == 0){
+      continue;
+    }
+    std::cout << "!!! points2D_before.size(): " << points2D.size() << std::endl;
+    // randomly subsample the points
+    // std::vector<std::vector<Eigen::Vector2d>> points2D_subsampled;
+    // std::vector<std::vector<Eigen::Vector3d>> points3D_subsampled;
+    // double subsample_ratio = 0.5;
+    // for (int i = 0; i < points2D.size(); i++) {
+    //   std::vector<Eigen::Vector2d> imagePoints2D_subsampled;
+    //   std::vector<Eigen::Vector3d> imagePoints3D_subsampled;
+    //   for (int j = 0; j < points2D[i].size(); j++) {
+    //     if (rand() % 100 < subsample_ratio * 100) {
+    //       imagePoints2D_subsampled.push_back(points2D[i][j]);
+    //       imagePoints3D_subsampled.push_back(points3D[i][j]);
+    //     }
+    //   }
+    //   points2D_subsampled.push_back(imagePoints2D_subsampled);
+    //   points3D_subsampled.push_back(imagePoints3D_subsampled);
+    // }
 
     // principal point from a random camera
     Eigen::Vector2d principal_point(reconstruction_->Camera(camera_id).PrincipalPointX(),
                                     reconstruction_->Camera(camera_id).PrincipalPointY());
 
     CostMatrix costMatrix = build_cost_matrix_multi(points2D, cm_options, principal_point);
+    // CostMatrix costMatrix = build_cost_matrix_multi(points2D_subsampled, cm_options, principal_point);
     std::vector<CameraPose> poses_refined = (camera_images[camera_id].size() >= options.min_num_reg_images) ?
             pose_refinement_multi(points2D, points3D, costMatrix, principal_point, poses, pose_refinement_options) :
+            // pose_refinement_multi(points2D_subsampled, points3D_subsampled, costMatrix, principal_point, poses, pose_refinement_options) :
             poses;
 
     filter_result_pose_refinement_multi(points2D, points3D, poses_refined, principal_point, pose_refinement_options);
+    // filter_result_pose_refinement_multi(points2D_subsampled, points3D_subsampled, poses_refined, principal_point, pose_refinement_options);
     costMatrix = build_cost_matrix_multi(points2D, cm_options, principal_point);
+    // costMatrix = build_cost_matrix_multi(points2D_subsampled, cm_options, principal_point);
     IntrinsicCalib intrinsic_calib = calibrate_multi(points2D, points3D, costMatrix, principal_point, poses_refined);
-
+    // IntrinsicCalib intrinsic_calib = calibrate_multi(points2D_subsampled, points3D_subsampled, costMatrix, principal_point, poses_refined);
     std::cout << "!!! points2D.size(): " << points2D.size() << std::endl;
     std::vector<double> radii;
     std::vector<double> theta;
