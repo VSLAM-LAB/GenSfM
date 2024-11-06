@@ -465,18 +465,20 @@ void Reconstruction::Normalize(const double extent, const double p0,
 void Reconstruction::NormalizeRadialCameras() {
   size_t negative_focal_count = 0;
   bool all_radial = true;
+  std::unordered_map<camera_t, size_t> num_reg_images_per_camera;
+  for (const image_t img_id : reg_image_ids_) {
+    const class Image& image = Image(img_id);
+    num_reg_images_per_camera[image.CameraId()] += 1;
+  }
+  
   for (auto& image : images_) {
     const class Camera& camera = Camera(image.second.CameraId());
     if (camera.ModelId() != Radial1DCameraModel::model_id && camera.ModelId() != ImplicitDistortionModel::model_id){
       all_radial = false;
       continue;
     }
-    // check the registered images for this camera
-    size_t num_registerd_images = 0;
-    for (const image_t img_id : reg_image_ids_) {
-      if (Image(img_id).CameraId() == camera.CameraId()) {
-        num_registerd_images++;
-      }
+    if (num_reg_images_per_camera[camera.CameraId()] >= 16) {
+      continue;
     }
     // min_num_reg_images related
     // // if((num_registerd_images > 20)&&!image.second.UseRadial()){
@@ -1778,7 +1780,7 @@ size_t Reconstruction::FilterPoints3DWithLargeReprojectionErrorFinal(
       // else {
       //   reproj_error_sum += std::sqrt(squared_reproj_error);
       // }
-      if (squared_reproj_error <16) {
+      if (squared_reproj_error < max_squared_reproj_error) {
         reproj_error_sum += std::sqrt(squared_reproj_error);
         // track_els_total.push_back(track_el);
       }else{
