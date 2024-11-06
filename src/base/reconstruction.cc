@@ -1665,8 +1665,10 @@ size_t Reconstruction::FilterPoints3DWithLargeReprojectionError(
       const class Camera& camera = Camera(image.CameraId());
       const Point2D& point2D = image.Point2D(track_el.point2D_idx);
       size_t num_registered_images = reg_image_ids_.size();
-      const double squared_reproj_error = CalculateSquaredReprojectionError(
-          point2D.XY(), point3D.XYZ(), image.Qvec(), image.Tvec(), camera);
+      // const double squared_reproj_error = CalculateSquaredReprojectionError(
+      //     point2D.XY(), point3D.XYZ(), image.Qvec(), image.Tvec(), camera);
+      const double squared_reproj_error = std::pow(CalculateAngularError(
+          point2D.XY(), point3D.XYZ(), image.Qvec(), image.Tvec(), camera), 2);
       // if(point3D_id == 2768){
       //   std::cout << "/// ========== Squared reprojection error: ========== /// " << squared_reproj_error << std::endl;
       //   std::cout << "/// ========== Image ID: ========== /// " << image.ImageId() << std::endl;
