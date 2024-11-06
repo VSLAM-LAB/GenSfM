@@ -72,6 +72,10 @@ const std::vector<size_t>& Camera::ExtraParamsIdxs() const {
   return CameraModelExtraParamsIdxs(model_id_);
 }
 
+const std::vector<size_t>& Camera::XParamsIdx() const {
+  return CameraModelXParamsIdxs(model_id_);
+}
+
 Eigen::Matrix3d Camera::CalibrationMatrix() const {
   Eigen::Matrix3d K = Eigen::Matrix3d::Identity();
 

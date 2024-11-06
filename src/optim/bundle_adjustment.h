@@ -60,6 +60,9 @@ struct BundleAdjustmentOptions {
   // Whether to refine the principal point parameter group.
   bool refine_principal_point = false;
 
+  //Whether to refine control points x values
+  bool refine_x_values = false;
+
   // Whether to refine the extra parameter group.
   bool refine_extra_params = false;
 

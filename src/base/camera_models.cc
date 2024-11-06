@@ -51,7 +51,9 @@ namespace colmap {
   const std::vector<size_t> CameraModel::principal_point_idxs = \
       CameraModel::InitializePrincipalPointIdxs();              \
   const std::vector<size_t> CameraModel::extra_params_idxs =    \
-      CameraModel::InitializeExtraParamsIdxs();
+      CameraModel::InitializeExtraParamsIdxs();                 \
+  const std::vector<size_t> CameraModel::x_params_idxs =       \
+      CameraModel::InitializeXParamsIdxs();
 
 CAMERA_MODEL_CASES
 
@@ -193,6 +195,21 @@ const std::vector<size_t>& CameraModelExtraParamsIdxs(const int model_id) {
     CAMERA_MODEL_SWITCH_CASES
 
 #undef CAMERA_MODEL_CASE
+  }
+
+  return EMPTY_IDXS;
+}
+
+const std::vector<size_t>& CameraModelXParamsIdxs(const int model_id) {
+  switch (model_id){
+    #define CAMERA_MODEL_CASE(CameraModel)     \
+      case CameraModel::kModelId:              \
+        return CameraModel::x_params_idxs; \
+        break;
+
+        CAMERA_MODEL_SWITCH_CASES
+
+    #undef CAMERA_MODEL_CASE
   }
 
   return EMPTY_IDXS;
