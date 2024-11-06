@@ -378,27 +378,9 @@ void BundleAdjuster::AddImageToProblem(const image_t image_id,
       num_reg_images++;
     }
   }
-  // check if a camera in reconstruction only registered number of images <= 20
-  for (const image_t img_id : reconstruction->RegImageIds()) {
-    bool found = false;
-    for (auto& pair : registered_num_images_per_camera) {
-      if (reconstruction->Image(img_id).CameraId() == pair.first) {
-        pair.second++;
-        found = true;
-        break;
-      }
-    }
-    if (!found) {
-      registered_num_images_per_camera.push_back(std::make_pair(reconstruction->Image(img_id).CameraId(), 1));
-    }
-  }
-  // check if one of the cameras has only registered number of images <= 20
-  for (auto& pair : registered_num_images_per_camera) {
-    // related to min_num_reg_images
-    if (pair.second <= 16) {
-      using_radial1d = true;
-      break;
-    }
+
+  if (num_reg_images < options_.min_num_reg_images) {
+    using_radial1d = true;
   }
 
   // CostFunction assumes unit quaternions.
@@ -599,7 +581,7 @@ void BundleAdjuster::AddPointToProblem(const point3D_t point3D_id,
   }
   for (auto& pair : registered_num_images_per_camera) {
     // related to min_num_reg_images
-    if (pair.second <= 16) {
+    if (pair.second < options_.min_num_reg_images) {
       using_radial1d = true;
       break;
     }

@@ -359,6 +359,8 @@ BundleAdjustmentOptions IncrementalMapperOptions::LocalBundleAdjustment()
   options.loss_function_scale = 1.0;
   options.loss_function_type =
       BundleAdjustmentOptions::LossFunctionType::SOFT_L1;
+      
+  options.min_num_reg_images = Triangulation().min_num_reg_images;
   return options;
 }
 
@@ -383,6 +385,8 @@ BundleAdjustmentOptions IncrementalMapperOptions::GlobalBundleAdjustment()
 	  ba_min_num_residuals_for_multi_threading;
   options.loss_function_type =
       BundleAdjustmentOptions::LossFunctionType::TRIVIAL;
+  
+  options.min_num_reg_images = Triangulation().min_num_reg_images;
   return options;
 }
 
@@ -607,6 +611,10 @@ void IncrementalMapperController::Reconstruct(
 
     bool reg_next_success = true;
     bool prev_reg_next_success = true;
+
+    // If input already has camera intrinsics, perform calibration
+    mapper.CalibrateCamera(options_->Mapper(), options_->Triangulation());
+
     while (reg_next_success) {
       BlockIfPaused();
       if (IsStopped()) {
@@ -642,13 +650,21 @@ void IncrementalMapperController::Reconstruct(
           std::cout << "Tvec: " << reconstruction.Image(next_image_id).Tvec().transpose() << std::endl;
           TriangulateImage(*options_, next_image, &mapper);
           // update camera params
-          for (const image_t img_id : reconstruction.RegImageIds()) {
-                Camera& camera = reconstruction.Camera(reconstruction.Image(img_id).CameraId());
-                std::cout<<"------- camera.Params(): -------"<< camera.Params()[3]<<std::endl;
-                camera.UpdateParams();
-                std::cout<<"------- camera.Params() after updating: -------"<< camera.Params()[3]<<std::endl;
-              //   // std::cout<<"------- camera.Params(): -------"<< camera.Params()[2]<<std::endl;
-              }
+          // for (const image_t img_id : reconstruction.RegImageIds()) {
+          //       Camera& camera = reconstruction.Camera(reconstruction.Image(img_id).CameraId());
+          //       std::cout<<"------- camera.Params(): -------"<< camera.Params()[3]<<std::endl;
+          //       camera.UpdateParams();
+          //       std::cout<<"------- camera.Params() after updating: -------"<< camera.Params()[3]<<std::endl;
+          //     //   // std::cout<<"------- camera.Params(): -------"<< camera.Params()[2]<<std::endl;
+          //     }
+          for (const auto &[camera_id, camera_const] : reconstruction.Cameras()) {
+            Camera& camera = reconstruction.Camera(camera_id);
+            std::cout << "Camera " << camera_id << " Params:";
+            for (size_t i = 0; i < camera.Params().size(); i++) {
+              std::cout << " " << camera.Params()[i];
+            }
+            std::cout << std::endl;
+          }
 
           // Comment out below for implicit distortion bundle adjustment
           // if (reconstruction.NumRegImages() >= 8){
@@ -675,7 +691,7 @@ void IncrementalMapperController::Reconstruct(
                   options_->ba_global_points_freq + ba_prev_num_points) {
             
             // Only Calibrate camera before global bundle adjustment
-            mapper.CalibrateCamera(options_->Triangulation());
+            mapper.CalibrateCamera(options_->Mapper(), options_->Triangulation());
 
             // ImplicitIterativeGlobalBA(*options_, &mapper);
             IterativeGlobalRefinement(*options_, &mapper);

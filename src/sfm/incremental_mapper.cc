@@ -914,6 +914,27 @@ bool IncrementalMapper::AdjustGlobalBundle(
   return true;
 }
 
+
+// Adjust points only
+bool IncrementalMapper::AdjustGlobalPoints(const Options& options) {
+  // Try to do a round of bundle adjustment with camera fixed
+  BundleAdjustmentOptions ba_options_ptonly;
+  ba_options_ptonly.refine_focal_length = false;
+  ba_options_ptonly.refine_principal_point = false;
+  ba_options_ptonly.refine_extra_params = false;
+  ba_options_ptonly.refine_extrinsics = false;
+  ba_options_ptonly.solver_options.max_num_iterations = 200;
+  ba_options_ptonly.solver_options.minimizer_progress_to_stdout = true;
+  ba_options_ptonly.solver_options.function_tolerance = 1e-6;
+  ba_options_ptonly.solver_options.gradient_tolerance = 1.0;
+  
+  ba_options_ptonly.loss_function_type =
+      BundleAdjustmentOptions::LossFunctionType::TRIVIAL;
+
+  std::cout << "START AdjustGlobalPoints" << std::endl;
+  return AdjustGlobalBundle(options, ba_options_ptonly, false);
+}
+
 bool IncrementalMapper::ImplicitAdjustGlobalBundle(
     const Options& options, const BundleAdjustmentOptions& ba_options, const ImplicitBundleAdjustmentOptions& implicit_ba_options, bool initial) {
   CHECK_NOTNULL(reconstruction_);
@@ -1373,8 +1394,14 @@ bool IncrementalMapper::AdjustCameraPose(const Options& options,
   return true;
 }
 
-int IncrementalMapper::CalibrateCamera(const IncrementalTriangulator::Options &tri_opt) {
-  return triangulator_->CalibrateCamera(tri_opt);
+int IncrementalMapper::CalibrateCamera(const Options& options,
+              const IncrementalTriangulator::Options &tri_opt) {
+  int num_cam_calibrated = triangulator_->CalibrateCamera(tri_opt);
+
+  std::cout << "Calibrated " << num_cam_calibrated << " cameras" << std::endl;
+
+  AdjustGlobalPoints(options);
+  return num_cam_calibrated;
 } 
 
 bool IncrementalMapper::AdjustParallelGlobalBundle(
@@ -1426,7 +1453,7 @@ size_t IncrementalMapper::FilterImages(const Options& options) {
   const std::vector<image_t> image_ids = reconstruction_->FilterImages(
       options.min_focal_length_ratio, options.max_focal_length_ratio,
       options.max_extra_param);
-
+  
   for (const image_t image_id : image_ids) {
     DeRegisterImageEvent(image_id);
     filtered_images_.insert(image_id);

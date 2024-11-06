@@ -318,7 +318,7 @@ double local_bundle_adjustment_inner(const std::vector<std::vector<Eigen::Vector
     options.linear_solver_type = ceres::SPARSE_SCHUR;
     // options.minimizer_progress_to_stdout = ba_opt.verbose; // true if you want more debug output
     options.minimizer_progress_to_stdout = false; // true if you want more debug output
-    options.num_threads = 8;
+    options.num_threads = 16;
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
 

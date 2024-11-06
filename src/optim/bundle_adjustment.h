@@ -73,6 +73,9 @@ struct BundleAdjustmentOptions {
   // single-threaded is typically better for small bundle adjustment problems
   // due to the overhead of threading.
   int min_num_residuals_for_multi_threading = 50000;
+  
+  // Minimum number of registered images to refine extra parameters.
+  int min_num_reg_images = 16;
 
   // Ceres-Solver options.
   ceres::Solver::Options solver_options;

@@ -1122,7 +1122,9 @@ inline void Camera::FitPIeceWiseSpline_binary(std::vector<double>& radii, std::v
   std::vector<std::vector<double>> focal_lengths_segments = {};
   double threshold = mean_interval + std_interval;
   double std_threshold = 0.5*std_interval;
+  std::cout << "!!! Original threshold: " << threshold;
   threshold = std::max(threshold, DegToRad(0.1));
+  std::cout << ", New threshold: " << threshold << std::endl;
   recursiveSplit(new_radii, new_focal_lengths, radii_segments, focal_lengths_segments, threshold, std_threshold);
   // std::cout << "----------radii_segments size: " << radii_segments.size() << std::endl;
   for(int i = 0; i < radii_segments.size(); i++){
