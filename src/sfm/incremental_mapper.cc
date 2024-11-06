@@ -1450,10 +1450,28 @@ size_t IncrementalMapper::FilterImages(const Options& options) {
     return {};
   }
 
-  const std::vector<image_t> image_ids = reconstruction_->FilterImages(
+  std::vector<image_t> image_ids = reconstruction_->FilterImages(
       options.min_focal_length_ratio, options.max_focal_length_ratio,
       options.max_extra_param);
   
+  std::set<image_t> image_ids_set(image_ids.begin(), image_ids.end());
+  // Check the number of 3d point for each image, if it is too low, remove the image
+  for (const image_t image_id : reconstruction_->RegImageIds()) {
+    const Image& image = reconstruction_->Image(image_id);
+    int constraint_count = 0;
+    for (const Point2D& point2D : image.Points2D()) {
+      if (point2D.HasPoint3D()) {
+        constraint_count += (reconstruction_->Camera(image.CameraId()).IsFullyCalibrated(point2D.XY()))? 2 : 1;
+      }
+    }
+    if (constraint_count < options.abs_pose_min_num_inliers) {
+      if (image_ids_set.count(image_id) == 0) {
+        image_ids.push_back(image_id);
+        std::cout << "image_id: " << image_id << ", constraint_count: " << constraint_count << std::endl;
+      }
+    }
+  }
+
   for (const image_t image_id : image_ids) {
     DeRegisterImageEvent(image_id);
     filtered_images_.insert(image_id);
