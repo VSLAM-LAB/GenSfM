@@ -750,7 +750,9 @@ std::vector<double> IdentifyCalibratedArea(Camera& camera, std::vector<double>& 
   double threshold = mean_interval + std_interval;
   double std_threshold = 0.5*std_interval;
 
+  std::cout << "!!! Original threshold: " << threshold;
   threshold = std::max(threshold, DegToRad(0.1));
+  std::cout << ", New threshold: " << threshold << std::endl;
   camera.recursiveSplit(new_radii, new_focal_lengths, radii_segments, focal_lengths_segments, threshold, std_threshold);
   // std::cout << "----------radii_segments size: " << radii_segments.size() << std::endl;
   // for(int i = 0; i < radii_segments.size(); i++){
@@ -798,16 +800,6 @@ std::vector<double> movingAverage(const std::vector<double>& data, int window_si
 int IncrementalTriangulator::CalibrateCamera(const Options& options) {
   // Only calibrate cameras if there are enough registered images.
   // check the number of registrated images per camera
-  std::map<camera_t, size_t> num_reg_images_per_camera;
-  for (const auto& image_id : reconstruction_->RegImageIds()) {
-    const Image& image = reconstruction_->Image(image_id);
-    num_reg_images_per_camera[image.CameraId()] += 1;
-  }
-  for (const auto& pair : num_reg_images_per_camera) {
-    if (pair.second < options.min_num_reg_images) {
-      return 0;
-    }
-  }
   // if (reconstruction_->RegImageIds().size() < options.min_num_reg_images) {
   //   return 0;
   // }
@@ -827,6 +819,9 @@ int IncrementalTriangulator::CalibrateCamera(const Options& options) {
   PoseRefinementOptions pose_refinement_options;
   CostMatrixOptions cm_options;
   for (auto &[camera_id, camera_const]: reconstruction_->Cameras()) {
+    if (camera_images[camera_id].size() < options.min_num_reg_images) {
+      continue;
+    }
     Camera& camera = reconstruction_->Camera(camera_id);
     std::cout << "!!! camera_id: " << camera_id << std::endl;
 
@@ -922,10 +917,10 @@ int IncrementalTriangulator::CalibrateCamera(const Options& options) {
       camera.FitSpline(radii, focal_lengths);
       camera.FitPIeceWiseSpline_binary(theta, radii, principal_point_new);
       camera.SetCalibrated(true);
-      std::cout << "Calibrated region:" << camera.Params()[12] << " " << camera.Params()[21] << ", " << camera.Width() << " " << camera.Height() << std::endl;
 
       num_updated_cameras += 1;
     }
+    std::cout << "Calibrated region:" << camera.Params()[12] << " " << camera.Params()[21] << ", " << camera.Width() << " " << camera.Height() << std::endl;
   }
 
   return num_updated_cameras;
@@ -947,7 +942,7 @@ size_t IncrementalTriangulator::Create(
   bool full_error = true;
   int debug_counter = 0;
   // std::cout<<"Entering Create"<<std::endl;
-  
+
   // Extract correspondences without an existing triangulated observation.
   std::vector<CorrData> create_corrs_data;
   // std::cout<<"standard triangulation: "<<standard_triangulation<<std::endl;

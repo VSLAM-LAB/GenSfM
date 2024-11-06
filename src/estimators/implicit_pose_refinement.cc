@@ -95,7 +95,7 @@ std::vector<CameraPose> pose_refinement_multi(
     options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
     // options.minimizer_progress_to_stdout = refinement_opt.verbose; // true if you want more debug output
     options.minimizer_progress_to_stdout = false; // true if you want more debug output
-    options.num_threads = 8;
+    options.num_threads = 16;
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
 
@@ -184,7 +184,7 @@ CameraPose pose_refinement_multi_point2d_single_image(
     options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
     // options.minimizer_progress_to_stdout = refinement_opt.verbose; // true if you want more debug output
     options.minimizer_progress_to_stdout = false; // true if you want more debug output
-    options.num_threads = 8;
+    options.num_threads = 16;
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
 

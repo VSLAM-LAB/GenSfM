@@ -78,7 +78,7 @@ class IncrementalTriangulator {
     // Whether to ignore two-view tracks.
     bool ignore_two_view_tracks = true;
 
-    //Minimum number of registered images to start standard triangulation
+    // Minimum number of registered images to start standard triangulation
     int min_num_reg_images = 16;
 
 

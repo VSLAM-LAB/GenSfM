@@ -228,7 +228,10 @@ class IncrementalMapper {
                           const image_t image_id, bool initial = false);
 
   // Calibrate camera
-  int CalibrateCamera(const IncrementalTriangulator::Options &tri_opt);
+  int CalibrateCamera(const Options& options, const IncrementalTriangulator::Options &tri_opt);
+
+  // Adjust points only
+  bool AdjustGlobalPoints(const Options& options);
 
   // Global bundle adjustment using Ceres Solver or PBA.
   bool AdjustParallelGlobalBundle(

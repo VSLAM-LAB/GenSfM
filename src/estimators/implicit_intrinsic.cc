@@ -109,10 +109,10 @@ IntrinsicCalib calibrate_fix_lambda_multi_w_initial_guess(const std::vector<std:
 
     ceres::Solver::Options options; 
     options.max_num_iterations = 100;
-    options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
-    // options.linear_solver_type = ceres::SPARSE_SCHUR;
+    // options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
+    options.linear_solver_type = ceres::SPARSE_SCHUR;
     options.minimizer_progress_to_stdout = false; // true if you want more debug output
-    options.num_threads = 8;
+    options.num_threads = 16;
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
 
@@ -276,8 +276,8 @@ IntrinsicCalib calibrate_multi(const std::vector<std::vector<Eigen::Vector2d>> &
     std::cout << "Initial RMS = " << rms_rad << "\n";
 
     const double tol_rms_diff = 0.01;
-    const double min_mu = 1e-4;
-    const double max_mu = 1e10;
+    const double min_mu = 1e-5;
+    const double max_mu = 1e5;
     const size_t max_iters = 20;
     
     double mu = 1e3;
@@ -295,9 +295,10 @@ IntrinsicCalib calibrate_multi(const std::vector<std::vector<Eigen::Vector2d>> &
     IntrinsicCalib best_calib;
     double best_mu = 1.0;
     double best_score = std::numeric_limits<double>::max();
+    double best_rms_tan = std::numeric_limits<double>::max();
     std::vector<std::vector<double>> fvec; // we keep the solution to warm-start next iteration
 
-    std::vector<double> initial_mu = {1.0, 1e1, 1e2, 1e3, 1e4};
+    std::vector<double> initial_mu = {1e-3, 1e-4};
 
     for (size_t iter = 0; iter < max_iters; ++iter) {
 
@@ -305,8 +306,14 @@ IntrinsicCalib calibrate_multi(const std::vector<std::vector<Eigen::Vector2d>> &
             mu = initial_mu[iter];   
         } else if (iter == initial_mu.size()) {
             mu = best_mu;
+            if (best_rms_tan < rms_rad) {
+                mu *= 10.0;
+            } else {
+                mu /= 2.0;
+            }
         }
 
+        fvec.clear();
         IntrinsicCalib calib = calibrate_fix_lambda_multi_w_initial_guess(points2D, points3D, cost_matrix, pp, poses, fvec, mu);
 
         // Compute tangential error
@@ -319,6 +326,12 @@ IntrinsicCalib calibrate_multi(const std::vector<std::vector<Eigen::Vector2d>> &
             best_calib = calib;
             best_score = res;
             best_mu = mu;
+            best_rms_tan = rms_tan;
+        }
+
+        if (res / std::min(rms_rad, rms_tan) < 1) {
+            std::cout << "The difference between radial and tangential errors is small. Stopping." << std::endl;
+            break;
         }
 
         if (rms_tan < rms_rad) {
