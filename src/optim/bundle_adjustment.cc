@@ -676,6 +676,12 @@ void BundleAdjuster::ParameterizeCameras(Reconstruction* reconstruction) {
         const_camera_params.insert(const_camera_params.end(),
                                    params_idxs.begin(), params_idxs.end());
       }
+
+      if (!options_.refine_x_values) {
+        const std::vector<size_t>& params_idxs = camera.XParamsIdx();
+        const_camera_params.insert(const_camera_params.end(),
+                                    params_idxs.begin(), params_idxs.end());
+      }
       if (!options_.refine_principal_point) {
         const std::vector<size_t>& params_idxs = camera.PrincipalPointIdxs();
         const_camera_params.insert(const_camera_params.end(),

@@ -56,7 +56,7 @@ void AdjustGlobalBundle(const IncrementalMapperOptions& options,
 
   const size_t num_reg_images = mapper->GetReconstruction().NumRegImages();
   // min_num_reg_images related
-  // custom_ba_options.refine_extra_params = (num_reg_images > 16); 
+  custom_ba_options.refine_extra_params = (num_reg_images >= 16); 
   // options.Mapper().ba_refine_extra_params = (num_reg_images > 20);
 
   // Use stricter convergence criteria for first registered images.

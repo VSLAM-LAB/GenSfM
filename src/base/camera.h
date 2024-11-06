@@ -141,6 +141,7 @@ class Camera {
   const std::vector<size_t>& FocalLengthIdxs() const;
   const std::vector<size_t>& PrincipalPointIdxs() const;
   const std::vector<size_t>& ExtraParamsIdxs() const;
+  const std::vector<size_t>& XParamsIdx() const;
 
   // Get intrinsic calibration matrix composed from focal length and principal
   // point parameters, excluding distortion parameters.

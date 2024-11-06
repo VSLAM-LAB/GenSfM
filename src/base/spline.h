@@ -32,6 +32,7 @@
 #include <cmath>
 #include <vector>
 #include <algorithm>
+#include <ceres/jet.h>
 #ifdef HAVE_SSTREAM
 #include <sstream>
 #include <string>
@@ -229,7 +230,7 @@
             // from continuity and differentiability condition
             m_c[i] = ( T(3.0)*(m_y[i+1]-m_y[i])/h - (T(2.0)*m_b[i]+m_b[i+1]) ) / h;
             // from differentiability condition
-            m_d[i] = ( (m_b[i+1]-m_b[i])/(T(3.0)*h) - T(2.0/3.0)*m_c[i] ) / h;
+            m_d[i] = ( (m_b[i+1]-m_b[i])/(T(3.0)*h) - T(2.0)/T(3.0)*m_c[i] ) / h;
         }
 
         // for left extrapolation coefficients
@@ -410,7 +411,7 @@
             } else if( (m_b[i]>=T(0.0) && m_b[i+1]>=T(0.0) && avg>T(0.0)) ||
                     (m_b[i]<=T(0.0) && m_b[i+1]<=T(0.0)&& avg<T(0.0)) ) {
                 // input data is monotonic
-                T r = sqrt(m_b[i]*m_b[i]+m_b[i+1]*m_b[i+1])/T(fabs(avg));
+                T r = ceres::sqrt(m_b[i]*m_b[i]+m_b[i+1]*m_b[i+1])/T(ceres::abs(avg));
                 if(r>T(3.0)) {
                     // sufficient criteria for monotonicity: r<=3
                     // adjust b[i] and b[i+1]
