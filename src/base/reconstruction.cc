@@ -1678,6 +1678,13 @@ size_t Reconstruction::FilterPoints3DWithLargeReprojectionError(
       //     point2D.XY(), point3D.XYZ(), image.Qvec(), image.Tvec(), camera);} else{
       //   squared_reproj_error = CalculateSquaredReprojectionErrorFinal(
       //     point2D.XY(), point3D.XYZ(), image.Qvec(), image.Tvec(), camera.GetRawRadii(), camera.GetFocalLengthParams(), camera.GetTheta(), camera);}
+      
+      // save the squared reprojection error to a file
+      std::ofstream file;
+      file.open("squared_reproj_error.txt", std::ios_base::app);
+      file << squared_reproj_error << " " << camera.ParamsData()[13]<< std::endl;
+      file.close();
+
       if (squared_reproj_error > max_squared_reproj_error) {
         track_els_to_delete.push_back(track_el);
 

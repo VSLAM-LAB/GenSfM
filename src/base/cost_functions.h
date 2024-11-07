@@ -688,7 +688,7 @@ class BundleAdjustmentConstantPoseCostFunction<ImplicitDistortionModel> {
     std::ofstream myfile(filename, std::ios_base::app);
     
   
-    myfile << ExtractScalar(theta) << " " << focal_length << " " << ExtractScalar(residuals[0]) << " " << ExtractScalar(projection[2]) << " " << ExtractScalar(camera_params[2]);
+    myfile << ExtractScalar(theta) << " " << focal_length << " " << ExtractScalar(residuals[0]) << " " << ExtractScalar(projection[2]) << " " << ExtractScalar(camera_params[13]);
 
     // Write all elements of sample_x separated by spaces
     // std::copy(std::begin(sample_x), std::end(sample_x), std::ostream_iterator<double>(myfile, " "));
