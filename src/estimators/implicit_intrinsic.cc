@@ -275,8 +275,8 @@ IntrinsicCalib calibrate_multi(const std::vector<std::vector<Eigen::Vector2d>> &
     rms_rad = std::sqrt(rms_rad / num_pts);
     std::cout << "Initial RMS = " << rms_rad << "\n";
 
-    const double tol_rms_diff = 0.01;
-    const double min_mu = 1e-5;
+    const double tol_rms_diff = 0.1;
+    const double min_mu = 1e-6;
     const double max_mu = 1e5;
     const size_t max_iters = 20;
     
@@ -298,7 +298,7 @@ IntrinsicCalib calibrate_multi(const std::vector<std::vector<Eigen::Vector2d>> &
     double best_rms_tan = std::numeric_limits<double>::max();
     std::vector<std::vector<double>> fvec; // we keep the solution to warm-start next iteration
 
-    std::vector<double> initial_mu = {1e-3, 1e-4};
+    std::vector<double> initial_mu = {1e-3, 1e-4, 1e-5};
 
     for (size_t iter = 0; iter < max_iters; ++iter) {
 
@@ -307,7 +307,7 @@ IntrinsicCalib calibrate_multi(const std::vector<std::vector<Eigen::Vector2d>> &
         } else if (iter == initial_mu.size()) {
             mu = best_mu;
             if (best_rms_tan < rms_rad) {
-                mu *= 10.0;
+                mu *= 5.0;
             } else {
                 mu /= 2.0;
             }
@@ -329,13 +329,9 @@ IntrinsicCalib calibrate_multi(const std::vector<std::vector<Eigen::Vector2d>> &
             best_rms_tan = rms_tan;
         }
 
-        if (res / std::min(rms_rad, rms_tan) < 1) {
-            std::cout << "The difference between radial and tangential errors is small. Stopping." << std::endl;
-            break;
-        }
 
         if (rms_tan < rms_rad) {
-            mu *= 10.0;
+            mu *= 5.0;
             if (mu > max_mu) {
                 std::cout << "mu > " << max_mu << "\n";
                 break;

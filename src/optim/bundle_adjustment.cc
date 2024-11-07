@@ -323,6 +323,17 @@ bool BundleAdjuster::Solve(Reconstruction* reconstruction, bool initial) {
 
   std::cout << "problem_->NumResiduals(): " << problem_->NumResiduals() << std::endl;
 
+  // For implicit camera model, update the spline parameters
+  if (options_.refine_extra_params) {
+    for (auto& [camera_id, camera_const] : reconstruction->Cameras()) {
+      std::cout << "CAMERA ID: " << camera_id << std::endl;
+      Camera& camera = reconstruction->Camera(camera_id);
+      if (camera.ModelId() == ImplicitDistortionModel::model_id) {
+        camera.SetSplineFromParams();
+      }
+    }
+  }
+
   if (options_.print_summary) {
     PrintHeading2("Bundle adjustment report");
     PrintSolverSummary(summary_);

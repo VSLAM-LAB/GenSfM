@@ -921,9 +921,9 @@ int IncrementalTriangulator::CalibrateCamera(const Options& options) {
     if (camera.GetRawRadii().size() == 0 || ((calibrated_area[1] >= camera.Params()[11])
     && (calibrated_area[0] <= camera.Params()[2]) && radii.size() > 0)) {
       camera.SetRawRadii(radii);
-      camera.SetTheta(theta);
-      camera.SetFocalLengthParams(focal_lengths);
-      camera.FitSpline(radii, focal_lengths);
+      // camera.SetTheta(theta);
+      // camera.SetFocalLengthParams(focal_lengths);
+      // camera.FitSpline(radii, focal_lengths);
       camera.FitPIeceWiseSpline_binary(theta, radii, principal_point_new);
       camera.SetCalibrated(true);
 
@@ -999,12 +999,12 @@ size_t IncrementalTriangulator::Create(
     // std::cout<<"camera id: "<<corr_data.camera->CameraId()<<std::endl;
     
     pose_data[i].image = corr_data.image;
-    std::vector<double> raw_radii = corr_data.camera->GetRawRadii();
+    // std::vector<double> raw_radii = corr_data.camera->GetRawRadii();
     // std::vector<double> thetas = corr_data.camera->GetTheta();
     // std::cout<<"Get RawRadii size "<<corr_data.camera->GetRawRadii().size()<<std::endl;
     // std::cout<<"raw_radii size: "<<raw_radii.size()<<std::endl;
   
-    std::vector<double> thetas = corr_data.camera->GetTheta();
+    // std::vector<double> thetas = corr_data.camera->GetTheta();
     // std::cout<<"raw_radii size: "<<raw_radii.size()<<std::endl;
     // if(raw_radii.size() <20 ||(raw_radii.size() > 20 && raw_radii[0]<0)){
     //   // std::cout<<"Standard Triangulation not possible"<<std::endl;
@@ -1040,21 +1040,21 @@ size_t IncrementalTriangulator::Create(
     // std::vector<double> raw_radii = corr_data.image->GetRawRadii();
     // std::vector<double> focal_lengths = corr_data.image->GetFocalLengthParams();
     
-    std::vector<double> focal_lengths = corr_data.camera->GetFocalLengthParams();
-    std::vector<double> std_points;
-    std::string timestamp = currentDateTime();
-    std::string filename ="radii_focal_lengths_" + std::to_string(corr_data.image_id) + "_" + timestamp + ".txt";
-    std::vector<double> focal_lengths_splined;
+    // std::vector<double> focal_lengths = corr_data.camera->GetFocalLengthParams();
+    // std::vector<double> std_points;
+    // std::string timestamp = currentDateTime();
+    // std::string filename ="radii_focal_lengths_" + std::to_string(corr_data.image_id) + "_" + timestamp + ".txt";
+    // std::vector<double> focal_lengths_splined;
           
-    // std::cout<<"linspacing"<<std::endl;
-    Eigen::VectorXd points = Eigen::VectorXd::LinSpaced(100, raw_radii[0], raw_radii[raw_radii.size() - 1]);
-    // std::cout<<"linspaced"<<std::endl;  
-    std_points = std::vector<double>(points.data(), points.data() + points.size());
+    // // std::cout<<"linspacing"<<std::endl;
+    // Eigen::VectorXd points = Eigen::VectorXd::LinSpaced(100, raw_radii[0], raw_radii[raw_radii.size() - 1]);
+    // // std::cout<<"linspaced"<<std::endl;  
+    // std_points = std::vector<double>(points.data(), points.data() + points.size());
     
-    for (int i = 0; i < std_points.size(); i++) {
-      // focal_lengths_splined.push_back(corr_data.image->EvalFocalLength(std_points[i]));
-      focal_lengths_splined.push_back(corr_data.camera->EvalFocalLength(std_points[i]));
-    }
+    // for (int i = 0; i < std_points.size(); i++) {
+    //   // focal_lengths_splined.push_back(corr_data.image->EvalFocalLength(std_points[i]));
+    //   focal_lengths_splined.push_back(corr_data.camera->EvalFocalLength(std_points[i]));
+    // }
     // std::cout << "Radius: " << radius << std::endl;
 
     // calculate the focal length by interpolating the focal_lengths
@@ -1066,35 +1066,35 @@ size_t IncrementalTriangulator::Create(
     // save the sorted radii and focal lengths as txt file
     
 
-    // if(corr_data.image_id == 93 || corr_data.image_id == 107){
-    if(corr_data.image_id == 1 || corr_data.image_id == 12 ){
-    std::ofstream file(filename);
-    for (int i = 0; i < raw_radii.size(); i++) {
-      file << raw_radii[i] << " " << focal_lengths[i] << " "<<thetas[i] << std::endl;
-    }
-    file.close();
-    }
+    // // if(corr_data.image_id == 93 || corr_data.image_id == 107){
+    // if(corr_data.image_id == 1 || corr_data.image_id == 12 ){
+    // std::ofstream file(filename);
+    // for (int i = 0; i < raw_radii.size(); i++) {
+    //   file << raw_radii[i] << " " << focal_lengths[i] << " "<<thetas[i] << std::endl;
+    // }
+    // file.close();
+    // }
     // std::cout<<"file created "<<std::endl;
     
-    // find the two radii that the current radius is between
-    double focal_length = 20;
-    for (int i = 0; i < raw_radii.size() - 1; i++) {
-      if (radius >= raw_radii[i] && radius <= raw_radii[i+1]) {
-        // interpolate the focal length
-        focal_length = focal_lengths[i] + (focal_lengths[i+1] - focal_lengths[i]) * (radius - raw_radii[i]) / (raw_radii[i+1] - raw_radii[i] + 1e-6);
-        break;
-      }
-    }
-    // if the radius is smaller than the smallest radius, set the focal length to the smallest focal length
-    if (radius < raw_radii[0]) {
-      focal_length = focal_lengths[0];
-      count++;
-    }
-    // if the radius is larger than the largest radius, set the focal length to the largest focal length
-    if (radius > raw_radii[raw_radii.size() - 1]) {
-      focal_length = focal_lengths[raw_radii.size() - 1];
-      count++;
-    }
+    // // find the two radii that the current radius is between
+    // double focal_length = 20;
+    // for (int i = 0; i < raw_radii.size() - 1; i++) {
+    //   if (radius >= raw_radii[i] && radius <= raw_radii[i+1]) {
+    //     // interpolate the focal length
+    //     focal_length = focal_lengths[i] + (focal_lengths[i+1] - focal_lengths[i]) * (radius - raw_radii[i]) / (raw_radii[i+1] - raw_radii[i] + 1e-6);
+    //     break;
+    //   }
+    // }
+    // // if the radius is smaller than the smallest radius, set the focal length to the smallest focal length
+    // if (radius < raw_radii[0]) {
+    //   focal_length = focal_lengths[0];
+    //   count++;
+    // }
+    // // if the radius is larger than the largest radius, set the focal length to the largest focal length
+    // if (radius > raw_radii[raw_radii.size() - 1]) {
+    //   focal_length = focal_lengths[raw_radii.size() - 1];
+    //   count++;
+    // }
 
     // double focal_length_splined = corr_data.image->EvalFocalLength(radius);
     double focal_length_splined = corr_data.camera->EvalFocalLength(radius);

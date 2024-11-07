@@ -877,6 +877,15 @@ bool IncrementalMapper::AdjustGlobalBundle(
   //   }
   // }
 
+  std::cout << "before AdjustGlobalBundle" << std::endl;
+  for (const auto&[camera_id, camera_const] : reconstruction_->Cameras()) {
+    Camera& camera = reconstruction_->Camera(camera_id);
+    std::cout << "camera_id: " << camera_id;
+    for (size_t i = 0; i < camera.NumParams(); ++i) {
+      std::cout << " " << camera.Params()[i];
+    }
+    std::cout << std::endl;
+  }
 
   // Configure bundle adjustment.
   BundleAdjustmentConfig ba_config;
@@ -905,6 +914,18 @@ bool IncrementalMapper::AdjustGlobalBundle(
   std::cout << "Whether to refine extra params: " << ba_options.refine_extra_params << std::endl;
   if (!bundle_adjuster.Solve(reconstruction_, initial)) {
     return false;
+  }
+  
+
+  std::cout << "after AdjustGlobalBundle" << std::endl;
+
+  for (const auto&[camera_id, camera_const] : reconstruction_->Cameras()) {
+    Camera& camera = reconstruction_->Camera(camera_id);
+    std::cout << "camera_id: " << camera_id;
+    for (size_t i = 0; i < camera.NumParams(); ++i) {
+      std::cout << " " << camera.Params()[i];
+    }
+    std::cout << std::endl;
   }
 
   // Normalize scene for numerical stability and
