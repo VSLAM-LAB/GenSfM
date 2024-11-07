@@ -227,6 +227,7 @@ class Camera {
   inline bool IsFullyCalibrated(const Eigen::Vector2d& image_point) const;
   inline void SetCalibrated(bool calibrated);
   inline bool IsCalibrated() const;
+  inline bool SetSplineFromParams();
 
  private:
   // The unique identifier of the camera. If the identifier is not specified
@@ -838,6 +839,7 @@ for(int i = 0; i < outliers_indices.size()-1; i++){
  
 }
 
+// TODO: THIS FUNCTION IS INCORRECT
 inline double Camera::EvalPieceFocalLength(double radius) const {
   if (intervals_.empty() ) {
       return spline_(radius);
@@ -1064,6 +1066,7 @@ inline void Camera::FitGridSpline(std::vector<double>& radii, std::vector<double
   // std::cout << "grid_splines_ size: " << grid_splines_.size() << std::endl;  
 }
 
+// TODO: THIS FUNCTION IS INCORRECT
 inline double Camera::EvalGridFocalLength(double radius) const{
   if(grids_.empty() ){
     return spline_(radius);
@@ -1170,11 +1173,40 @@ inline void Camera::FitPIeceWiseSpline_binary(std::vector<double>& radii, std::v
     params_ = updated_params_;
     SetParams(updated_params);
   }
-
-
+  // Directly use theta-r mapping
+  spline_ = best_spline;
 }
 
-double Camera::EvalFocalLength(double radius) const {return spline_(radius);}
+// double Camera::EvalFocalLength(double radius) const {return spline_(radius);}
+double Camera::EvalFocalLength(double radius) const {
+  if (model_id_ == Radial1DCameraModel::model_id)
+    return 1.;
+  else if (model_id_ != ImplicitDistortionModel::model_id) {
+    return FocalLength();
+  } else {
+    if (!is_fully_calibrated_)
+      return 1.;
+    // First check whether it is within the calibrated region
+    if (radius < params_[12] || radius > params_[21]) {
+      return 1.;
+    }
+
+    auto it = std::upper_bound(params_.begin() + 12, params_.end(), radius);
+    size_t idx = std::max<int>((it - params_.begin()) - 1 - 12, 0); // (params[idx + 12] <= radius)
+
+    double theta = params_[2 + idx];
+    double residual = spline_(theta) - radius;
+    while (abs(residual) > 1e-6) {
+      // Use newton's method to find the theta
+      theta = theta - residual / spline_.deriv(1, theta);
+      residual = spline_(theta) - radius;
+    }
+
+    // Convert the theta to focal length
+    return radius / std::tan(theta);
+  }
+  return 1.;
+}
 inline std::vector<double> Camera::GetRawRadii() const {return raw_radii_;}
 inline void Camera::SetRawRadii(const std::vector<double>& raw_radii) const {raw_radii_ = raw_radii;}
 inline std::vector<double> Camera::GetTheta() const {return theta_;}
@@ -1212,7 +1244,23 @@ void Camera::SetCalibrated(bool calibrated) {
 }
 
 bool Camera::IsCalibrated() const {
-  return is_fully_calibrated_;
+  return (model_id_ != ImplicitDistortionModel::model_id && model_id_ != Radial1DCameraModel::model_id) 
+   | is_fully_calibrated_ ;
+}
+
+bool Camera::SetSplineFromParams() {
+  if (model_id_ != ImplicitDistortionModel::model_id || !is_fully_calibrated_)
+    return true;
+    
+  std::vector<double> sample_x, sample_y;
+  for (int i = 2; i < 12; i++) {
+    sample_x.push_back(params_[i]);
+  }
+  for(int i = 12; i < 22; i++) {
+    sample_y.push_back(params_[i]);
+  }
+  spline_.set_points(sample_x, sample_y);
+  return true;
 }
 
 }  // namespace colmap
