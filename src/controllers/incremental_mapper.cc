@@ -589,6 +589,7 @@ void IncrementalMapperController::Reconstruct(
           reconstruction.NumPoints3D() == 0) {
         mapper.EndReconstruction(kDiscardReconstruction);
         reconstruction_manager_->Delete(reconstruction_idx);
+        continue;
       }
 
       if (options_->extract_colors) {
@@ -613,7 +614,9 @@ void IncrementalMapperController::Reconstruct(
     bool prev_reg_next_success = true;
 
     // If input already has camera intrinsics, perform calibration
+    mapper.FilterImages(options_->Mapper());
     mapper.CalibrateCamera(options_->Mapper(), options_->Triangulation());
+
 
     while (reg_next_success) {
       BlockIfPaused();
