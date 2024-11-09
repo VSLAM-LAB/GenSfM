@@ -56,7 +56,7 @@ void AdjustGlobalBundle(const IncrementalMapperOptions& options,
 
   const size_t num_reg_images = mapper->GetReconstruction().NumRegImages();
   // min_num_reg_images related
-  custom_ba_options.refine_extra_params = (num_reg_images >= 16); 
+  custom_ba_options.refine_extra_params = (num_reg_images >= MIN_NUM_IMAGES_FOR_UPGRADE); 
   // options.Mapper().ba_refine_extra_params = (num_reg_images > 20);
 
   // Use stricter convergence criteria for first registered images.
@@ -333,7 +333,7 @@ IncrementalTriangulator::Options IncrementalMapperOptions::Triangulation()
   options.max_focal_length_ratio = max_focal_length_ratio;
   options.max_extra_param = max_extra_param;
   // related to min_num_reg_images
-  options.min_num_reg_images = 16;
+  options.min_num_reg_images = MIN_NUM_IMAGES_FOR_UPGRADE;
   return options;
 }
 
@@ -383,8 +383,10 @@ BundleAdjustmentOptions IncrementalMapperOptions::GlobalBundleAdjustment()
   options.refine_extra_params = ba_refine_extra_params;
   options.min_num_residuals_for_multi_threading =
 	  ba_min_num_residuals_for_multi_threading;
+  options.loss_function_scale = 1.0;
   options.loss_function_type =
-      BundleAdjustmentOptions::LossFunctionType::TRIVIAL;
+      BundleAdjustmentOptions::LossFunctionType::HUBER;
+
   
   options.min_num_reg_images = Triangulation().min_num_reg_images;
   return options;

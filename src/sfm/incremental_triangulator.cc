@@ -896,7 +896,7 @@ int IncrementalTriangulator::CalibrateCamera(const Options& options) {
             // pose_refinement_multi(points2D, points3D, costMatrix, principal_point, poses, pose_refinement_options) :
             pose_refinement_multi(points2D_subsampled, points3D_subsampled, costMatrix, principal_point, poses, pose_refinement_options) :
             poses;
-
+    
     // filter_result_pose_refinement_multi(points2D, points3D, poses_refined, principal_point, pose_refinement_options);
     filter_result_pose_refinement_multi(points2D_subsampled, points3D_subsampled, poses_refined, principal_point, pose_refinement_options);
     // costMatrix = build_cost_matrix_multi(points2D, cm_options, principal_point);
@@ -918,13 +918,31 @@ int IncrementalTriangulator::CalibrateCamera(const Options& options) {
     std::vector<double> calibrated_area = IdentifyCalibratedArea(camera, theta, radii);
 
     std::vector<double> principal_point_new = {principal_point[0], principal_point[1]};
-    if (camera.GetRawRadii().size() == 0 || ((calibrated_area[1] >= camera.Params()[11])
-    && (calibrated_area[0] <= camera.Params()[2]) && radii.size() > 0)) {
+    // if (camera.GetRawRadii().size() == 0 || ((calibrated_area[1] >= camera.Params()[11])
+    // && (calibrated_area[0] <= camera.Params()[2]) && radii.size() > 0)) {
+    // Check whether the calibrtion is wrong 
+    double original_calibrated_area = camera.Params()[11] - camera.Params()[2];
+    bool use_new_calibration = !camera.IsCalibrated();
+    use_new_calibration = use_new_calibration
+       || (original_calibrated_area < calibrated_area[1] - calibrated_area[0]);
+    
+    double diagonal = sqrt(camera.Width() * camera.Width() + camera.Height() * camera.Height()) / 2;
+    for (size_t j = 12; j < camera.Params().size(); j++) {
+      // If the calibrated is manually forced, then use the new calibration
+      if (camera.Params()[j] > diagonal || camera.Params()[j] < 0)
+        use_new_calibration = true;
+      if (j != camera.Params().size() - 1 && std::abs(camera.Params()[j + 1] - camera.Params()[j]) <= 1e-3) {
+        use_new_calibration = true;
+      }
+    }
+    if (use_new_calibration) {
+      // If it is possible to calibrate
+      if (!camera.FitPIeceWiseSpline_binary(theta, radii, principal_point_new))
+        continue;
       camera.SetRawRadii(radii);
       // camera.SetTheta(theta);
       // camera.SetFocalLengthParams(focal_lengths);
       // camera.FitSpline(radii, focal_lengths);
-      camera.FitPIeceWiseSpline_binary(theta, radii, principal_point_new);
       camera.SetCalibrated(true);
 
       num_updated_cameras += 1;

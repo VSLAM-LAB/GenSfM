@@ -64,6 +64,8 @@ ceres::LossFunction* BundleAdjustmentOptions::CreateLossFunction() const {
       break;
     case LossFunctionType::CAUCHY:
       loss_function = new ceres::CauchyLoss(loss_function_scale);
+    case LossFunctionType::HUBER:
+      loss_function = new ceres::HuberLoss(loss_function_scale);
       break;
   }
   CHECK_NOTNULL(loss_function);

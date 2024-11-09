@@ -51,6 +51,7 @@ namespace colmap {
 // pictures with the exact same lens and intrinsics (focal length, etc.).
 // This class has a specific distortion model defined by a camera model class.
 
+constexpr int MIN_NUM_IMAGES_FOR_UPGRADE = 1;
 
 class Camera {
  public:

@@ -655,7 +655,7 @@ bool IncrementalMapper::RegisterNextImage(const Options& options,
     }
   }
 
-  if(num_reg_images_per_camera_[camera.CameraId()] > 16) {
+  if(num_reg_images_per_camera_[camera.CameraId()] >= MIN_NUM_IMAGES_FOR_UPGRADE) {
     AdjustCameraPose(options, image_id);
   }
 
@@ -1421,6 +1421,7 @@ int IncrementalMapper::CalibrateCamera(const Options& options,
 
   std::cout << "Calibrated " << num_cam_calibrated << " cameras" << std::endl;
 
+  FilterPoints(options);
   AdjustGlobalPoints(options);
   return num_cam_calibrated;
 } 
