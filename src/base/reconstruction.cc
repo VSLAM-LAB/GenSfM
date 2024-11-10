@@ -341,7 +341,7 @@ void Reconstruction::Normalize(const double extent, const double p0,
   // check the number of images
 
   std::vector<std::pair<camera_t,size_t>> registered_num_images_per_camera= {};
-  bool normalize_radial = false;
+  bool normalize_radial = NumRegImages() <= 4; // if it is just initialized, needs to be upgraded
   size_t num_reg_images = 0;
   // populate the number of registered images for each camera
   for (const image_t img_id : reg_image_ids_) {
@@ -366,7 +366,7 @@ void Reconstruction::Normalize(const double extent, const double p0,
   // check if one of the cameras has only registered number of images <= 20
   for (auto& pair : registered_num_images_per_camera) {
     // related to min_num_reg_images
-    if (pair.second < 16) {
+    if (pair.second < MIN_NUM_IMAGES_FOR_UPGRADE) {
       normalize_radial = true;
       break;
     }
@@ -477,7 +477,7 @@ void Reconstruction::NormalizeRadialCameras() {
       all_radial = false;
       continue;
     }
-    if (num_reg_images_per_camera[camera.CameraId()] >= 16) {
+    if (num_reg_images_per_camera[camera.CameraId()] >= MIN_NUM_IMAGES_FOR_UPGRADE && NumRegImages() > 4) {
       continue;
     }
     // min_num_reg_images related
@@ -540,7 +540,7 @@ void Reconstruction::NormalizeRadialCameras() {
   // if we only have radial cameras and a majority have negative
   // psuedo-focal length, we flip the global z-axis
   // min_num_reg_images related
-  if(NumRegImages()<=16){
+  if(NumRegImages()<=std::max(MIN_NUM_IMAGES_FOR_UPGRADE, 4)){
   if(all_radial && negative_focal_count > NumRegImages() / 2) {
     for(auto& image : images_) {
       Eigen::Matrix3d R = image.second.RotationMatrix();
