@@ -323,7 +323,7 @@ bool Camera::FitPIeceWiseSpline_binary(std::vector<double>& radii, std::vector<d
   std::vector<double> radii_calibrated = radii_segments[longest_segment];
   std::vector<double> focal_lengths_calibrated = focal_lengths_segments[longest_segment];
   int max_it = 80;
-  int degree = 10;
+  int degree = (params_.size() - 2) / 2;
   double threshold_ransac = 5.0;
   tk::spline<double> best_spline = ransac_spline(max_it, degree, threshold_ransac, radii_calibrated, focal_lengths_calibrated);
   std::vector<double> used_x;

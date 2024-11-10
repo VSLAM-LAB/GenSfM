@@ -58,6 +58,7 @@ COLMAP_ADD_SOURCES(
     implicit_pose_refinement.h implicit_pose_refinement.cc
     implicit_utils.h implicit_utils.cc
     manifold.h
+    spline_fitting.h
 
 )
 

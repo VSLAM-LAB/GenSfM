@@ -152,7 +152,7 @@ double CalculateSquaredReprojectionError(const Eigen::Vector2d& point2D,
     //     sample_x.push_back(camera.Params()[i]);
     //   }
 
-    //   for (int i = 12; i < 22; i++){
+    //   for (int i = 12; i < ImplicitDistortionModel::kNumParams; i++){
     //     sample_y.push_back(camera.Params()[i]);
     //   }
     //   theta_r.set_points(sample_x, sample_y);

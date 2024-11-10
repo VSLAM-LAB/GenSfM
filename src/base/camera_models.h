@@ -80,6 +80,8 @@ namespace colmap {
 
 static const int kInvalidCameraModelId = -1;
 
+constexpr int NUM_CONTROL_POINTS = 12;
+
 #ifndef CAMERA_MODEL_DEFINITIONS
 #define CAMERA_MODEL_DEFINITIONS(model_id_value, model_name_value,             \
                                  num_params_value)                             \
@@ -371,7 +373,7 @@ struct Radial1DCameraModel
 //
 struct ImplicitDistortionModel
     : public BaseCameraModel<ImplicitDistortionModel> {
-  CAMERA_MODEL_DEFINITIONS(12, "IMPLICIT_DISTORTION", 22)
+  CAMERA_MODEL_DEFINITIONS(12, "IMPLICIT_DISTORTION", NUM_CONTROL_POINTS * 2 + 2)
 };
 
 // Check whether camera model with given name or identifier exists.
@@ -1609,8 +1611,14 @@ void Radial1DCameraModel::ImageToWorld(const T* params, const T x,
 // ImplicitDistortionModel
 
 std::string ImplicitDistortionModel::InitializeParamsInfo() {
-  return "cx, cy, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, y1, y2, y3, y4, "
-         "y5, y6, y7, y8, y9, y10";
+  std::string params_info = "cx, cy";
+  for (size_t i = 1; i <= NUM_CONTROL_POINTS; ++i) {
+    params_info += ", x" + std::to_string(i);
+  }
+  for (size_t i = 1; i <= NUM_CONTROL_POINTS; ++i) {
+    params_info += ", y" + std::to_string(i);
+  }
+  return params_info;
 }
 
 std::vector<size_t> ImplicitDistortionModel::InitializeFocalLengthIdxs() {
@@ -1622,17 +1630,32 @@ std::vector<size_t> ImplicitDistortionModel::InitializePrincipalPointIdxs() {
 }
 
 std::vector<size_t> ImplicitDistortionModel::InitializeExtraParamsIdxs() {
-  return {12, 13, 14, 15, 16, 17, 18, 19, 20, 21};
+  std::vector<size_t> extra_params_idxs;
+  for (size_t i = 2 + NUM_CONTROL_POINTS; i <= 2 * NUM_CONTROL_POINTS + 1; ++i) {
+    extra_params_idxs.push_back(i);
+  }
+  return extra_params_idxs;
 }
 std::vector<size_t> ImplicitDistortionModel::InitializeXParamsIdxs() {
-  return {2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
+  std::vector<size_t> extra_params_idxs;
+  for (size_t i = 2; i <= NUM_CONTROL_POINTS + 1; ++i) {
+    extra_params_idxs.push_back(i);
+  }
+  return extra_params_idxs;
 }
 
 std::vector<double> ImplicitDistortionModel::InitializeParams(
     const double focal_length, const size_t width, const size_t height) {
-  return {width / 2.0, height / 2.0, 350, 700, 1050, 1400, 1750, 2100, 2450, 2800, 3150, 3500,
-          3400, 3380, 3360, 3340, 3330, 3310, 3290, 3280, 3280, 3300};
+  // return {width / 2.0, height / 2.0, 350, 700, 1050, 1400, 1750, 2100, 2450, 2800, 3150, 3500,
+  //         3400, 3380, 3360, 3340, 3330, 3310, 3290, 3280, 3280, 3300};
+  std::vector<double> params;
+  params.push_back(width / 2.0);
+  params.push_back(height / 2.0);
+  for (size_t i = 0; i < NUM_CONTROL_POINTS * 2; ++i) {
+    params.push_back(350 + i * 350);
   }
+  return params;
+}
 template <typename T>
 void ImplicitDistortionModel::WorldToImage(const T* params, const T u,
                                            const T v, T* x, T* y) {

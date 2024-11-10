@@ -300,13 +300,17 @@ size_t IncrementalTriangulator::CompleteImage(const Options& options,
       pose_data[i].proj_center = corr_data.image->ProjectionCenter();
       pose_data[i].camera = corr_data.camera;
 
-      std::vector<double> raw_radii = corr_data.camera->GetRawRadii();
-      if(raw_radii.size() <20 ||(raw_radii.size() > 20 && raw_radii[0]<0)){
-        point_data[i].is_radial = true;
-        continue;
-      }
+      // std::vector<double> raw_radii = corr_data.camera->GetRawRadii();
+      // if(raw_radii.size() <20 ||(raw_radii.size() > 20 && raw_radii[0]<0)){
+      //   point_data[i].is_radial = true;
+      //   continue;
+      // }
       double radius = point_data[i].point_normalized.norm();
-      if(radius < corr_data.camera->Params()[12] || radius > corr_data.camera->Params()[21]){
+      // if(radius < corr_data.camera->Params()[12] || radius > corr_data.camera->Params()[21]){
+      //   point_data[i].is_radial = true;
+      //   continue;
+      // }
+      if (!pose_data[i].camera->IsFullyCalibrated(point_data[i].point)) {
         point_data[i].is_radial = true;
         continue;
       }
@@ -927,7 +931,9 @@ int IncrementalTriangulator::CalibrateCamera(const Options& options) {
        || (original_calibrated_area < calibrated_area[1] - calibrated_area[0]);
     
     double diagonal = sqrt(camera.Width() * camera.Width() + camera.Height() * camera.Height()) / 2;
-    for (size_t j = 12; j < camera.Params().size(); j++) {
+
+    int num_control_points = (camera.Params().size() - 2) / 2;
+    for (size_t j = 2 + num_control_points; j < camera.Params().size(); j++) {
       // If the calibrated is manually forced, then use the new calibration
       if (camera.Params()[j] > diagonal || camera.Params()[j] < 0)
         use_new_calibration = true;
@@ -947,7 +953,7 @@ int IncrementalTriangulator::CalibrateCamera(const Options& options) {
 
       num_updated_cameras += 1;
     }
-    std::cout << "Calibrated region:" << camera.Params()[12] << " " << camera.Params()[21] << ", " << camera.Width() << " " << camera.Height() << std::endl;
+    std::cout << "Calibrated region:" << camera.Params()[2 + num_control_points] << " " << camera.Params()[1 + num_control_points * 2] << ", " << camera.Width() << " " << camera.Height() << std::endl;
   }
 
   return num_updated_cameras;

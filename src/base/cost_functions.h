@@ -45,35 +45,35 @@
 
 namespace colmap {
 
-// Standard bundle adjustment cost function for variable
-// camera pose and calibration and point parameters.
-template <typename T>
-double ExtractScalar(const T& value) {
-    return double(value);
-}
+// // Standard bundle adjustment cost function for variable
+// // camera pose and calibration and point parameters.
+// template <typename T>
+// double ExtractScalar(const T& value) {
+//     return double(value);
+// }
 
-// Specialize for ceres::Jet
-template <>
-inline double ExtractScalar<ceres::Jet<double, 32>>(const ceres::Jet<double, 32>& value) {
-    return value.a;  // Correctly extracting the scalar part
-}
+// // Specialize for ceres::Jet
+// template <>
+// inline double ExtractScalar<ceres::Jet<double, 32>>(const ceres::Jet<double, 32>& value) {
+//     return value.a;  // Correctly extracting the scalar part
+// }
 
-template <>
+// template <>
 
-inline double ExtractScalar<ceres::Jet<double, 5>>(const ceres::Jet<double, 5>& value) {
-    return value.a;  // Correctly extracting the scalar part
-}
+// inline double ExtractScalar<ceres::Jet<double, 5>>(const ceres::Jet<double, 5>& value) {
+//     return value.a;  // Correctly extracting the scalar part
+// }
 
-template <>
+// template <>
 
-inline double ExtractScalar<ceres::Jet<double, 25>>(const ceres::Jet<double, 25>& value) {
-    return value.a;  // Correctly extracting the scalar part
-}
-template <>
+// inline double ExtractScalar<ceres::Jet<double, 25>>(const ceres::Jet<double, 25>& value) {
+//     return value.a;  // Correctly extracting the scalar part
+// }
+// template <>
 
-inline double ExtractScalar<ceres::Jet<double, 12>>(const ceres::Jet<double, 12>& value) {
-    return value.a;  // Correctly extracting the scalar part
-}
+// inline double ExtractScalar<ceres::Jet<double, 12>>(const ceres::Jet<double, 12>& value) {
+//     return value.a;  // Correctly extracting the scalar part
+// }
 
 template <typename CameraModel>
 class BundleAdjustmentCostFunction {
@@ -252,19 +252,21 @@ class BundleAdjustmentCostFunction<ImplicitDistortionModel> {
     //     sample_x.push_back(ExtractScalar(camera_params[i]));
     //     // std::cout << "x: " << ExtractScalar(camera_params[i]) << std::endl;
     // }
+
+    int num_control_points = (ImplicitDistortionModel::kNumParams - 2) / 2;
     std::vector<T> sample_x = {};
-    for (int i = 2; i < 12; i++) {
+    for (int i = 2; i < 2 + num_control_points; i++) {
         sample_x.push_back(camera_params[i]);
         // std::cout << "x: " << ExtractScalar(camera_params[i]) << std::endl;
     } 
     
     // std::vector<double> sample_y = {};
 
-    // for(int i = 12; i < 22; i++) {
+    // for(int i = 2 + num_control_points; i < ImplicitDistortionModel::kNumParams; i++) {
     //     sample_y.push_back(ExtractScalar(camera_params[i]));
     //     }
     std::vector<T> sample_y = {};
-    for(int i = 12; i < 22; i++) {
+    for(int i = 2 + num_control_points; i < ImplicitDistortionModel::kNumParams; i++) {
         sample_y.push_back(camera_params[i]);
         }
     
@@ -569,28 +571,29 @@ class BundleAdjustmentConstantPoseCostFunction<ImplicitDistortionModel> {
     projection[1] /= projection[2];
 
     T x_c, y_c;
+    int num_control_points = (ImplicitDistortionModel::kNumParams - 2) / 2;
     // std::cout<<"camera_params[0]:"<<camera_params[0]<<std::endl;
     // std::cout<<"camera_params[2]:"<<camera_params[2]<<std::endl;
 
     // std::vector<double> sample_x={};
-    // for (int i = 2; i < 12; i++) {
+    // for (int i = 2; i < num_control_points + 2; i++) {
     //     sample_x.push_back(ExtractScalar(camera_params[i]));
     //     // std::cout << "x: " << ExtractScalar(camera_params[i]) << std::endl;
     // }
     std::vector<T> sample_x = {};
-    for (int i = 2; i < 12; i++) {
+    for (int i = 2; i < num_control_points + 2; i++) {
         sample_x.push_back(camera_params[i]);
         // std::cout << "x: " << ExtractScalar(camera_params[i]) << std::endl;
     }
     
     // std::vector<double> sample_y{};
 
-    // for(int i = 12; i < 22; i++) {
+    // for(int i = num_control_points + 2; i < ImplicitDistortionModel::kNumParams; i++) {
     //     sample_y.push_back(ExtractScalar(camera_params[i]));
     //     // std::cout << "y: " << ExtractScalar(camera_params[i]) << std::endl;
     //     }
     std::vector<T> sample_y = {};
-    for(int i = 12; i < 22; i++) {
+    for(int i = num_control_points + 2; i < ImplicitDistortionModel::kNumParams; i++) {
         sample_y.push_back(camera_params[i]);
         // std::cout << "y: " << ExtractScalar(camera_params[i]) << std::endl;
         }
@@ -678,29 +681,29 @@ class BundleAdjustmentConstantPoseCostFunction<ImplicitDistortionModel> {
     //   T alpha = dot_product /
     //           (projection[0] * projection[0] + projection[1] * projection[1]);
 
-    //   // Re-projection error.
-    //   // std::cout<<"sample_x[0]:"<<sample_x[0]<<std::endl;
-    //   residuals[0] = alpha * projection[0] - x_c;
-    //   residuals[1] = alpha * projection[1] - y_c;} 
-    // std::cout <<"residuals[0] for full:"<<residuals[0]<<std::endl;
-    // append radius , focal length and residuals to a file
-    std::string filename = "residuals_2.txt";
-    std::ofstream myfile(filename, std::ios_base::app);
+    // //   // Re-projection error.
+    // //   // std::cout<<"sample_x[0]:"<<sample_x[0]<<std::endl;
+    // //   residuals[0] = alpha * projection[0] - x_c;
+    // //   residuals[1] = alpha * projection[1] - y_c;} 
+    // // std::cout <<"residuals[0] for full:"<<residuals[0]<<std::endl;
+    // // append radius , focal length and residuals to a file
+    // std::string filename = "residuals_2.txt";
+    // std::ofstream myfile(filename, std::ios_base::app);
     
   
-    myfile << ExtractScalar(theta) << " " << focal_length << " " << ExtractScalar(residuals[0]) << " " << ExtractScalar(projection[2]) << " " << ExtractScalar(camera_params[13]);
+    // myfile << ExtractScalar(theta) << " " << focal_length << " " << ExtractScalar(residuals[0]) << " " << ExtractScalar(projection[2]) << " " << ExtractScalar(camera_params[13]);
 
-    // Write all elements of sample_x separated by spaces
-    // std::copy(std::begin(sample_x), std::end(sample_x), std::ostream_iterator<double>(myfile, " "));
+    // // Write all elements of sample_x separated by spaces
+    // // std::copy(std::begin(sample_x), std::end(sample_x), std::ostream_iterator<double>(myfile, " "));
     
-    // Write all elements of sample_y separated by spaces
-    // std::copy(std::begin(sample_y), std::end(sample_y), std::ostream_iterator<double>(myfile, " "));
+    // // Write all elements of sample_y separated by spaces
+    // // std::copy(std::begin(sample_y), std::end(sample_y), std::ostream_iterator<double>(myfile, " "));
 
-    // End the line
-    myfile << std::endl;
+    // // End the line
+    // myfile << std::endl;
 
-    // Close the file
-    myfile.close();
+    // // Close the file
+    // myfile.close();
 
 
 
