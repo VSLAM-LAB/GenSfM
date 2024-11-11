@@ -772,6 +772,9 @@ std::vector<double> IdentifyCalibratedArea(Camera& camera, std::vector<double>& 
       longest_segment_size = radii_segments[i].size();
     }
   }
+  if (radii_segments.size() == 0) {
+    return {0, 0};
+  }
   std::vector<double> calibrated_area = {radii_segments[longest_segment].front(), radii_segments[longest_segment].back()};
   return calibrated_area;
 }

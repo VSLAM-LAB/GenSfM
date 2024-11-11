@@ -80,7 +80,7 @@ namespace colmap {
 
 static const int kInvalidCameraModelId = -1;
 
-constexpr int NUM_CONTROL_POINTS = 12;
+constexpr int NUM_CONTROL_POINTS = 10;
 
 #ifndef CAMERA_MODEL_DEFINITIONS
 #define CAMERA_MODEL_DEFINITIONS(model_id_value, model_name_value,             \

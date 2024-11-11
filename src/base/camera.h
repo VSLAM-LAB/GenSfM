@@ -508,7 +508,9 @@ inline void Camera::recursiveSplit(const std::vector<double>& radii, const std::
 
         // Base case for recursion
         // if (max_gap < threshold || stddev < stddev_threshold) {
-        if (max_gap < threshold){
+        if (radii.size() < NUM_CONTROL_POINTS)
+          return;
+        if (max_gap < threshold) {
             radii_segments.push_back(radii);
             focal_lengths_segments.push_back(focal_lengths);
             return;

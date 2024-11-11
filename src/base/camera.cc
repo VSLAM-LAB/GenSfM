@@ -308,6 +308,9 @@ bool Camera::FitPIeceWiseSpline_binary(std::vector<double>& radii, std::vector<d
   std::cout << ", New threshold: " << threshold << std::endl;
   recursiveSplit(new_radii, new_focal_lengths, radii_segments, focal_lengths_segments, threshold, std_threshold);
 
+  if (radii_segments.size() == 0) {
+    return false;
+  }
   // print the beginning and end of the longest segment
   // find the longest segment
   int longest_segment = 0;
