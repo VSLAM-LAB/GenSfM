@@ -504,7 +504,7 @@ void Reconstruction::NormalizeRadialCameras() {
     double tz =
         EstimateRadialCameraForwardOffset(proj_matrix, points2D, points3D, &negative_focal);
     Eigen::Vector3d tvec = proj_matrix.col(3);
-    
+
     // Eigen::Vector2d pp = Eigen::Vector2d(camera.PrincipalPointX(), camera.PrincipalPointY());
 
   // Estimate the forward translation using implicit distortion model.

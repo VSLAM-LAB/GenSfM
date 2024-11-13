@@ -263,6 +263,7 @@ std::vector<image_t> IncrementalMapper::FindNextImages(const Options& options) {
     if (image.second.IsRegistered()) {
       continue;
     }
+    std::cout << image.second.NumVisiblePoints3D() << " ";
 
     // Only consider images with a sufficient number of visible points.
     if (image.second.NumVisiblePoints3D() <
@@ -285,6 +286,8 @@ std::vector<image_t> IncrementalMapper::FindNextImages(const Options& options) {
       other_image_ranks.emplace_back(image.first, rank);
     }
   }
+
+  std::cout << std::endl;
 
   std::vector<image_t> ranked_images_ids;
   SortAndAppendNextImages(image_ranks, &ranked_images_ids);
@@ -1411,6 +1414,24 @@ bool IncrementalMapper::AdjustCameraPose(const Options& options,
   // Update camera pose
   reconstruction_->Image(image_id).SetQvec(poses[0].q_vec);
   reconstruction_->Image(image_id).SetTvec(poses[0].t);
+
+  const Image& image = reconstruction_->Image(image_id);
+
+  int counter = 0;
+  // for (const Point2D& point2D : image.Points2D()) {
+  for (size_t i = 0; i < image.NumPoints2D(); i++) {
+    const Point2D& point2D = image.Point2D(i);
+    if (!point2D.HasPoint3D()) {
+        continue;
+        
+      const point3D_t point3D_id = point2D.Point3DId();
+      if (is_outlier_final[counter]) {
+        reconstruction_->DeleteObservation(point3D_id, i);
+      }
+      counter++;
+    }
+  }
+
 
   return true;
 }
