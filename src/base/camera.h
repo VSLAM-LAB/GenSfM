@@ -508,7 +508,9 @@ inline void Camera::recursiveSplit(const std::vector<double>& radii, const std::
 
         // Base case for recursion
         // if (max_gap < threshold || stddev < stddev_threshold) {
-        if (max_gap < threshold){
+        if (radii.size() < NUM_CONTROL_POINTS)
+          return;
+        if (max_gap < threshold) {
             radii_segments.push_back(radii);
             focal_lengths_segments.push_back(focal_lengths);
             return;
@@ -1059,13 +1061,15 @@ double Camera::EvalFocalLength(double radius) const {
   } else {
     if (!is_fully_calibrated_)
       return 1.;
+
+    int num_control_points = (ImplicitDistortionModel::kNumParams - 2) / 2;
     // First check whether it is within the calibrated region
-    if (radius < params_[12] || radius > params_[21]) {
+    if (radius < params_[2 + num_control_points] || radius > params_[2 * num_control_points + 1]) {
       return 1.;
     }
 
-    auto it = std::upper_bound(params_.begin() + 12, params_.end(), radius);
-    size_t idx = std::max<int>((it - params_.begin()) - 1 - 12, 0); // (params[idx + 12] <= radius)
+    auto it = std::upper_bound(params_.begin() + 2 + num_control_points, params_.end(), radius);
+    size_t idx = std::max<int>((it - params_.begin()) - 1 - 2 + num_control_points, 0); // (params[idx + 2 + num_control_points] <= radius)
 
     double theta = params_[2 + idx];
     double residual = spline_(theta) - radius;
@@ -1108,7 +1112,8 @@ inline bool Camera::IsFullyCalibrated(const Eigen::Vector2d& image_point) const 
 
   // if(raw_radii_.size() < 20 || (raw_radii_.size() > 20 && raw_radii_[0] < 0))
   //   return false;
-  if (!is_fully_calibrated_ || (radius < params_[12] || radius > params_[21]))
+  int num_control_points = (ImplicitDistortionModel::kNumParams - 2) / 2;
+  if (!is_fully_calibrated_ || (radius < params_[2 + num_control_points] || radius > params_[2 * num_control_points + 1]))
     return false;
   else
     return true;
@@ -1128,15 +1133,16 @@ bool Camera::SetSplineFromParams() {
     return true;
     
   std::vector<double> sample_x, sample_y;
-  for (int i = 2; i < 12; i++) {
+  int num_control_points = (ImplicitDistortionModel::kNumParams - 2) / 2;
+  for (int i = 2; i < 2 + num_control_points; i++) {
     sample_x.push_back(params_[i]);
   }
   
   // Enforce the monotonicity of y
   bool is_incresing = sample_x[0] < sample_x[1];
-  double extreme_y = params_[12];
+  double extreme_y = params_[2 + num_control_points];
   double diagonal = sqrt(pow(width_, 2) + pow(height_, 2)) / 2;
-  for(int i = 12; i < 22; i++) {
+  for(int i = 2 + num_control_points; i < ImplicitDistortionModel::kNumParams; i++) {
     if (is_incresing) {
       extreme_y = std::max(params_[i], extreme_y + 1e-3);
     } else {

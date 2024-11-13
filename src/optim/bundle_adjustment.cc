@@ -401,72 +401,72 @@ void BundleAdjuster::AddImageToProblem(const image_t image_id,
 
 
 
-  // check if all the points of the current image are radial points
-  bool using_radial1d_reserve = using_radial1d;
-  std::vector<double> sample_x = {};
-  std::vector<double> sample_y = {};
-  for (int i = 2; i < 12; i++) {
-    sample_x.push_back(camera.Params()[i]);
-  }
-  for (int i = 12; i < 22; i++) {
-    sample_y.push_back(camera.Params()[i]);
-  }
-  tk::spline <double> spline_focal_lengths;
-  spline_focal_lengths.set_points(sample_x, sample_y);
-  size_t num_3d_points = image.NumPoints3D();
-  size_t num_radial_points = 0;
-  std::vector<Eigen::Vector2d> points2D;
-  std::vector<Eigen::Vector3d> points3D;
-  points2D.reserve(num_3d_points);
-  points3D.reserve(num_3d_points);
-  for (const Point2D& point2D : image.Points2D()) {
-    if (point2D.HasPoint3D()) {
-      Point3D& point3D = reconstruction->Point3D(point2D.Point3DId());
-      points3D.push_back(point3D.XYZ());
-      points2D.push_back(camera.ImageToWorld(point2D.XY()));
-      // rotate 3D point from unit quaternion
-      Eigen::Quaterniond q(image.Qvec(0), image.Qvec(1), image.Qvec(2), image.Qvec(3));
-      Eigen::Vector3d t(image.Tvec(0), image.Tvec(1), image.Tvec(2));
-      Eigen::Vector3d projection = q * point3D.XYZ();
-      projection[0] += t[0];
-      projection[1] += t[1];
-      projection[2] += t[2];
-
-      projection[0] /= projection[2];
-      projection[1] /= projection[2];
-      double rho = sqrt(projection[0]*projection[2] * projection[0]*projection[2] + projection[1] *projection[2]* projection[1]*projection[2]);
-      double theta = atan2(rho, projection[2]);
-      double r_calculated = spline_focal_lengths(theta);
-      double focal_length = r_calculated/tan(theta);  
-      if((projection[0]*focal_length + camera.Params()[0] <= 0)||(projection[0]*focal_length + camera.Params()[0] >= sqrt(camera.Params()[0]*camera.Params()[0] + camera.Params()[1]*camera.Params()[1]))){
-        num_radial_points++;
-      }
-    }
-  }
-  // std::cout<<"num_3d_points: "<<num_3d_points<<std::endl;
-  // std::cout<<"num_radial_points: "<<num_radial_points<<std::endl;
-    // if((num_3d_points <= 0.2 * reconstruction->NumPoints3D()/reconstruction->NumImages() )){
-  // if((((num_3d_points - num_radial_points) / (num_3d_points +1)< 0.3)) || (num_3d_points <= 0.2 * reconstruction->NumPoints3D()/reconstruction->NumImages() )){
-  //   // if((num_3d_points - num_radial_points) / (num_3d_points +1)< 0.3){
-  //   image.SetUseRadial(true);
-  //   using_radial1d = true;
-  //   Eigen::Vector2d principal_point(camera.Params()[0], camera.Params()[1]);
-  //   Eigen::Matrix3x4d proj_matrix = image.ProjectionMatrix();
-  //   bool negative_focal = false;
-  //   double tz = EstimateRadialCameraForwardOffset(proj_matrix, points2D, points3D, &negative_focal);
-  //   Eigen::Vector3d tvec = proj_matrix.col(3);
-  //   tvec(2) = tz;
-  //   image.SetTvec(tvec);
-    
-  //   // if(points3D.size() > 30){
-  //   //   CameraPose implicit_pose = EstimateCameraForwardOffsetImplictDistortion(proj_matrix, points2D, points3D, principal_point);
-  //   //   // image.SetQvec(implicit_pose.q_vec);
-  //   //   image.SetTvec(implicit_pose.t);
-  //   // }
+  // // check if all the points of the current image are radial points
+  // bool using_radial1d_reserve = using_radial1d;
+  // std::vector<double> sample_x = {};
+  // std::vector<double> sample_y = {};
+  // for (int i = 2; i < 12; i++) {
+  //   sample_x.push_back(camera.Params()[i]);
   // }
-  // if(camera.GetRawRadii().size() == 0){
-  //   using_radial1d = using_radial1d_reserve;
-  // } 
+  // for (int i = 12; i < 22; i++) {
+  //   sample_y.push_back(camera.Params()[i]);
+  // }
+  // tk::spline <double> spline_focal_lengths;
+  // spline_focal_lengths.set_points(sample_x, sample_y);
+  // size_t num_3d_points = image.NumPoints3D();
+  // size_t num_radial_points = 0;
+  // std::vector<Eigen::Vector2d> points2D;
+  // std::vector<Eigen::Vector3d> points3D;
+  // points2D.reserve(num_3d_points);
+  // points3D.reserve(num_3d_points);
+  // for (const Point2D& point2D : image.Points2D()) {
+  //   if (point2D.HasPoint3D()) {
+  //     Point3D& point3D = reconstruction->Point3D(point2D.Point3DId());
+  //     points3D.push_back(point3D.XYZ());
+  //     points2D.push_back(camera.ImageToWorld(point2D.XY()));
+  //     // rotate 3D point from unit quaternion
+  //     Eigen::Quaterniond q(image.Qvec(0), image.Qvec(1), image.Qvec(2), image.Qvec(3));
+  //     Eigen::Vector3d t(image.Tvec(0), image.Tvec(1), image.Tvec(2));
+  //     Eigen::Vector3d projection = q * point3D.XYZ();
+  //     projection[0] += t[0];
+  //     projection[1] += t[1];
+  //     projection[2] += t[2];
+
+  //     projection[0] /= projection[2];
+  //     projection[1] /= projection[2];
+  //     double rho = sqrt(projection[0]*projection[2] * projection[0]*projection[2] + projection[1] *projection[2]* projection[1]*projection[2]);
+  //     double theta = atan2(rho, projection[2]);
+  //     double r_calculated = spline_focal_lengths(theta);
+  //     double focal_length = r_calculated/tan(theta);  
+  //     if((projection[0]*focal_length + camera.Params()[0] <= 0)||(projection[0]*focal_length + camera.Params()[0] >= sqrt(camera.Params()[0]*camera.Params()[0] + camera.Params()[1]*camera.Params()[1]))){
+  //       num_radial_points++;
+  //     }
+  //   }
+  // }
+  // // std::cout<<"num_3d_points: "<<num_3d_points<<std::endl;
+  // // std::cout<<"num_radial_points: "<<num_radial_points<<std::endl;
+  //   // if((num_3d_points <= 0.2 * reconstruction->NumPoints3D()/reconstruction->NumImages() )){
+  // // if((((num_3d_points - num_radial_points) / (num_3d_points +1)< 0.3)) || (num_3d_points <= 0.2 * reconstruction->NumPoints3D()/reconstruction->NumImages() )){
+  // //   // if((num_3d_points - num_radial_points) / (num_3d_points +1)< 0.3){
+  // //   image.SetUseRadial(true);
+  // //   using_radial1d = true;
+  // //   Eigen::Vector2d principal_point(camera.Params()[0], camera.Params()[1]);
+  // //   Eigen::Matrix3x4d proj_matrix = image.ProjectionMatrix();
+  // //   bool negative_focal = false;
+  // //   double tz = EstimateRadialCameraForwardOffset(proj_matrix, points2D, points3D, &negative_focal);
+  // //   Eigen::Vector3d tvec = proj_matrix.col(3);
+  // //   tvec(2) = tz;
+  // //   image.SetTvec(tvec);
+    
+  // //   // if(points3D.size() > 30){
+  // //   //   CameraPose implicit_pose = EstimateCameraForwardOffsetImplictDistortion(proj_matrix, points2D, points3D, principal_point);
+  // //   //   // image.SetQvec(implicit_pose.q_vec);
+  // //   //   image.SetTvec(implicit_pose.t);
+  // //   // }
+  // // }
+  // // if(camera.GetRawRadii().size() == 0){
+  // //   using_radial1d = using_radial1d_reserve;
+  // // } 
 
 
 

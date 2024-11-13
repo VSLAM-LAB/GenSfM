@@ -5,7 +5,6 @@
 #include <Eigen/Core>
 #include "base/spline.h"
 
-// #include "base/cost_functions_spline.h"
 
 #include <random>
 #include <vector>

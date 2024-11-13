@@ -247,8 +247,8 @@ int main(){
     
 
     // the base path to the files
-    std::string base_path = "/home/yihan/cvg/implicit_radial_sfm/experimental_scripts/babelcalib/eval/";
-    std::string output_base = "/home/yihan/cvg/implicit_radial_sfm/experimental_scripts/babelcalib/spline/";
+    std::string base_path = "/home/linpan/workspace/implicit_radial_sfm/scripts/babelcalib/eval/";
+    std::string output_base = "/home/linpan/workspace/implicit_radial_sfm/scripts/babelcalib/spline/";
     // list of files to read
     for (const auto& entry : std::filesystem::directory_iterator(base_path)){
         std::vector<double> theta{};
@@ -263,7 +263,7 @@ int main(){
             double theta_, radii_;
             if (!(iss >> theta_ >> radii_)) { break; }
             theta.push_back(theta_);
-            std::cout << theta_ << std::endl;
+            // std::cout << theta_ << std::endl;
             radii.push_back(radii_);
         }
         std::vector<double> calibrated_area = IdentifyCalibratedArea(theta, radii);
@@ -287,7 +287,7 @@ int main(){
         
         std::ofstream output_file(output_file_path);
         for (int i = 0; i < sample_x.size(); i++){
-            output_file << sample_y[i] << " " << sample_y[i] << std::endl;
+            output_file << sample_x[i] << " " << sample_y[i] << std::endl;
         }
       }
 

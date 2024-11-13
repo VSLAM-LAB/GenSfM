@@ -308,6 +308,9 @@ bool Camera::FitPIeceWiseSpline_binary(std::vector<double>& radii, std::vector<d
   std::cout << ", New threshold: " << threshold << std::endl;
   recursiveSplit(new_radii, new_focal_lengths, radii_segments, focal_lengths_segments, threshold, std_threshold);
 
+  if (radii_segments.size() == 0) {
+    return false;
+  }
   // print the beginning and end of the longest segment
   // find the longest segment
   int longest_segment = 0;
@@ -323,7 +326,7 @@ bool Camera::FitPIeceWiseSpline_binary(std::vector<double>& radii, std::vector<d
   std::vector<double> radii_calibrated = radii_segments[longest_segment];
   std::vector<double> focal_lengths_calibrated = focal_lengths_segments[longest_segment];
   int max_it = 80;
-  int degree = 10;
+  int degree = (params_.size() - 2) / 2;
   double threshold_ransac = 5.0;
   tk::spline<double> best_spline = ransac_spline(max_it, degree, threshold_ransac, radii_calibrated, focal_lengths_calibrated);
   std::vector<double> used_x;
@@ -348,6 +351,11 @@ bool Camera::FitPIeceWiseSpline_binary(std::vector<double>& radii, std::vector<d
 
   // If only a few points are inliers, then the calibration is not good
   if (inliers_count < 0.9 * radii_calibrated.size()) {
+    return false;
+  }
+
+  // If only a few points are used to fit the spline, then the calibration is not good
+  if (radii_calibrated.size() < 500) {
     return false;
   }
 
