@@ -386,13 +386,8 @@ void BundleAdjuster::AddImageToProblem(const image_t image_id,
   size_t num_reg_images = 0;
   std::vector<std::pair<camera_t,size_t>> registered_num_images_per_camera;
   bool using_radial1d = false; 
-  for (const image_t img_id : reconstruction->RegImageIds()) {
-    if (reconstruction->Image(img_id).CameraId() == image.CameraId()) {
-      num_reg_images++;
-    }
-  }
-
-  if (num_reg_images < options_.min_num_reg_images) {
+  
+  if (!reconstruction->Camera(camera.CameraId()).IsCalibrated()) {
     using_radial1d = true;
   }
 

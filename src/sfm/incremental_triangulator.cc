@@ -874,6 +874,9 @@ int IncrementalTriangulator::CalibrateCamera(const Options& options) {
     for (int i = 0; i < points2D.size(); i++) {
       total_num_points += points2D[i].size();
     }
+    if (total_num_points == 0) {
+      continue;
+    }
     if(total_num_points > 10000){
       double ratio = 10000.0 / total_num_points;
       for (int i = 0; i < points2D.size(); i++) {
