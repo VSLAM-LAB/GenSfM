@@ -1160,6 +1160,8 @@ int RunModelAligner(int argc, char** argv) {
   options.AddDefaultOption("robust_alignment_max_error",
                            &ransac_options.max_error);
   options.Parse(argc, argv);
+  // create output directory if it does not exist
+  CreateDirIfNotExists(output_path);
 
   if (robust_alignment && ransac_options.max_error <= 0) {
     std::cout << "ERROR: You must provide a maximum alignment error > 0"
