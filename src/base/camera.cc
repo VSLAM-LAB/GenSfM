@@ -354,6 +354,11 @@ bool Camera::FitPIeceWiseSpline_binary(std::vector<double>& radii, std::vector<d
     return false;
   }
 
+  // If only a few points are used to fit the spline, then the calibration is not good
+  if (radii_calibrated.size() < 500) {
+    return false;
+  }
+
   if (ModelId()==ImplicitDistortionModel::model_id) {
     used_x = best_spline.get_x();
     used_y = best_spline.get_y();

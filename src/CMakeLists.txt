@@ -88,3 +88,7 @@ else()
     target_link_libraries(colmap
         ${COLMAP_INTERNAL_LIBRARIES} ${COLMAP_EXTERNAL_LIBRARIES})
 endif()
+
+add_executable(get_intrinsics
+    ./base/get_intrinsics.cc)
+target_link_libraries(get_intrinsics colmap)
