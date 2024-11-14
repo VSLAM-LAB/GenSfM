@@ -92,3 +92,7 @@ endif()
 add_executable(get_intrinsics
     ./base/get_intrinsics.cc)
 target_link_libraries(get_intrinsics colmap)
+
+add_executable(calib_BA_train 
+    ./base/calib_BA_train.cc)
+target_link_libraries(calib_BA_train colmap)

@@ -291,9 +291,10 @@ int main(){
         std::string output_file_path = output_base + base_name + "_spline.txt";
         
         std::ofstream output_file(output_file_path);
-        for (int i = 0; i < interpolated_sample_x.size(); i++){
-            // output_file << sample_x[i] << " " << sample_y[i] << std::endl;
-            output_file << interpolated_sample_x[i] << " " << interpolated_sample_y[i] << std::endl;
+        // for (int i = 0; i < interpolated_sample_x.size(); i++){
+        for (int i = 0; i < sample_x.size(); i++){
+            output_file << sample_x[i] << " " << sample_y[i] << std::endl;
+            // output_file << interpolated_sample_x[i] << " " << interpolated_sample_y[i] << std::endl;
         }
       }
 

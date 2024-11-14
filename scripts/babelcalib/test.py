@@ -107,6 +107,73 @@ def get_intrinsics(dataset_train,corrs_train, calib_train, poses_train, output_p
 
 
 # %%
+def write_corrs_to_colmap_reconstruction(dataset, corrs, poses, calib, out, spline_path, output_path):
+    # create the output directory if it does not exist
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
+    # write images.txt
+    with open(output_path + '/images.txt', 'w') as f:
+        f.write('# Image list with two lines of data per image:\n')
+        f.write('#   IMAGE_ID, QW, QX, QY, QZ, TX, TY, TZ, CAMERA_ID, NAME\n')
+        f.write('#   POINTS2D[] as (X, Y, POINT3D_ID)\n')
+        f.write("# Number of images: {}\n".format(len(poses)))
+        for img_id, (corr, pose, calib) in enumerate(zip(corrs, poses, calib), 1):
+            q = rotation_to_quaternion(pose.R)
+            t = pose.t
+            cam_id = 1
+            img_name = 'image_{}.png'.format(img_id)
+            f.write(f"{img_id} {q[0]} {q[1]} {q[2]} {q[3]} {t[0]} {t[1]} {t[2]} {cam_id} {img_name}\n")
+            points2d = corr[0]
+            points3d_ids = corr[2]
+            points_line = " ".join(f"{x:.6f} {y:.6f} {p3d_id}" for (x, y), p3d_id in zip(points2d, points3d_ids))
+            f.write(f"{points_line}\n")
+    # write points3D.txt
+    with open(output_path + '/points3D.txt', 'w') as f:
+        f.write('# 3D point list with one line of data per point:\n')
+        f.write('#   POINT3D_ID, X, Y, Z, R, G, B, ERROR, TRACK[] as (IMAGE_ID, POINT2D_IDX)\n')
+        point3D_data = {}
+        for img_id, corr in enumerate(corrs, 1):
+            points3d = corr[1]
+            point3d_ids = corr[2]
+            for point_idx, (p3d, p3d_id) in enumerate(zip(points3d, point3d_ids)):
+                if p3d_id == -1:
+                    continue
+                if p3d_id not in point3D_data:
+                    point3D_data[p3d_id] = {
+                        "XYZ": p3d,
+                        "RGB": (0, 0, 0),
+                        "ERROR": 0,
+                        "TRACK": []
+                    }
+
+                point3D_data[p3d_id]["TRACK"].append(({"image_id": img_id, "point2D_idx": point_idx}))
+
+        f.write("# Number of points: {}\n".format(len(point3D_data)))
+        for p3d_id, data in point3D_data.items():
+            xyz = data["XYZ"]
+            rgb = data["RGB"]
+            error = data["ERROR"]
+            tracks = " ".join(f"{track['image_id']} {track['point2D_idx']}" for track in data["TRACK"])
+            f.write(f"{p3d_id} {xyz[0]} {xyz[1]} {xyz[2]} {rgb[0]} {rgb[1]} {rgb[2]} {error} {tracks}\n")
+    # write cameras.txt
+    with open(output_path + '/cameras.txt', 'w') as f:
+        f.write('# Camera list with one line of data per camera:\n')
+        f.write('#   CAMERA_ID, MODEL, WIDTH, HEIGHT, PARAMS[]\n')
+        f.write("# Number of cameras: 1\n")
+        theta = []
+        r = []
+        # read theta_r from spline_path
+        theta_r = np.loadtxt(spline_path)
+        for i in range(0, len(theta_r)):
+            theta.append(theta_r[i][0])
+            r.append(theta_r[i][1])
+
+        theta_str = " ".join(map(str, theta))
+        r_str = " ".join(map(str, r))
+        f.write(f"1 IMPLICIT_DISTORTION {dataset['imgsize'][1]} {dataset['imgsize'][0]} {out['pp'][0]} {out['pp'][1]} {theta_str} {r_str}\n")
+
+
+
 
 
 # %%
@@ -208,6 +275,7 @@ results = {'OV_corner': [], 'OV_cube': [], 'OV_single_plane': [], 'Kalibr': [], 
 base_path = '/home/yihan/cvg/implicit_radial_sfm/experimental_scripts/babelcalib/data/'
 output_base = '/home/yihan/cvg/implicit_radial_sfm/experimental_scripts/babelcalib/eval/'
 spline_base = '/home/yihan/cvg/implicit_radial_sfm/experimental_scripts/babelcalib/spline/'
+reconstructions_base = '/home/yihan/cvg/implicit_radial_sfm/experimental_scripts/babelcalib/reconstructions/'
 query_lists = sorted(os.listdir(base_path))
 out_full = {}
 # query_lists = [query_file for query_file in query_lists if query_file.find("OV_corner") >= 0][:1]
@@ -225,6 +293,19 @@ for query_file in query_lists:
         out_full[query_file] = out
 
 cmd = "../../src/base/get_intrinsics"
+os.system(cmd)
+for query_file in query_lists:
+    if query_file.endswith('.mat'):
+        dataset_train, dataset_test, corrs_train, corrs_test, poses_train, poses_test, calib_train, calib_test, fov = load_data(base_path + query_file)
+        output_path = output_base + query_file.split('.')[0] + '_theta_r.txt'
+    
+        # out = get_intrinsics(dataset_train, corrs_train, poses_train, output_path)
+        out = out_full[query_file]
+        spline_path = spline_base + query_file.split('.')[0] + '_spline.txt'
+        # starts refining of the spline in BA
+        out_reconstruction_folder = reconstructions_base + query_file.split('.')[0]
+        write_corrs_to_colmap_reconstruction(dataset_train, corrs_train, poses_train, calib_train, out, spline_path, out_reconstruction_folder)
+cmd = "/home/yihan/cvg/implicit_radial_sfm/build/src/calib_BA_train"
 os.system(cmd)
 for query_file in query_lists:
     if query_file.endswith('.mat'):
@@ -253,6 +334,11 @@ for query_file in query_lists:
         # poses_test = out_test['poses']
 
         spline_path = spline_base + query_file.split('.')[0] + '_spline.txt'
+        # starts refining of the spline in BA
+        out_reconstruction_folder = reconstructions_base + query_file.split('.')[0]
+        # write_corrs_to_colmap_reconstruction(dataset_train, corrs_train, poses_train, calib_train, out, spline_path, out_reconstruction_folder)
+        
+
         if  os.path.exists(spline_path):
             # thetas, theta_r_spline = spline_fit(spline_path)
             # normalize_calib_data(dataset_train, poses_train)
