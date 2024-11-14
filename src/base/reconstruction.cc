@@ -943,7 +943,7 @@ size_t Reconstruction::FilterObservationsWithNegativeDepth() {
           }
         } else {
           bool is_behind = false;
-          if (camera.ModelId() != ImplicitDistortionModel::model_id) {
+          if (camera.ModelId() == ImplicitDistortionModel::model_id) {
             double focal_length = camera.EvalFocalLength(point2D.XY());
             is_behind = (HasPointPositiveDepth(proj_matrix, point3D.XYZ()) != (focal_length > 0));
           } else {

@@ -429,7 +429,7 @@ double CalculateSquaredReprojectionError(const Eigen::Vector2d& point2D,
     proj_point2D = camera.WorldToImage(dot_product * n);
 
   } else if (camera.ModelId() == ImplicitDistortionModel::model_id) {
-    double focal = camera.EvalFocalLength(point2D);
+    double focal = camera.EvalFocalLength(proj_point3D);
 
     const double proj_z = proj_matrix.row(2).dot(point3D.homogeneous());
 
@@ -479,12 +479,25 @@ double CalculateAngularError(const Eigen::Vector2d& point2D,
   const Eigen::Vector2d point2D_norm = camera.ImageToWorld(point2D);
   const Eigen::Vector3d point3D_cam = proj_matrix * point3D.homogeneous();
   if (camera.ModelId() == ImplicitDistortionModel::model_id && camera.IsFullyCalibrated(point2D)) {
-    const Eigen::Vector2d point2D_norm_full = point2D_norm / camera.EvalFocalLength(point2D);
-    return std::acos(point2D_norm_full.homogeneous().normalized().dot(point3D_cam.normalized()));
+    // double focal = camera.EvalFocalLength(point2D);
+    double focal = camera.EvalFocalLength(point3D_cam);
+
+    const Eigen::Vector2d point2D_norm_full = point2D_norm / focal;
+    double angle_error = std::acos(point2D_norm_full.homogeneous().normalized().dot(point3D_cam.normalized()));
+    if (focal >= 0) {
+      return angle_error;
+    }
+    else 
+      return M_PI - angle_error;
   }
 
-  if(camera.ModelId() == Radial1DCameraModel::model_id || camera.ModelId() == ImplicitDistortionModel::model_id){    
-    return std::acos(point2D_norm.normalized().dot(point3D_cam.topRows<2>().normalized()));
+  if(camera.ModelId() == Radial1DCameraModel::model_id || camera.ModelId() == ImplicitDistortionModel::model_id){  
+    double angle = std::acos(point2D_norm.normalized().dot(point3D_cam.topRows<2>().normalized()));
+    if (angle > M_PI/2.0) {
+      return std::acos(point2D_norm.normalized().dot(-point3D_cam.topRows<2>().normalized()));
+    } else {
+      return angle;
+    }
     // return std::acos(point2D_norm.homogeneous().normalized().dot(point3D_cam.normalized()));
   } else {
     return std::acos(point2D_norm.homogeneous().normalized().dot(point3D_cam.normalized()));
