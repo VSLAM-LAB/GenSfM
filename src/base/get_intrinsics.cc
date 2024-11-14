@@ -166,7 +166,7 @@ std::vector<double> IdentifyCalibratedArea(std::vector<double>& radii, std::vect
   double std_threshold = 0.5*std_interval;
 
   std::cout << "!!! Original threshold: " << threshold;
-  threshold = std::max(threshold, colmap::DegToRad(0.1));
+  threshold = std::max(threshold, colmap::DegToRad(0.3));
   std::cout << ", New threshold: " << threshold << std::endl;
   recursiveSplit(new_radii, new_focal_lengths, radii_segments, focal_lengths_segments, threshold, std_threshold);
   int longest_segment = 0;
@@ -216,7 +216,7 @@ assert(radii.size() == focal_lengths.size());
   double threshold = mean_interval + std_interval;
   double std_threshold = 0.5*std_interval;
   std::cout << "!!! Original threshold: " << threshold;
-  threshold = std::max(threshold, colmap::DegToRad(0.1));
+  threshold = std::max(threshold, colmap::DegToRad(0.3));
   std::cout << ", New threshold: " << threshold << std::endl;
   recursiveSplit(new_radii, new_focal_lengths, radii_segments, focal_lengths_segments, threshold, std_threshold);
 
@@ -247,8 +247,8 @@ int main(){
     
 
     // the base path to the files
-    std::string base_path = "/home/linpan/workspace/implicit_radial_sfm/scripts/babelcalib/eval/";
-    std::string output_base = "/home/linpan/workspace/implicit_radial_sfm/scripts/babelcalib/spline/";
+    std::string base_path = "/home/yihan/cvg/implicit_radial_sfm/experimental_scripts/babelcalib/eval/";
+    std::string output_base = "/home/yihan/cvg/implicit_radial_sfm/experimental_scripts/babelcalib/spline/";
     // list of files to read
     for (const auto& entry : std::filesystem::directory_iterator(base_path)){
         std::vector<double> theta{};
@@ -270,6 +270,11 @@ int main(){
         tk::spline<double> best_spline = FitPieceWiseSpline_binary(theta, radii);
         std::vector<double> sample_x = best_spline.get_x();
         std::vector<double> sample_y = best_spline.get_y();
+        std::vector<double> interpolated_sample_x = linspace(calibrated_area[0], calibrated_area[1], 1000);
+        std::vector<double> interpolated_sample_y = {};
+        for (int i = 0; i < interpolated_sample_x.size(); i++){
+            interpolated_sample_y.push_back(best_spline(interpolated_sample_x[i]));
+        }
         // genrate interpolated sample_x to output
        
         // write sample_x and sample_y to a txt file
@@ -286,8 +291,9 @@ int main(){
         std::string output_file_path = output_base + base_name + "_spline.txt";
         
         std::ofstream output_file(output_file_path);
-        for (int i = 0; i < sample_x.size(); i++){
-            output_file << sample_x[i] << " " << sample_y[i] << std::endl;
+        for (int i = 0; i < interpolated_sample_x.size(); i++){
+            // output_file << sample_x[i] << " " << sample_y[i] << std::endl;
+            output_file << interpolated_sample_x[i] << " " << interpolated_sample_y[i] << std::endl;
         }
       }
 
