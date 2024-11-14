@@ -172,7 +172,7 @@ std::vector<TriangulationEstimator::M_t> TriangulationEstimator::Estimate(
         Eigen::Vector2d n = pose_data[i].proj_matrix.topRows<2>() * xyz.homogeneous();
         cheiral_ok &= n.dot(point_data[i].point_normalized) > 0;
       } else {
-        cheiral_ok &= HasPointPositiveDepth(pose_data[i].proj_matrix, xyz);
+        cheiral_ok &= (HasPointPositiveDepth(pose_data[i].proj_matrix, xyz) == (pose_data[i].camera->FocalLength() > 0));
       }
     }
 

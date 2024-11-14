@@ -834,6 +834,7 @@ int IncrementalTriangulator::CalibrateCamera(const Options& options) {
 
     // extracting points3D
     std::vector<std::vector<Eigen::Vector3d>> points3D;
+    std::vector<std::vector<int>> points3D_lens;
     
     //populating camera poses
     std::vector<CameraPose> poses;
@@ -846,11 +847,12 @@ int IncrementalTriangulator::CalibrateCamera(const Options& options) {
     }
 
     std::vector<std::vector<Eigen::Vector2d>> points2D;
-
+    int total_track_length = 0;
     for (const image_t image_id_curr : camera_images[camera_id]) {
       const Image& image = reconstruction_->Image(image_id_curr);
       std::vector<Eigen::Vector2d> imagePoints2D;
       std::vector<Eigen::Vector3d> imagePoints3D;
+      std::vector<int> imagePoints3D_lens;
 
       for (const Point2D& point2D : image.Points2D()) {
           if (!point2D.HasPoint3D()) {
@@ -858,10 +860,13 @@ int IncrementalTriangulator::CalibrateCamera(const Options& options) {
           }
           imagePoints2D.push_back(point2D.XY());
           imagePoints3D.push_back(reconstruction_->Point3D(point2D.Point3DId()).XYZ());
+          imagePoints3D_lens.push_back(reconstruction_->Point3D(point2D.Point3DId()).Track().Length());
+          total_track_length += imagePoints3D_lens.back();
       }
 
       points2D.push_back(imagePoints2D);
       points3D.push_back(imagePoints3D);
+      points3D_lens.push_back(imagePoints3D_lens);
     }
     if(points2D.size() == 0){
       continue;
@@ -877,6 +882,7 @@ int IncrementalTriangulator::CalibrateCamera(const Options& options) {
     if (total_num_points == 0) {
       continue;
     }
+    // total_num_points = total_track_length;
     if(total_num_points > 10000){
       double ratio = 10000.0 / total_num_points;
       for (int i = 0; i < points2D.size(); i++) {
@@ -902,17 +908,18 @@ int IncrementalTriangulator::CalibrateCamera(const Options& options) {
 
     // CostMatrix costMatrix = build_cost_matrix_multi(points2D, cm_options, principal_point);
     CostMatrix costMatrix = build_cost_matrix_multi(points2D_subsampled, cm_options, principal_point);
-    std::vector<CameraPose> poses_refined = (camera_images[camera_id].size() >= options.min_num_reg_images) ?
-            // pose_refinement_multi(points2D, points3D, costMatrix, principal_point, poses, pose_refinement_options) :
-            pose_refinement_multi(points2D_subsampled, points3D_subsampled, costMatrix, principal_point, poses, pose_refinement_options) :
-            poses;
+    // std::vector<CameraPose> poses_refined = (camera_images[camera_id].size() >= options.min_num_reg_images) ?
+    //         // pose_refinement_multi(points2D, points3D, costMatrix, principal_point, poses, pose_refinement_options) :
+    //         pose_refinement_multi(points2D_subsampled, points3D_subsampled, costMatrix, principal_point, poses, pose_refinement_options) :
+    //         poses;
     
-    // filter_result_pose_refinement_multi(points2D, points3D, poses_refined, principal_point, pose_refinement_options);
-    filter_result_pose_refinement_multi(points2D_subsampled, points3D_subsampled, poses_refined, principal_point, pose_refinement_options);
-    // costMatrix = build_cost_matrix_multi(points2D, cm_options, principal_point);
-    costMatrix = build_cost_matrix_multi(points2D_subsampled, cm_options, principal_point);
-    // IntrinsicCalib intrinsic_calib = calibrate_multi(points2D, points3D, costMatrix, principal_point, poses_refined);
-    IntrinsicCalib intrinsic_calib = calibrate_multi(points2D_subsampled, points3D_subsampled, costMatrix, principal_point, poses_refined);
+    // // filter_result_pose_refinement_multi(points2D, points3D, poses_refined, principal_point, pose_refinement_options);
+    // filter_result_pose_refinement_multi(points2D_subsampled, points3D_subsampled, poses_refined, principal_point, pose_refinement_options);
+    // // costMatrix = build_cost_matrix_multi(points2D, cm_options, principal_point);
+    // costMatrix = build_cost_matrix_multi(points2D_subsampled, cm_options, principal_point);
+    // // IntrinsicCalib intrinsic_calib = calibrate_multi(points2D, points3D, costMatrix, principal_point, poses_refined);
+    // IntrinsicCalib intrinsic_calib = calibrate_multi(points2D_subsampled, points3D_subsampled, costMatrix, principal_point, poses_refined);
+    IntrinsicCalib intrinsic_calib = calibrate_multi(points2D_subsampled, points3D_subsampled, costMatrix, principal_point, poses);
     std::cout << "!!! points2D.size(): " << points2D.size() << std::endl;
     std::vector<double> radii;
     std::vector<double> theta;

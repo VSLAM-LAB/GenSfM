@@ -314,13 +314,21 @@ bool Camera::FitPIeceWiseSpline_binary(std::vector<double>& radii, std::vector<d
   // print the beginning and end of the longest segment
   // find the longest segment
   int longest_segment = 0;
-  int longest_segment_size = 0;
+  double longest_segment_size = 0;
+  std::cout << "radii_segments[i].size():" << std::endl;
   for(int i = 0; i < radii_segments.size(); i++){
-    if(radii_segments[i].size() > longest_segment_size){
+    std::cout << radii_segments[i].size() << std::endl;
+    std::cout << radii_segments[i].front() << " " << radii_segments[i].back() << std::endl;
+    std::cout << focal_lengths_segments[i].front() << " " << focal_lengths_segments[i].back() << std::endl;
+    // if(radii_segments[i].size() > longest_segment_size){
+    if(radii_segments[i].back() - radii_segments[i].front() > longest_segment_size){
       longest_segment = i;
-      longest_segment_size = radii_segments[i].size();
+      // longest_segment_size = radii_segments[i].size();
+      longest_segment_size = radii_segments[i].back() - radii_segments[i].front();
     }
   }
+  std::cout << "longest_segment: " << longest_segment << std::endl;
+  std::cout << "longest_segment_size: " << longest_segment_size << std::endl;
   
   std::vector<double> calibrated_range = {focal_lengths_segments[longest_segment].front(), focal_lengths_segments[longest_segment].back()};
   std::vector<double> radii_calibrated = radii_segments[longest_segment];

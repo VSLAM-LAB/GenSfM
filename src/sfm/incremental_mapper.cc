@@ -951,9 +951,10 @@ bool IncrementalMapper::AdjustGlobalPoints(const Options& options) {
   ba_options_ptonly.solver_options.minimizer_progress_to_stdout = true;
   ba_options_ptonly.solver_options.function_tolerance = 1e-6;
   ba_options_ptonly.solver_options.gradient_tolerance = 1.0;
+  ba_options_ptonly.loss_function_scale = 1.0;
   
   ba_options_ptonly.loss_function_type =
-      BundleAdjustmentOptions::LossFunctionType::TRIVIAL;
+      BundleAdjustmentOptions::LossFunctionType::HUBER;
 
   std::cout << "START AdjustGlobalPoints" << std::endl;
   return AdjustGlobalBundle(options, ba_options_ptonly, false);

@@ -180,6 +180,7 @@ class Camera {
   inline double EvalGridFocalLength(double radius) const;
 
   inline double EvalFocalLength(const Eigen::Vector2d& image_point) const;
+  inline double EvalFocalLength(const Eigen::Vector3d& point3d) const;
   inline bool IsFullyCalibrated(const Eigen::Vector2d& image_point) const;
   inline void SetCalibrated(bool calibrated);
   inline bool IsCalibrated() const;
@@ -1096,6 +1097,12 @@ inline std::vector<std::vector<double>> Camera::GetIntervals() const {return int
 inline double Camera::EvalFocalLength(const Eigen::Vector2d& image_point) const {
   return EvalFocalLength(ImageToWorld(image_point).norm());
 };
+
+inline double Camera::EvalFocalLength(const Eigen::Vector3d& point3d) const {
+  double theta = std::atan2(point3d.topRows<2>().norm(), point3d[2]);
+  double radius = spline_(theta);
+  return radius / std::tan(theta);
+}
 
 // 
 inline bool Camera::IsFullyCalibrated(const Eigen::Vector2d& image_point) const {
