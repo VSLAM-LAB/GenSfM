@@ -931,8 +931,12 @@ int IncrementalTriangulator::CalibrateCamera(const Options& options) {
     for (const auto& pair : intrinsic_calib.theta_r) {
         theta.push_back(pair.first); // Extract the first element of each pair (r)
     }
+    std::cout << "!!! radii.size(): " << radii.size() << std::endl;
+    std::cout << "theta_front: " << theta.front() << std::endl;
+    std::cout << "theta_back: " << theta.back() << std::endl;
     // identify the calibrated area
     std::vector<double> calibrated_area = IdentifyCalibratedArea(camera, theta, radii);
+    std::cout << "!!! calibrated_area: " << calibrated_area[0] << " " << calibrated_area[1] << std::endl;
 
     std::vector<double> principal_point_new = {principal_point[0], principal_point[1]};
     // if (camera.GetRawRadii().size() == 0 || ((calibrated_area[1] >= camera.Params()[11])
@@ -954,6 +958,9 @@ int IncrementalTriangulator::CalibrateCamera(const Options& options) {
         use_new_calibration = true;
       }
     }
+    // if(calibrated_area[1] - calibrated_area[0] < 0.1){
+    //   use_new_calibration = false;
+    // }
     if (use_new_calibration) {
       // If it is possible to calibrate
       if (!camera.FitPIeceWiseSpline_binary(theta, radii, principal_point_new))

@@ -166,7 +166,7 @@ std::vector<double> IdentifyCalibratedArea(std::vector<double>& radii, std::vect
   double std_threshold = 0.5*std_interval;
 
   std::cout << "!!! Original threshold: " << threshold;
-  threshold = std::max(threshold, colmap::DegToRad(0.3));
+  threshold = std::max(threshold, colmap::DegToRad(0.1));
   std::cout << ", New threshold: " << threshold << std::endl;
   recursiveSplit(new_radii, new_focal_lengths, radii_segments, focal_lengths_segments, threshold, std_threshold);
   int longest_segment = 0;
@@ -216,7 +216,7 @@ assert(radii.size() == focal_lengths.size());
   double threshold = mean_interval + std_interval;
   double std_threshold = 0.5*std_interval;
   std::cout << "!!! Original threshold: " << threshold;
-  threshold = std::max(threshold, colmap::DegToRad(0.3));
+  threshold = std::max(threshold, colmap::DegToRad(0.1));
   std::cout << ", New threshold: " << threshold << std::endl;
   recursiveSplit(new_radii, new_focal_lengths, radii_segments, focal_lengths_segments, threshold, std_threshold);
 
@@ -235,7 +235,7 @@ assert(radii.size() == focal_lengths.size());
   std::vector<double> radii_calibrated = radii_segments[longest_segment];
   std::vector<double> focal_lengths_calibrated = focal_lengths_segments[longest_segment];
   int max_it = 80;
-  int degree = 10;
+  int degree = 15;
   double threshold_ransac = 5.0;
   tk::spline<double> best_spline = ransac_spline(max_it, degree, threshold_ransac, radii_calibrated, focal_lengths_calibrated);
 return best_spline;

@@ -262,6 +262,7 @@ BundleAdjuster::BundleAdjuster(const BundleAdjustmentOptions& options,
 
 bool BundleAdjuster::Solve(Reconstruction* reconstruction, bool initial) {
   CHECK_NOTNULL(reconstruction);
+  std::cout<<"reconstruction not null check successful"<<std::endl;
   // std::cout<<"reconstruction check succeed"<<std::endl;
   CHECK(!problem_) << "Cannot use the same BundleAdjuster multiple times";
   // std::cout<<"problem check succeed"<<std::endl;
@@ -318,6 +319,7 @@ bool BundleAdjuster::Solve(Reconstruction* reconstruction, bool initial) {
   CHECK(solver_options.IsValid(&solver_error)) << solver_error;
   solver_options.minimizer_progress_to_stdout = false;  
   ceres::Solve(solver_options, problem_.get(), &summary_);
+  std::cout << summary_.FullReport() << std::endl;
 
   if (solver_options.minimizer_progress_to_stdout) {
     // std::cout << std::endl;

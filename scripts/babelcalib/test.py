@@ -74,34 +74,35 @@ def get_intrinsics(dataset_train,corrs_train, calib_train, poses_train, output_p
     opt_1dradial.verbose = True
     opt_1dradial.optimize_pose = False
     print("original pp", pp)
-    # out = pyimplicitdist.joint_pose_refinement_1D_radial(points2d, points3d, poses, pp, opt_1dradial)
-    out = {}
+    out = pyimplicitdist.joint_pose_refinement_1D_radial(points2d, points3d, poses, pp, opt_1dradial)
+    # out = {}
     refinement_opt = pyimplicitdist.PoseRefinementOptions()
     K = calib_train['K']
-    pp = np.array([K[0, 2], K[1, 2]])
-    out['pp'] = pp
-    # pp = out['pp']
+    # pp = np.array([K[0, 2], K[1, 2]])
+    # out['pp'] = pp
+    pp = out['pp']
     # refined_poses = out['poses']
-    # print("updated pp", pp)
+    print("updated pp", pp)
     cost_matrix =  pyimplicitdist.build_cost_matrix_multi(points2d, cm_opt, pp)
     
     # pyimplicitdist.estimate
     print('Cost matrix built')
     if not os.path.exists(output_path):
+    # if True:
     
         total_num_points = np.sum([x.shape[0] for x in points2d])
         print("Start calibrating", total_num_points, "points")
-        if not os.path.exists(output_path):
-            # filter outliers
-            # out_points = pyimplicitdist.filter_result_pose_refinement_multi(points2d, points3d, poses, pp, refinement_opt)
-            # if(len(out_points['points2D']) == 0):
-            #     print('No points left after filtering')
-            #     breakpoint()
-                # return
-            intrinsics = pyimplicitdist.calibrate_multi(points2d, points3d, cost_matrix,  pp, poses)
-            # intrinsics = pyimplicitdist.calibrate_multi(out_points["points2D"], out_points["points3D"], cost_matrix,  pp, poses)
-            np.savetxt(output_path, intrinsics.theta_r)
-            print('Intrinsic calibration saved to {}'.format(output_path))
+    
+        # filter outliers
+        # out_points = pyimplicitdist.filter_result_pose_refinement_multi(points2d, points3d, poses, pp, refinement_opt)
+        # if(len(out_points['points2D']) == 0):
+        #     print('No points left after filtering')
+        #     breakpoint()
+            # return
+        intrinsics = pyimplicitdist.calibrate_multi(points2d, points3d, cost_matrix,  pp, poses)
+        # intrinsics = pyimplicitdist.calibrate_multi(out_points["points2D"], out_points["points3D"], cost_matrix,  pp, poses)
+        np.savetxt(output_path, intrinsics.theta_r)
+        print('Intrinsic calibration saved to {}'.format(output_path))
         
     return out
 
@@ -117,7 +118,8 @@ def write_corrs_to_colmap_reconstruction(dataset, corrs, poses, calib, out, spli
         f.write('#   IMAGE_ID, QW, QX, QY, QZ, TX, TY, TZ, CAMERA_ID, NAME\n')
         f.write('#   POINTS2D[] as (X, Y, POINT3D_ID)\n')
         f.write("# Number of images: {}\n".format(len(poses)))
-        for img_id, (corr, pose, calib) in enumerate(zip(corrs, poses, calib), 1):
+        # breakpoint()
+        for img_id, (corr, pose) in enumerate(zip(corrs, poses), 1):
             q = rotation_to_quaternion(pose.R)
             t = pose.t
             cam_id = 1
@@ -240,8 +242,8 @@ def calculate_mean_reproj_error(corrs_test, poses_test,theta_r_spline, thetas, o
                 error = (u_proj - point2d[0])**2 + (v_proj - point2d[1])**2
             # print(error)
                 
-                if error > 20:
-                    continue
+                # if error > 20:
+                #     continue
                 mean_reprojection_error += error
                 point_count += 1
             
@@ -271,114 +273,372 @@ def calculate_mean_reproj_error(corrs_test, poses_test,theta_r_spline, thetas, o
     
 
 # %%
-results = {'OV_corner': [], 'OV_cube': [], 'OV_single_plane': [], 'Kalibr': [], 'OCamCalib': [], 'UZH_DAVIS': [], 'UZH_Snapdragon': []}
-base_path = '/home/yihan/cvg/implicit_radial_sfm/experimental_scripts/babelcalib/data/'
-output_base = '/home/yihan/cvg/implicit_radial_sfm/experimental_scripts/babelcalib/eval/'
-spline_base = '/home/yihan/cvg/implicit_radial_sfm/experimental_scripts/babelcalib/spline/'
-reconstructions_base = '/home/yihan/cvg/implicit_radial_sfm/experimental_scripts/babelcalib/reconstructions/'
-query_lists = sorted(os.listdir(base_path))
-out_full = {}
-# query_lists = [query_file for query_file in query_lists if query_file.find("OV_corner") >= 0][:1]
-for query_file in query_lists:
-    if query_file.endswith('.mat'):
-        # print(query_file)
-        dataset_train, dataset_test, corrs_train, corrs_test, poses_train, poses_test, calib_train, calib_test, fov = load_data(base_path + query_file)
-        # breakpoint()
-        output_path = output_base + query_file.split('.')[0] + '_theta_r.txt'
 
-        # normalize_calib_data(dataset_train, poses_train)
-        # normalize_calib_data(dataset_test, poses_test)
-    
-        out = get_intrinsics(dataset_train, corrs_train, calib_train, poses_train, output_path)
-        out_full[query_file] = out
+multiple_test = 5
+control_10_results = {'OV_corner': [], 'OV_cube': [], 'OV_single_plane': [], 'Kalibr': [], 'OCamCalib': [], 'UZH_DAVIS': [], 'UZH_Snapdragon': []}
+for i in range(multiple_test):
+   
 
-cmd = "../../src/base/get_intrinsics"
-os.system(cmd)
-for query_file in query_lists:
-    if query_file.endswith('.mat'):
-        dataset_train, dataset_test, corrs_train, corrs_test, poses_train, poses_test, calib_train, calib_test, fov = load_data(base_path + query_file)
-        output_path = output_base + query_file.split('.')[0] + '_theta_r.txt'
-    
-        # out = get_intrinsics(dataset_train, corrs_train, poses_train, output_path)
-        out = out_full[query_file]
-        spline_path = spline_base + query_file.split('.')[0] + '_spline.txt'
-        # starts refining of the spline in BA
-        out_reconstruction_folder = reconstructions_base + query_file.split('.')[0]
-        write_corrs_to_colmap_reconstruction(dataset_train, corrs_train, poses_train, calib_train, out, spline_path, out_reconstruction_folder)
-cmd = "/home/yihan/cvg/implicit_radial_sfm/build/src/calib_BA_train"
-os.system(cmd)
-for query_file in query_lists:
-    if query_file.endswith('.mat'):
-        dataset_train, dataset_test, corrs_train, corrs_test, poses_train, poses_test, calib_train, calib_test, fov = load_data(base_path + query_file)
-        output_path = output_base + query_file.split('.')[0] + '_theta_r.txt'
-    
-        # out = get_intrinsics(dataset_train, corrs_train, poses_train, output_path)
-        out = out_full[query_file]
-        # # refine poses_test
-        # pp = out['pp']
-        # poses = []
-        # for pose in poses_test:
-        #     q  = rotation_to_quaternion(pose.R)
-        #     p = pyimplicitdist.CameraPose(q, pose.t)
-        #     poses.append(p)
-        # opt_1dradial = pyimplicitdist.PoseRefinement1DRadialOptions()
-        # opt_1dradial.verbose = True
-        # opt_1dradial.optimize_pose = True
-        # opt_1dradial.optimize_pp = False
-        # points2d = []
-        # points3d = []
-        # for corr in corrs_test:
-        #     points2d.append(corr[0])
-        #     points3d.append(corr[1])
-        # out_test = pyimplicitdist.joint_pose_refinement_1D_radial(points2d, points3d, poses, pp, opt_1dradial)
-        # poses_test = out_test['poses']
+    results = {'OV_corner': [], 'OV_cube': [], 'OV_single_plane': [], 'Kalibr': [], 'OCamCalib': [], 'UZH_DAVIS': [], 'UZH_Snapdragon': []}
+    base_path = '/home/yihan/cvg/implicit_radial_sfm/experimental_scripts/babelcalib/data/'
+    output_base = '/home/yihan/cvg/implicit_radial_sfm/experimental_scripts/babelcalib/eval/'
+    spline_base = '/home/yihan/cvg/implicit_radial_sfm/experimental_scripts/babelcalib/spline/'
+    pose_base = '/home/yihan/cvg/implicit_radial_sfm/experimental_scripts/babelcalib/poses/'
+    reconstructions_base = '/home/yihan/cvg/implicit_radial_sfm/experimental_scripts/babelcalib/reconstructions/'
+    test_reconstructions_base = '/home/yihan/cvg/implicit_radial_sfm/experimental_scripts/babelcalib/reconstructions_test/'
+    results_babel_rms =  {'OV_corner': [], 'OV_cube': [], 'OV_single_plane': [], 'Kalibr': [], 'OCamCalib': [], 'UZH_DAVIS': [], 'UZH_Snapdragon': []}
+    query_lists = sorted(os.listdir(base_path))
+    query_lists = [x for x in query_lists if x.find("Kalibr") >= 0]
+    out_full = {}
+    # query_lists = [query_file for query_file in query_lists if query_file.find("OV_corner") >= 0][:1]
+    for query_file in query_lists:
+        if query_file.endswith('.mat'):
+            print(query_file)
+#             dataset_train, dataset_test, corrs_train, corrs_test, poses_train, poses_test, calib_train, calib_test, fov = load_data(base_path + query_file)
+#             # breakpoint()
+#             output_path = output_base + query_file.split('.')[0] + '_theta_r.txt'
+#             rms = calib_test['calib_rms']
+#             for key in results_babel_rms.keys():
+#                 if query_file.find(key)>=0:
+#                     results_babel_rms[key].append(rms)
+#                     break
 
-        spline_path = spline_base + query_file.split('.')[0] + '_spline.txt'
-        # starts refining of the spline in BA
-        out_reconstruction_folder = reconstructions_base + query_file.split('.')[0]
-        # write_corrs_to_colmap_reconstruction(dataset_train, corrs_train, poses_train, calib_train, out, spline_path, out_reconstruction_folder)
+#             # normalize_calib_data(dataset_train, poses_train)
+#             # normalize_calib_data(dataset_test, poses_test)
         
+#             out = get_intrinsics(dataset_train, corrs_train, calib_train, poses_train, output_path)
+#             out_full[query_file] = out
+#     for key in results_babel_rms:
+#         if key != 'Kalibr':
+#             continue
+#         mean_reprojection_error = 0
+        
+#         for result in results_babel_rms[key]:
+#             mean_reprojection_error += result
+        
+#         mean_reprojection_error /= len(results_babel_rms[key])
+#         # calibrated_points /= len(results[key])
+#         # keep 4 decimal places
+#         mean_reprojection_error = round(mean_reprojection_error, 3)
 
-        if  os.path.exists(spline_path):
-            # thetas, theta_r_spline = spline_fit(spline_path)
-            # normalize_calib_data(dataset_train, poses_train)
-            # normalize_calib_data(dataset_test, poses_test)
-            thetas, rs, theta_r_spline = spline_fit(spline_path)
-            mean_reprojection_error, calibrated_points = calculate_mean_reproj_error(corrs_test, poses_test,theta_r_spline, thetas,out)
-            # breakpoint()
-            if query_file.startswith('OV_corner'):
-                results['OV_corner'].append([mean_reprojection_error, calibrated_points])
-            elif query_file.startswith('OV_cube'):
-                results['OV_cube'].append([mean_reprojection_error, calibrated_points])
-            elif query_file.startswith('OV_single_plane'):
-                results['OV_single_plane'].append([mean_reprojection_error, calibrated_points])
-            elif query_file.startswith('Kalibr'):
-                results['Kalibr'].append([mean_reprojection_error, calibrated_points])
-            elif query_file.startswith('OCamCalib'):
-                results['OCamCalib'].append([mean_reprojection_error, calibrated_points])
-            elif query_file.startswith('UZH_DAVIS'):
-                results['UZH_DAVIS'].append([mean_reprojection_error, calibrated_points])
-            elif query_file.startswith('UZH_Snapdragon'):
-                results['UZH_Snapdragon'].append([mean_reprojection_error, calibrated_points])
+#         print(key, mean_reprojection_error)
+#     # breakpoint()
+#     cmd = "/home/yihan/cvg/implicit_radial_sfm/build/src/get_intrinsics"
+#     os.system(cmd)
+#     for query_file in query_lists:
+#         if query_file.endswith('.mat'):
+#             dataset_train, dataset_test, corrs_train, corrs_test, poses_train, poses_test, calib_train, calib_test, fov = load_data(base_path + query_file)
+#             output_path = output_base + query_file.split('.')[0] + '_theta_r.txt'
+#             # breakpoint()
+#             # out = get_intrinsics(dataset_train, corrs_train, poses_train, output_path)
+#             out = out_full[query_file]
+#             spline_path = spline_base + query_file.split('.')[0] + '_spline.txt'
+#             # starts refining of the spline in BA
+#             out_reconstruction_folder = reconstructions_base + query_file.split('.')[0]
+#             write_corrs_to_colmap_reconstruction(dataset_train, corrs_train, poses_train, calib_train, out, spline_path, out_reconstruction_folder)
+            
+#     cmd = "/home/yihan/cvg/implicit_radial_sfm/build/src/calib_BA_train 1"
+#     os.system(cmd)
+#     for query_file in query_lists:
+#         if query_file.endswith('.mat'):
+#             dataset_train, dataset_test, corrs_train, corrs_test, poses_train, poses_test, calib_train, calib_test, fov = load_data(base_path + query_file)
+#             output_path = output_base + query_file.split('.')[0] + '_theta_r.txt'
+#             # breakpoint()
+#             # out = get_intrinsics(dataset_train, corrs_train, poses_train, output_path)
+#             out = out_full[query_file]
+#             spline_path = spline_base + query_file.split('.')[0] + '_spline.txt'
+#             # starts refining of the spline in BA
+#             out_reconstruction_folder = reconstructions_base + query_file.split('.')[0]
+#             write_corrs_to_colmap_reconstruction(dataset_test, corrs_test, poses_test, calib_test, out, spline_path, out_reconstruction_folder)
+#     cmd = "/home/yihan/cvg/implicit_radial_sfm/build/src/calib_BA_train 0"
+#     os.system(cmd)
 
-# breakpoint()
-# calculate the mean reprojection error and calibrated points for each dataset
-for key in results:
-    mean_reprojection_error = 0
-    calibrated_points = 0
-    for result in results[key]:
-        mean_reprojection_error += result[0]
-        calibrated_points += result[1]
-    mean_reprojection_error /= len(results[key])
-    calibrated_points /= len(results[key])
-    # keep 4 decimal places
-    mean_reprojection_error = round(mean_reprojection_error, 3)
-    calibrated_points = round(calibrated_points * 100, 3)
-    print(key, mean_reprojection_error, calibrated_points)
+#     for query_file in query_lists:
+#         if query_file.endswith('.mat'):
+#             dataset_train, dataset_test, corrs_train, corrs_test, poses_train, poses_test, calib_train, calib_test, fov = load_data(base_path + query_file)
+#             output_path = output_base + query_file.split('.')[0] + '_theta_r.txt'
+#             # change poses_test
+#             # pose_file = '/home/yihan/cvg/implicit_radial_sfm/experimental_scripts/babelcalib/reconstructions/refined_test_pose/'+query_file.split('.')[0]+'/pose.txt'
+#             pose_file = pose_base + query_file.split('.')[0] + '_pose.txt'
+
+#             data = open(pose_file, "r").readlines()
+#             # data = [x.split() for x in data]
+#             for line in data:
+#                 items = line.split()
+#                 image_id = int(items[0])
+#                 qvec = [float(x) for x in items[1:5]]
+#                 tvec = [float(x) for x in items[5:8]]
+#                 r = quaternion_to_rotation_matrix(qvec)
+
+#                 poses_test[image_id-1].R = r
+#                 poses_test[image_id-1].t = tvec
+
+
+
+#             # out = get_intrinsics(dataset_train, corrs_train, poses_train, output_path)
+#             out = out_full[query_file]
+#             # # refine poses_test
+#             # pp = out['pp']
+#             # poses = []
+#             # for pose in poses_test:
+#             #     q  = rotation_to_quaternion(pose.R)
+#             #     p = pyimplicitdist.CameraPose(q, pose.t)
+#             #     poses.append(p)
+#             # opt_1dradial = pyimplicitdist.PoseRefinement1DRadialOptions()
+#             # opt_1dradial.verbose = True
+#             # opt_1dradial.optimize_pose = True
+#             # opt_1dradial.optimize_pp = False
+#             # points2d = []
+#             # points3d = []
+#             # for corr in corrs_test:
+#             #     points2d.append(corr[0])
+#             #     points3d.append(corr[1])
+#             # out_test = pyimplicitdist.joint_pose_refinement_1D_radial(points2d, points3d, poses, pp, opt_1dradial)
+#             # poses_test = out_test['poses']
+
+#             spline_path = spline_base + query_file.split('.')[0] + '_spline.txt'
+#             # starts refining of the spline in BA
+#             out_reconstruction_folder = reconstructions_base + query_file.split('.')[0]
+#             # write_corrs_to_colmap_reconstruction(dataset_train, corrs_train, poses_train, calib_train, out, spline_path, out_reconstruction_folder)
+            
+
+#             if  os.path.exists(spline_path):
+#                 # thetas, theta_r_spline = spline_fit(spline_path)
+#                 # normalize_calib_data(dataset_train, poses_train)
+#                 # normalize_calib_data(dataset_test, poses_test)
+#                 thetas, rs, theta_r_spline = spline_fit(spline_path)
+#                 mean_reprojection_error, calibrated_points = calculate_mean_reproj_error(corrs_test, poses_test,theta_r_spline, thetas,out)
+#                 # breakpoint()
+#                 if query_file.startswith('OV_corner'):
+#                     results['OV_corner'].append([mean_reprojection_error, calibrated_points])
+#                 elif query_file.startswith('OV_cube'):
+#                     results['OV_cube'].append([mean_reprojection_error, calibrated_points])
+#                 elif query_file.startswith('OV_single_plane'):
+#                     results['OV_single_plane'].append([mean_reprojection_error, calibrated_points])
+#                 elif query_file.startswith('Kalibr'):
+#                     results['Kalibr'].append([mean_reprojection_error, calibrated_points])
+#                 elif query_file.startswith('OCamCalib'):
+#                     results['OCamCalib'].append([mean_reprojection_error, calibrated_points])
+#                 elif query_file.startswith('UZH_DAVIS'):
+#                     results['UZH_DAVIS'].append([mean_reprojection_error, calibrated_points])
+#                 elif query_file.startswith('UZH_Snapdragon'):
+#                     results['UZH_Snapdragon'].append([mean_reprojection_error, calibrated_points])
+
+#     # breakpoint()
+#     # calculate the mean reprojection error and calibrated points for each dataset
+
+
+#     for key in results:
+#         if key != 'Kalibr':
+#             continue
+#         mean_reprojection_error = 0
+#         calibrated_points = 0
+#         for result in results[key]:
+#             mean_reprojection_error += result[0]
+#             calibrated_points += result[1]
+#         mean_reprojection_error /= len(results[key])
+#         calibrated_points /= len(results[key])
+#         # keep 4 decimal places
+#         mean_reprojection_error = round(mean_reprojection_error, 3)
+#         calibrated_points = round(calibrated_points * 100, 3)
+#         print(key, mean_reprojection_error, calibrated_points)
+#     control_10_results['Kalibr'].append(results['Kalibr'])
+# #     breakpoint()
+# # save control_10_results to a file
+# file_path = '/home/yihan/cvg/implicit_radial_sfm/experimental_scripts/babelcalib/rebuttal/control_15_results.txt'
+# with open(file_path, 'w') as f:
+#     for key in control_10_results:
+#         f.write(key)
+#         f.write('\n')
+#         for item in control_10_results[key]:
+#             f.write(str(item))
+#             f.write('\n')
+
+
 
 
 # %%
-results
+multiple_test = 5
+control_10_results = {'OV_corner': [], 'OV_cube': [], 'OV_single_plane': [], 'Kalibr': [], 'OCamCalib': [], 'UZH_DAVIS': [], 'UZH_Snapdragon': []}
+for i in range(multiple_test):
+   
+
+    results = {'OV_corner': [], 'OV_cube': [], 'OV_single_plane': [], 'Kalibr': [], 'OCamCalib': [], 'UZH_DAVIS': [], 'UZH_Snapdragon': []}
+    base_path = '/home/yihan/cvg/implicit_radial_sfm/experimental_scripts/babelcalib/data/'
+    output_base = '/home/yihan/cvg/implicit_radial_sfm/experimental_scripts/babelcalib/eval/'
+    spline_base = '/home/yihan/cvg/implicit_radial_sfm/experimental_scripts/babelcalib/spline/'
+    pose_base = '/home/yihan/cvg/implicit_radial_sfm/experimental_scripts/babelcalib/poses/'
+    reconstructions_base = '/home/yihan/cvg/implicit_radial_sfm/experimental_scripts/babelcalib/reconstructions/'
+    test_reconstructions_base = '/home/yihan/cvg/implicit_radial_sfm/experimental_scripts/babelcalib/reconstructions_test/'
+    results_babel_rms =  {'OV_corner': [], 'OV_cube': [], 'OV_single_plane': [], 'Kalibr': [], 'OCamCalib': [], 'UZH_DAVIS': [], 'UZH_Snapdragon': []}
+    query_lists = sorted(os.listdir(base_path))
+    # query_lists = [x for x in query_lists if x.find("Kalibr") >= 0]
+    out_full = {}
+    # query_lists = [query_file for query_file in query_lists if query_file.find("OV_corner") >= 0][:1]
+    for query_file in query_lists:
+        if query_file.endswith('.mat'):
+            # print(query_file)
+            dataset_train, dataset_test, corrs_train, corrs_test, poses_train, poses_test, calib_train, calib_test, fov = load_data(base_path + query_file)
+            # breakpoint()
+            output_path = output_base + query_file.split('.')[0] + '_theta_r.txt'
+            rms = calib_test['calib_rms']
+            for key in results_babel_rms.keys():
+                if query_file.find(key)>=0:
+                    results_babel_rms[key].append(rms)
+                    break
+
+            # normalize_calib_data(dataset_train, poses_train)
+            # normalize_calib_data(dataset_test, poses_test)
+        
+            out = get_intrinsics(dataset_train, corrs_train, calib_train, poses_train, output_path)
+            out_full[query_file] = out
+    for key in results_babel_rms:
+        mean_reprojection_error = 0
+        
+        for result in results_babel_rms[key]:
+            mean_reprojection_error += result
+        
+        mean_reprojection_error /= len(results_babel_rms[key])
+        # calibrated_points /= len(results[key])
+        # keep 4 decimal places
+        mean_reprojection_error = round(mean_reprojection_error, 3)
+
+        print(key, mean_reprojection_error)
+    # breakpoint()
+    cmd = "/home/yihan/cvg/implicit_radial_sfm/build/src/get_intrinsics"
+    os.system(cmd)
+    for query_file in query_lists:
+        if query_file.endswith('.mat'):
+            dataset_train, dataset_test, corrs_train, corrs_test, poses_train, poses_test, calib_train, calib_test, fov = load_data(base_path + query_file)
+            output_path = output_base + query_file.split('.')[0] + '_theta_r.txt'
+            # breakpoint()
+            # out = get_intrinsics(dataset_train, corrs_train, poses_train, output_path)
+            out = out_full[query_file]
+            spline_path = spline_base + query_file.split('.')[0] + '_spline.txt'
+            # starts refining of the spline in BA
+            out_reconstruction_folder = reconstructions_base + query_file.split('.')[0]
+            write_corrs_to_colmap_reconstruction(dataset_train, corrs_train, poses_train, calib_train, out, spline_path, out_reconstruction_folder)
+            
+    cmd = "/home/yihan/cvg/implicit_radial_sfm/build/src/calib_BA_train 1"
+    os.system(cmd)
+    for query_file in query_lists:
+        if query_file.endswith('.mat'):
+            dataset_train, dataset_test, corrs_train, corrs_test, poses_train, poses_test, calib_train, calib_test, fov = load_data(base_path + query_file)
+            output_path = output_base + query_file.split('.')[0] + '_theta_r.txt'
+            # breakpoint()
+            # out = get_intrinsics(dataset_train, corrs_train, poses_train, output_path)
+            out = out_full[query_file]
+            spline_path = spline_base + query_file.split('.')[0] + '_spline.txt'
+            # starts refining of the spline in BA
+            out_reconstruction_folder = test_reconstructions_base + query_file.split('.')[0]
+            write_corrs_to_colmap_reconstruction(dataset_test, corrs_test, poses_test, calib_test, out, spline_path, out_reconstruction_folder)
+    cmd = "/home/yihan/cvg/implicit_radial_sfm/build/src/calib_BA_train 0"
+    os.system(cmd)
+
+    for query_file in query_lists:
+        if query_file.endswith('.mat'):
+            dataset_train, dataset_test, corrs_train, corrs_test, poses_train, poses_test, calib_train, calib_test, fov = load_data(base_path + query_file)
+            output_path = output_base + query_file.split('.')[0] + '_theta_r.txt'
+            # change poses_test
+            # pose_file = '/home/yihan/cvg/implicit_radial_sfm/experimental_scripts/babelcalib/reconstructions/refined_test_pose/'+query_file.split('.')[0]+'/pose.txt'
+            pose_file = pose_base + query_file.split('.')[0] + '_pose.txt'
+
+            data = open(pose_file, "r").readlines()
+            # data = [x.split() for x in data]
+            for line in data:
+                items = line.split()
+                image_id = int(items[0])
+                qvec = [float(x) for x in items[1:5]]
+                tvec = [float(x) for x in items[5:8]]
+                r = quaternion_to_rotation_matrix(qvec)
+
+                poses_test[image_id-1].R = r
+                poses_test[image_id-1].t = tvec
+
+
+
+            # out = get_intrinsics(dataset_train, corrs_train, poses_train, output_path)
+            out = out_full[query_file]
+            # # refine poses_test
+            # pp = out['pp']
+            # poses = []
+            # for pose in poses_test:
+            #     q  = rotation_to_quaternion(pose.R)
+            #     p = pyimplicitdist.CameraPose(q, pose.t)
+            #     poses.append(p)
+            # opt_1dradial = pyimplicitdist.PoseRefinement1DRadialOptions()
+            # opt_1dradial.verbose = True
+            # opt_1dradial.optimize_pose = True
+            # opt_1dradial.optimize_pp = False
+            # points2d = []
+            # points3d = []
+            # for corr in corrs_test:
+            #     points2d.append(corr[0])
+            #     points3d.append(corr[1])
+            # out_test = pyimplicitdist.joint_pose_refinement_1D_radial(points2d, points3d, poses, pp, opt_1dradial)
+            # poses_test = out_test['poses']
+
+            spline_path = spline_base + query_file.split('.')[0] + '_spline.txt'
+            # starts refining of the spline in BA
+            out_reconstruction_folder = reconstructions_base + query_file.split('.')[0]
+            # write_corrs_to_colmap_reconstruction(dataset_train, corrs_train, poses_train, calib_train, out, spline_path, out_reconstruction_folder)
+            
+
+            if  os.path.exists(spline_path):
+                # thetas, theta_r_spline = spline_fit(spline_path)
+                # normalize_calib_data(dataset_train, poses_train)
+                # normalize_calib_data(dataset_test, poses_test)
+                thetas, rs, theta_r_spline = spline_fit(spline_path)
+                mean_reprojection_error, calibrated_points = calculate_mean_reproj_error(corrs_test, poses_test,theta_r_spline, thetas,out)
+                # breakpoint()
+                if query_file.startswith('OV_corner'):
+                    results['OV_corner'].append([mean_reprojection_error, calibrated_points])
+                elif query_file.startswith('OV_cube'):
+                    results['OV_cube'].append([mean_reprojection_error, calibrated_points])
+                elif query_file.startswith('OV_single_plane'):
+                    results['OV_single_plane'].append([mean_reprojection_error, calibrated_points])
+                elif query_file.startswith('Kalibr'):
+                    results['Kalibr'].append([mean_reprojection_error, calibrated_points])
+                elif query_file.startswith('OCamCalib'):
+                    results['OCamCalib'].append([mean_reprojection_error, calibrated_points])
+                elif query_file.startswith('UZH_DAVIS'):
+                    results['UZH_DAVIS'].append([mean_reprojection_error, calibrated_points])
+                elif query_file.startswith('UZH_Snapdragon'):
+                    results['UZH_Snapdragon'].append([mean_reprojection_error, calibrated_points])
+
+    # breakpoint()
+    # calculate the mean reprojection error and calibrated points for each dataset
+
+
+    for key in results:
+        mean_reprojection_error = 0
+        calibrated_points = 0
+        for result in results[key]:
+            mean_reprojection_error += result[0]
+            calibrated_points += result[1]
+        mean_reprojection_error /= len(results[key])
+        calibrated_points /= len(results[key])
+        # keep 4 decimal places
+        mean_reprojection_error = round(mean_reprojection_error, 3)
+        calibrated_points = round(calibrated_points * 100, 3)
+        print(key, mean_reprojection_error, calibrated_points)
+        control_10_results[key].append((mean_reprojection_error))
+#     breakpoint()
+# save control_10_results to a file
+file_path = '/home/yihan/cvg/implicit_radial_sfm/experimental_scripts/babelcalib/rebuttal/control_15_results.txt'
+with open(file_path, 'w') as f:
+    for key in control_10_results:
+        f.write(key)
+        f.write('\n')
+        for item in control_10_results[key]:
+            f.write(str(item))
+            f.write('\n')
+
+
+
+
+
+
 
 # # %%
 # def add_correspondences_to_database(database_path, corrs, poses, calib):
@@ -575,3 +835,11 @@ results
 # # add_correspondences_to_database('database_cube.db', corrs, poses, calib_dict)
 
 
+
+# %%
+dataset_train, dataset_test, corrs_train, corrs_test, poses_train, poses_test, calib_train, calib_test, fov = load_data('/home/yihan/cvg/implicit_radial_sfm/experimental_scripts/babelcalib/data/Kalibr_TUMVI.mat')
+calib_train
+# fov
+# %%
+fov
+# %%

@@ -33,7 +33,7 @@ def unproject(pts, camera_dict):
         theta_d = r
         theta = theta_d / (1 + k1 * theta_d**2 + k2 * theta_d**4 + k3 * theta_d**6 + k4 * theta_d**8)
         scale = np.tan(theta) / (r + 1e-9)  # Add small epsilon to avoid division by zero
-
+        # scale = np.sin(theta) / (r + 1e-9)
         # Convert to bearing vectors
         bearing_vecs = np.vstack((x * scale, y * scale, np.ones_like(x))).T
         bearing_vecs /= np.linalg.norm(bearing_vecs, axis=1, keepdims=True)
@@ -163,19 +163,43 @@ def compute_fov(calib, imgsize):
 
     return (fov1+fov2) * 180 / np.pi    
 
+# def compute_effective_fov(calib, pts):
+#     camera_dict = calib_to_dict(calib)
+#     pp = [calib['K'][0,2], calib['K'][1,2]]
+#     all_pts = np.concatenate([x[0] for x in pts])
+
+#     center_vec = np.array(unproject([pp], camera_dict))
+#     bearing_vecs = np.array(unproject(all_pts, camera_dict))
+
+#     cos_theta = bearing_vecs @ center_vec.T
+#     theta = np.arccos(cos_theta)
+#     fov = 2 * np.max(theta) * 180.0 / np.pi
+
+#     return fov   
+
 def compute_effective_fov(calib, pts):
     camera_dict = calib_to_dict(calib)
-    pp = [calib['K'][0,2], calib['K'][1,2]]
-    all_pts = np.concatenate([x[0] for x in pts])
+    
+    # Ensure principal point is formatted correctly
+    pp = np.array([[calib['K'][0,2], calib['K'][1,2]]])  
 
-    center_vec = np.array(unproject([pp], camera_dict))
+    # Ensure points are properly stacked
+    all_pts = np.vstack([x[0] for x in pts])
+
+    # Compute bearing vectors
+    center_vec = np.array(unproject(pp, camera_dict)).squeeze()
     bearing_vecs = np.array(unproject(all_pts, camera_dict))
 
-    cos_theta = bearing_vecs @ center_vec.T
-    theta = np.arccos(cos_theta)
+    # Compute angles
+    cos_theta = np.dot(bearing_vecs, center_vec)
+    cos_theta = np.clip(cos_theta, -1.0, 1.0)  # Ensure stability in arccos
+
+    # theta = np.arccos(cos_theta)
+    theta = np.arctan2(np.linalg.norm(np.cross(bearing_vecs, center_vec), axis=1),
+                   np.dot(bearing_vecs, center_vec))
     fov = 2 * np.max(theta) * 180.0 / np.pi
 
-    return fov   
+    return fov
 
 def load_data(query_file, max_error=3.0):
     import glob
@@ -186,7 +210,7 @@ def load_data(query_file, max_error=3.0):
     # split the dataset into train_set and test_set based on dataset['img'] name arrays, select the components of the dataset where 'img' have 'train' in their name for train_set and 'test' for test_set
     dataset_train = {'img': [], 'orpc': [], 'corners': [], 'boards': dataset['boards'], 'imgsize': dataset['imgsize']}
     dataset_test = {'img': [], 'orpc': [], 'corners': [], 'boards': dataset['boards'], 'imgsize': dataset['imgsize']}
-  
+    # breakpoint()
     
 
 
@@ -225,7 +249,7 @@ def load_data(query_file, max_error=3.0):
     calib_test = {'proj_params': calib['proj_params'], 'K': calib['K'], 'Rt': [], 'calib_rms': calib['calib_rms'], 'calib_ir': calib['calib_ir'], 'proj_model': calib['proj_model']}
     # Split the calibration data into train_set and test_set based on the dataset['img'] name arrays
     # Collect correspondences and pose data
-    # corrs = collect_correspondences(dataset)
+    corrs = collect_correspondences(dataset)
     # poses = []
     for i, img_path in enumerate(dataset['img']):
         if 'train' in img_path:
@@ -297,7 +321,7 @@ def load_data(query_file, max_error=3.0):
 
     # Compute field of view
     # fov = compute_fov(calib, dataset['imgsize'])
-    fov = compute_effective_fov(calib_train, corrs_train)
+    fov = compute_effective_fov(calib, corrs)
 
     # return dataset_train, dataset_test, calib_train, calib_test, dataset, calib, poses_train, poses_test, poses
     return dataset_train, dataset_test, corrs_train, corrs_test, poses_train, poses_test, calib_train, calib_test, fov

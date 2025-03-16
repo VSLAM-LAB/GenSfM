@@ -13,6 +13,7 @@ data/
 doc/_build
 focal_lengths/
 
+
 # Compiled Object files
 *.slo
 *.lo
@@ -42,3 +43,5 @@ focal_lengths/
 *.exe
 *.out
 *.app
+*.txt
+*.zip

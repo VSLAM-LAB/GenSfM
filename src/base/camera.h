@@ -1132,7 +1132,7 @@ void Camera::SetCalibrated(bool calibrated) {
 
 bool Camera::IsCalibrated() const {
   return (model_id_ != ImplicitDistortionModel::model_id && model_id_ != Radial1DCameraModel::model_id) 
-   | is_fully_calibrated_ ;
+   || is_fully_calibrated_ ;
 }
 
 bool Camera::SetSplineFromParams() {
