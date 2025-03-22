@@ -216,13 +216,6 @@ class IncrementalMapper {
   // Global bundle adjustment using Ceres Solver or PBA.
   bool AdjustGlobalBundle(const Options& options,
                           const BundleAdjustmentOptions& ba_options, bool initial = false);
-  bool ImplicitAdjustGlobalBundle(const Options& options,
-                          const BundleAdjustmentOptions& ba_options, const ImplicitBundleAdjustmentOptions& implicit_ba_options, bool initial = false);
-  LocalBundleAdjustmentReport ImplicitAdjustLocalBundle(
-      const Options& options, const BundleAdjustmentOptions& ba_options,
-      const IncrementalTriangulator::Options& tri_options,
-      const image_t image_id, const std::unordered_set<point3D_t>& point3D_ids,
-      const ImplicitBundleAdjustmentOptions& implicit_ba_options, bool initial = false);
 
   bool AdjustCameraPose(const Options& options,
                           const image_t image_id, bool initial = false);

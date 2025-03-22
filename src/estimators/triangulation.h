@@ -118,8 +118,6 @@ class TriangulationEstimator {
   std::vector<M_t> EstimateStandard(const std::vector<X_t>& point_data,
                             const std::vector<Y_t>& pose_data, bool initial=false) const;
 
-  std::vector<M_t> EstimateInitial(const std::vector<X_t>& point_data,
-                            const std::vector<Y_t>& pose_data) const;
 
   // Calculate residuals in terms of squared reprojection or angular error.
   //

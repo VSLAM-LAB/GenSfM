@@ -363,17 +363,12 @@ void Reconstruction::Normalize(const double extent, const double p0,
   
   
   }
-  // check if one of the cameras has only registered number of images <= 20
   for (auto& pair : registered_num_images_per_camera) {
-    // related to min_num_reg_images
     if (pair.second < MIN_NUM_IMAGES_FOR_UPGRADE) {
       normalize_radial = true;
       break;
     }
   }
-  // if(num_reg_images<=20){
-  //   normalize_radial = true;
-  // }
 
   if(normalize_radial) {
   NormalizeRadialCameras();
@@ -480,11 +475,6 @@ void Reconstruction::NormalizeRadialCameras() {
     if (num_reg_images_per_camera[camera.CameraId()] >= MIN_NUM_IMAGES_FOR_UPGRADE && NumRegImages() > 4) {
       continue;
     }
-    // min_num_reg_images related
-    // // if((num_registerd_images > 20)&&!image.second.UseRadial()){
-    // if(num_registerd_images >= 20){
-    //   continue;
-    // }
 
     std::vector<Eigen::Vector2d> points2D;
     std::vector<Eigen::Vector3d> points3D;
@@ -505,32 +495,8 @@ void Reconstruction::NormalizeRadialCameras() {
         EstimateRadialCameraForwardOffset(proj_matrix, points2D, points3D, &negative_focal);
     Eigen::Vector3d tvec = proj_matrix.col(3);
 
-    // Eigen::Vector2d pp = Eigen::Vector2d(camera.PrincipalPointX(), camera.PrincipalPointY());
-
-  // Estimate the forward translation using implicit distortion model.
-    // CameraPose implicit_pose ;
-    // bool used_implicit = false;
-    // if(points2D.size() > 0){
-    //   implicit_pose =
-    // EstimateCameraForwardOffsetImplictDistortion(proj_matrix, points2D_original, 
-    //                                             points3D, pp);
-    // used_implicit = true;
-    //   std::cout << "EstimateCameraForwardOffsetImplictDistortion:" << implicit_pose.t(2) <<std::endl;
-    //   std::cout << "EstimateRadialCameraForwardOffset:" << tz << " "<<tvec(2)<<std::endl;}
-      // check if implicit pose.t contains nan
-
     if(camera.ModelId()==Radial1DCameraModel::model_id || camera.ModelId()==ImplicitDistortionModel::model_id){
-    //  if(camera.ModelId()==Radial1DCameraModel::model_id || (camera.ModelId()==ImplicitDistortionModel::model_id && !used_implicit)){
         tvec(2) += tz;}
-        // else if (camera.ModelId()==ImplicitDistortionModel::model_id && used_implicit){
-        
-        // tvec = implicit_pose.t;
-        // tvec(2)+=implicit_pose.t(2);
-        
-        // image.second.SetQvec(implicit_pose.q_vec);
-        // }
-      
-      
     image.second.SetTvec(tvec);
     if(negative_focal) {
       negative_focal_count++;
@@ -558,60 +524,9 @@ void Reconstruction::NormalizeRadialCameras() {
   }
   }
 
-  // // estimate the forward translation using implicit distortion model
-  // for (auto& image : images_) {
-  //   const class Camera& camera = Camera(image.second.CameraId());
-  //   if (camera.ModelId() != Radial1DCameraModel::model_id && camera.ModelId() != ImplicitDistortionModel::model_id){
-  //     all_radial = false;
-  //     continue;
-  //   }
-  //   size_t num_registerd_images = 0;
-  //   for (const image_t img_id : reg_image_ids_) {
-  //     if (Image(img_id).CameraId() == camera.CameraId()) {
-  //       num_registerd_images++;
-  //     }
-  //   }
-  //   // min_num_reg_images related
-  //   // if((num_registerd_images > 20)&&!image.second.UseRadial()){
-  //   // if((num_registerd_images >= 20)){
-  //   //   continue;
-  //   // }
-
-  //   std::vector<Eigen::Vector2d> points2D;
-  //   std::vector<Eigen::Vector3d> points3D;
-  //   std::vector<Eigen::Vector2d> points2D_original;
-  //   points2D.reserve(image.second.NumPoints3D());
-  //   points3D.reserve(image.second.NumPoints3D());
-  //   for (const Point2D& point2D : image.second.Points2D()) {
-  //     if (point2D.HasPoint3D()) {
-  //       points2D.push_back(camera.ImageToWorld(point2D.XY()));
-  //       points3D.push_back(Point3D(point2D.Point3DId()).XYZ());
-  //       points2D_original.push_back(point2D.XY());
-  //     }
-  //   }
-
-  //   Eigen::Matrix3x4d proj_matrix = image.second.ProjectionMatrix();
-  //   Eigen::Vector2d pp = Eigen::Vector2d(camera.PrincipalPointX(), camera.PrincipalPointY());
-  //   CameraPose implicit_pose ;
-  //   bool used_implicit = false;
-  //   if(points3D.size() > 0){
-  //     implicit_pose =
-  //   EstimateCameraForwardOffsetImplictDistortion(proj_matrix, points2D_original, 
-  //                                               points3D, pp);
-  //   used_implicit = true;}
-  //   if (camera.ModelId()==ImplicitDistortionModel::model_id && used_implicit){
-  //     image.second.SetQvec(implicit_pose.q_vec);
-  //     image.second.SetTvec(implicit_pose.t);
-  //   }
-
-
-  //   }
-
 
   // estimate the forward translation using implicit distortion model
   for (auto& [camera_id, camera_const]: cameras_) {
-  // for (auto& image : images_) {
-    // const class Camera& camera = Camera(image.second.CameraId());
     const class Camera& camera = Camera(camera_id);
     if (camera.IsCalibrated()){
       all_radial = false;
@@ -625,18 +540,12 @@ void Reconstruction::NormalizeRadialCameras() {
         image_ids.push_back(img_id);
       }
     }
-    // min_num_reg_images related
-    // if((num_registerd_images > 20)&&!image.second.UseRadial()){
-    // if((num_registerd_images >= 20)){
-    //   continue;
-    // }
 
     std::vector<std::vector<Eigen::Vector2d>> points2D;
     std::vector<std::vector<Eigen::Vector3d>> points3D;
     std::vector<CameraPose> poses;
     for (auto image_id : image_ids) {
       class Image& image = images_[image_id];
-      // image.NormalizeQvec();
       Eigen::Vector4d q(image.Qvec());
       Eigen::Vector3d t(image.Tvec());
       poses.push_back(CameraPose(q, t));
@@ -1039,10 +948,6 @@ std::vector<image_t> Reconstruction::FilterImages(
     if (image.NumPoints3D() == 0) {
       filtered_image_ids.push_back(image_id);
     } 
-    // else if (camera.HasBogusParams(min_focal_length_ratio,
-    //                                  max_focal_length_ratio, max_extra_param)) {
-    //   filtered_image_ids.push_back(image_id);
-    // }
   }
 
   // Only de-register after iterating over reg_image_ids_ to avoid
@@ -1614,9 +1519,7 @@ size_t Reconstruction::FilterPoints3DWithSmallTriangulationAngle(
       // min_num_registered_images
       is_radial[i1] = (camera1.ModelId() == Radial1DCameraModel::model_id ||
                        (camera1.ModelId() == ImplicitDistortionModel::model_id && camera1.GetRawRadii().size() == 0));
-                      //  camera1.ModelId() == ImplicitDistortionModel::model_id);
-                      // );
-      
+                      
       Eigen::Vector3d proj_center1;
       Eigen::Vector3d principal_axis1;
 
@@ -1734,32 +1637,14 @@ size_t Reconstruction::FilterPoints3DWithLargeReprojectionError(
       const class Camera& camera = Camera(image.CameraId());
       const Point2D& point2D = image.Point2D(track_el.point2D_idx);
       size_t num_registered_images = reg_image_ids_.size();
-      // const double squared_reproj_error = CalculateSquaredReprojectionError(
-      //     point2D.XY(), point3D.XYZ(), image.Qvec(), image.Tvec(), camera);
       const double squared_reproj_error = std::pow(CalculateAngularError(
           point2D.XY(), point3D.XYZ(), image.Qvec(), image.Tvec(), camera), 2);
-      // if(point3D_id == 2768){
-      //   std::cout << "/// ========== Squared reprojection error: ========== /// " << squared_reproj_error << std::endl;
-      //   std::cout << "/// ========== Image ID: ========== /// " << image.ImageId() << std::endl;
-      // }
-      // double squared_reproj_error = 0;
-      // // min_num_reg_images related
-      // if (num_registered_images<=20){
-      //     squared_reproj_error = CalculateSquaredReprojectionError(
-      //     point2D.XY(), point3D.XYZ(), image.Qvec(), image.Tvec(), camera);} else{
-      //   squared_reproj_error = CalculateSquaredReprojectionErrorFinal(
-      //     point2D.XY(), point3D.XYZ(), image.Qvec(), image.Tvec(), camera.GetRawRadii(), camera.GetFocalLengthParams(), camera.GetTheta(), camera);}
-      
-      // save the squared reprojection error to a file
 
       if (squared_reproj_error > max_squared_reproj_error) {
         track_els_to_delete.push_back(track_el);
 
-        num_constraints -= 
-            // (camera.ModelId() == Radial1DCameraModel::model_id || camera.ModelId() == ImplicitDistortionModel::model_id) ? 1 : 2;
+        num_constraints -=             
             (!camera.IsFullyCalibrated(image.Point2D(track_el.point2D_idx).XY())) ? 1 : 2;
-
-            // (camera.ModelId() == Radial1DCameraModel::model_id) ? 2 : 2;
       } else {
         reproj_error_sum += std::sqrt(squared_reproj_error);
       }
@@ -1801,14 +1686,8 @@ size_t Reconstruction::FilterPoints3DWithLargeReprojectionErrorFinal(
     for (const auto& track_el : point3D.Track().Elements()) {
       const class Image& image = Image(track_el.image_id);
       const class Camera& camera = Camera(image.CameraId());
-      // if (camera.ModelId() == Radial1DCameraModel::model_id || camera.ModelId() == ImplicitDistortionModel::model_id) {
       if (!camera.IsFullyCalibrated(image.Point2D(track_el.point2D_idx).XY())) {
         num_constraints += 1;
-        // if (camera.GetRawRadii().size() > 0) {
-        //   num_constraints += 2;
-        // } else {
-        //   num_constraints += 2;
-        // }
        
       } else {
         num_constraints += 2;
@@ -1835,35 +1714,20 @@ size_t Reconstruction::FilterPoints3DWithLargeReprojectionErrorFinal(
           point2D.XY(), point3D.XYZ(), image.Qvec(), image.Tvec(), camera.GetRawRadii(), camera.GetFocalLengthParams(), camera.GetTheta(), camera);
       original_error_sum += std::sqrt(squared_reproj_error);
       if (squared_reproj_error > max_squared_reproj_error ) {
-        // // track_els_to_delete.push_back(track_el);
-        // if (camera.GetRawRadii().size() > 0) {
-        //    num_constraints -= (camera.ModelId() == Radial1DCameraModel::model_id) ? 2 : 2;
-        // } else {
-          // if (camera.ModelId() == Radial1DCameraModel::model_id) {
-          //     num_constraints -= 1;
-          // } else if (camera.ModelId() == ImplicitDistortionModel::model_id) {
-          //     num_constraints -= 1;
           if (!camera.IsFullyCalibrated(image.Point2D(track_el.point2D_idx).XY())) {
               num_constraints -= 1;
           } else {
               num_constraints -= 2;
           }
-        // }
         
       } 
-      // else {
-      //   reproj_error_sum += std::sqrt(squared_reproj_error);
-      // }
       if (squared_reproj_error < max_squared_reproj_error) {
         reproj_error_sum += std::sqrt(squared_reproj_error);
-        // track_els_total.push_back(track_el);
       }else{
         track_els_to_delete.push_back(track_el);
-        // track_els_total.push_back(track_el);
       }
       track_els_total.push_back(track_el);
     }
-    // std::cout << "/// ========== Original error sum: ========== /// " << original_error_sum << std::endl;
 
     if (num_constraints < 4) {
       num_filtered += point3D.Track().Length();
@@ -1958,11 +1822,6 @@ void Reconstruction::ReadImagesText(const std::string& path) {
 
     class Image image;
     image.SetImageId(image_id);
-    // Commented out for point_triangulator
-    // if (count>=24){
-    //   image.SetRegistered(true);
-    //   reg_image_ids_.push_back(image_id);
-    // }
 
     image.SetRegistered(true);
     reg_image_ids_.push_back(image_id);

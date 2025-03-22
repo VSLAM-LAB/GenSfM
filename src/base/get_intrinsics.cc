@@ -165,9 +165,9 @@ std::vector<double> IdentifyCalibratedArea(std::vector<double>& radii, std::vect
   double threshold = mean_interval + std_interval;
   double std_threshold = 0.5*std_interval;
 
-  std::cout << "!!! Original threshold: " << threshold;
+  // std::cout << "!!! Original threshold: " << threshold;
   threshold = std::max(threshold, colmap::DegToRad(0.1));
-  std::cout << ", New threshold: " << threshold << std::endl;
+  // std::cout << ", New threshold: " << threshold << std::endl;
   recursiveSplit(new_radii, new_focal_lengths, radii_segments, focal_lengths_segments, threshold, std_threshold);
   int longest_segment = 0;
   int longest_segment_size = 0;
@@ -215,9 +215,9 @@ assert(radii.size() == focal_lengths.size());
   std::vector<std::vector<double>> focal_lengths_segments = {};
   double threshold = mean_interval + std_interval;
   double std_threshold = 0.5*std_interval;
-  std::cout << "!!! Original threshold: " << threshold;
+  // std::cout << "!!! Original threshold: " << threshold;
   threshold = std::max(threshold, colmap::DegToRad(0.1));
-  std::cout << ", New threshold: " << threshold << std::endl;
+  // std::cout << ", New threshold: " << threshold << std::endl;
   recursiveSplit(new_radii, new_focal_lengths, radii_segments, focal_lengths_segments, threshold, std_threshold);
 
   // print the beginning and end of the longest segment

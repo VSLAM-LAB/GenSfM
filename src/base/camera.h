@@ -172,13 +172,9 @@ class Camera {
 
   bool FitPIeceWiseSpline_binary(std::vector<double>& radii, std::vector<double>& focal_lengths, std::vector<double>& principal_point) ;
   inline void FitSpline(std::vector<double>& radii,  std::vector<double>& focal_lengths) const ;
-  inline void FitSpline_theta_r(std::vector<double>& radii,  std::vector<double>& focal_lengths, std::vector<double> & principle_point) ;
   inline void FitPieceWiseSpline(std::vector<double>& radii,  std::vector<double>& focal_lengths) const ;
-  inline void FitGridSpline(std::vector<double>& radii, std::vector<double>& focal_lengths) const;
   inline double EvalFocalLength(double radius) const;
   inline double EvalPieceFocalLength(double radius) const;
-  inline double EvalGridFocalLength(double radius) const;
-
   inline double EvalFocalLength(const Eigen::Vector2d& image_point) const;
   inline double EvalFocalLength(const Eigen::Vector3d& point3d) const;
   inline bool IsFullyCalibrated(const Eigen::Vector2d& image_point) const;
@@ -215,10 +211,8 @@ class Camera {
   mutable std::vector<double> theta_;
   mutable tk::spline<double> spline_;
   mutable std::vector<tk::spline<double>> piece_splines_; 
-  mutable std::vector<tk::spline<double>> grid_splines_;
   mutable std::vector<double> updated_params_;
   mutable std::vector<std::vector<double>> intervals_;
-  mutable std::vector<double> grids_; 
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -290,8 +284,6 @@ inline void Camera::FitSpline(std::vector<double>& radii, std::vector<double>& f
     new_radii.push_back(radii[increasing_indices[i]]);
     new_focal_lengths.push_back(focal_lengths[increasing_indices[i]]);
   }
-  // std::cout << "new_radii size: " << new_radii.size() << std::endl;
-  // std::cout << "new_focal_lengths size: " << new_focal_lengths.size() << std::endl;
   
   int best_inliers_count = 0;
   std::vector<double> best_coeffs;
@@ -319,9 +311,7 @@ inline void Camera::FitSpline(std::vector<double>& radii, std::vector<double>& f
     s.set_points(sample_x, sample_y);
     int inliers_count = 0;
     for (size_t j = 0; j < new_radii.size(); ++j) {
-      // std::cout << "new_radii[j]: " << new_radii[j] << std::endl;
-      // check if s is empty
-      // check the range of sample_x
+
       auto min_max_x = std::minmax_element(sample_x.begin(), sample_x.end());
       auto x = s.get_x();
       auto min_max_x_s = std::minmax_element(x.begin(), x.end());
@@ -373,116 +363,7 @@ inline void Camera::FitSpline(std::vector<double>& radii, std::vector<double>& f
   }
 }
 
-inline void Camera::FitSpline_theta_r(std::vector<double>& radii, std::vector<double>& focal_lengths, std::vector<double> & principle_point) {
-  // Convert std::vector to Eigen vectors
-  assert(radii.size() == focal_lengths.size());
 
-  std::vector<int> increasing_indices;
-  for (int i = 0; i < radii.size() - 1; i++) {
-    if(radii[i+1] > radii[i]) {
-      increasing_indices.push_back(i);
-    }
-  }
-  std::vector<double> new_radii;
-  std::vector<double> new_focal_lengths;
-  if (!increasing_indices.empty() && increasing_indices.back() != radii.size() - 1) {
-        increasing_indices.push_back(radii.size() - 1);
-    }
-
-  for (int i = 0; i < increasing_indices.size(); i++) {
-    new_radii.push_back(radii[increasing_indices[i]]);
-    new_focal_lengths.push_back(focal_lengths[increasing_indices[i]]);
-  }
-  // std::cout << "new_radii size: " << new_radii.size() << std::endl;
-  // std::cout << "new_focal_lengths size: " << new_focal_lengths.size() << std::endl;
-  
-  int best_inliers_count = 0;
-  std::vector<double> best_coeffs;
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  std::uniform_int_distribution<> dis(0, new_radii.size() - 1);
-  tk::spline<double> best_spline;
-  const int max_iterations = 80;
-  const double threshold =5.0;
-  int degree = 10;
-  std::vector<int> indices ={};
-  for (int i = 0; i < max_iterations; ++i){
-    std::vector<std::pair<double, double>> samples;
-    indices={}; 
-    for (int j = 0; j < degree; ++j) {
-      int idx = dis(gen);
-      // check if the idx has already been explored
-      while(std::find(indices.begin(), indices.end(), idx) != indices.end()){
-        idx = dis(gen);
-      }
-      indices.push_back(idx);
-      samples.emplace_back(new_radii[idx], new_focal_lengths[idx]);
-    }
-    std::sort(samples.begin(), samples.end());
-    std::vector<double> sample_x, sample_y;
-        for (const auto& pair : samples) {
-            sample_x.push_back(pair.first);
-            sample_y.push_back(pair.second);
-        }
-    tk::spline<double> s;
-    s.set_points(sample_x, sample_y);
-    int inliers_count = 0;
-    for (size_t j = 0; j < new_radii.size(); ++j) {
-      // std::cout << "new_radii[j]: " << new_radii[j] << std::endl;
-      // check if s is empty
-      // check the range of sample_x
-      auto min_max_x = std::minmax_element(sample_x.begin(), sample_x.end());
-      auto x = s.get_x();
-      auto min_max_x_s = std::minmax_element(x.begin(), x.end());
-      double y_est;
-      try{
-        y_est = s(new_radii[j]);
-      }catch(const std::exception& e){
-        std::cout << "Exception caught: " << e.what() << std::endl;
-        // y_est = new_focal_lengths[j];
-        continue;
-      }
-        if (fabs(y_est - new_focal_lengths[j]) < threshold) {
-            ++inliers_count;
-        }
-    }
-    if (inliers_count >= best_inliers_count) {
-            best_inliers_count = inliers_count;
-            best_spline = s;
-        }
-  }
-
-  std::vector<double> inliers_x, inliers_y;
-    for (size_t j = 0; j < new_radii.size(); ++j) {
-      
-        double y_est = best_spline(new_radii[j]);
-        if (fabs(y_est - new_focal_lengths[j]) < threshold) {
-            inliers_x.push_back(new_radii[j]);
-            inliers_y.push_back(new_focal_lengths[j]);
-        }
-    }
-  // spline_ = best_spline;
-
-  std::vector<double> used_x;
-  std::vector<double> used_y;
-  if (ModelId() == ImplicitDistortionModel::model_id) {
-    updated_params_={};
-    used_x = best_spline.get_x();
-    used_y = best_spline.get_y();
-    std::vector<double> updated_params;
-    updated_params.push_back(principle_point[0]);
-    updated_params.push_back(principle_point[1]);
-    for (int i = 0; i < degree; i++) {
-      updated_params.push_back(used_x[i]);
-    }
-    for(int i = 0; i < degree; i++) {
-      updated_params.push_back(used_y[i]);
-    }
-    updated_params_ = updated_params;
-    params_ = updated_params_;
-    SetParams(updated_params);
-  }
-}
 inline void Camera::recursiveSplit(const std::vector<double>& radii, const std::vector<double>& focal_lengths,
                         std::vector<std::vector<double>>& radii_segments,
                         std::vector<std::vector<double>>& focal_lengths_segments, 
@@ -546,14 +427,8 @@ inline void Camera::FitPieceWiseSpline(std::vector<double>& radii, std::vector<d
     new_radii.push_back(radii[increasing_indices[i]]);
     new_focal_lengths.push_back(focal_lengths[increasing_indices[i]]);
   }
-//   std::cout << "new_radii size: " << new_radii.size() << std::endl;
-// //   for (int i = 0; i < new_radii.size(); i++) {
-// //     std::cout << "new_radii: " << new_radii[i] << std::endl;
-// //   }
-//   std::cout << "new_focal_lengths size: " << new_focal_lengths.size() << std::endl;
-  
-  
-  // use ransac technique to fit the spline
+    
+  // RANSAC Fitting
   int best_inliers_count = 0;
   std::vector<double> best_coeffs;
   std::random_device rd;
@@ -581,12 +456,11 @@ inline void Camera::FitPieceWiseSpline(std::vector<double>& radii, std::vector<d
     std::vector<double> sample_x, sample_y;
         for (const auto& pair : samples) {
             sample_x.push_back(pair.first);
-            // std::cout << "sample_x: " << pair.first << std::endl;
             sample_y.push_back(pair.second);
         }
     tk::spline<double> s;
     s.set_points(sample_x, sample_y);
-    // std::cout << "s fitted" << std::endl;
+
     int inliers_count = 0;
     for (size_t j = 0; j < new_radii.size(); ++j) {
     
@@ -599,7 +473,7 @@ inline void Camera::FitPieceWiseSpline(std::vector<double>& radii, std::vector<d
          y_est = s(new_radii[j]);
         }catch(const std::exception& e){
           std::cout << "Exception caught: " << e.what() << std::endl;
-          // y_est = new_focal_lengths[j];
+  
           continue;
         }
         
@@ -636,10 +510,7 @@ inline void Camera::FitPieceWiseSpline(std::vector<double>& radii, std::vector<d
     std_error += pow(fabs(y_est - new_focal_lengths[j]), 2);
   }
   mean_error /= new_radii.size();
-  // std::cout << "mean_error: " << mean_error << std::endl;
-  // std::cout << "std_error before division: " << std_error <<"new_radii size:"<<new_radii.size() << std::endl;
   std_error = sqrt(std_error / new_radii.size() );
-  // std::cout << "std_error: " << std_error << std::endl;   
 
   double outlier_threshold = mean_error + 0.5*std_error;
   // Determinig the intervals where a new piece-wise spline should be fitted
@@ -649,7 +520,7 @@ inline void Camera::FitPieceWiseSpline(std::vector<double>& radii, std::vector<d
       outlier_xs.push_back(new_radii[j]);
     }
   }
-  // std::cout << "outlier_xs size: " << outlier_xs.size() << std::endl;
+ 
   std::vector<std::vector<double>> new_radii_segments;
   new_radii_segments.clear();
   std::vector<std::vector<double>> new_focal_lengths_segments;
@@ -661,8 +532,7 @@ std::vector<double> segment_radii ;
 segment_radii.clear();
 std::vector<double> segment_focal_lengths;
 segment_focal_lengths.clear();
-// std::vector<double> new_radii_segments;
-// std::vector<double> new_focal_lengths_segments;
+
 const double outlier_fraction_threshold = 0.3;
 int outlier_count = 0;
 int segment_count = 0;
@@ -705,8 +575,6 @@ for(int i = 0; i < outliers_indices.size()-1; i++){
         segment_focal_lengths.clear();
     }
 }
-// std::cout << "new_radii_segments size: " << new_radii_segments.size() << std::endl;
-
 //   populate the intervals_
     intervals_.clear();
     for (size_t i = 0; i < new_radii_segments.size(); ++i) {
@@ -725,15 +593,12 @@ for(int i = 0; i < outliers_indices.size()-1; i++){
     }
 
   // Fit the piece-wise splines
-  // std::vector<<tk::spline<double>>> splines;
+
   std::vector<tk::spline<double>> splines;
   int piecewise_max_it = 10;
   for (size_t i = 0; i < new_radii_segments.size(); ++i) {
-      // tk::spline s;
       std::vector<int>piece_indices;
 
-      // s.set_points(new_radii_segments[i], new_focal_lengths_segments[i]);
-      // splines.push_back(s);
       if (new_radii_segments[i].size() > degree) {
           // using ransac technique to fit the spline
           std::uniform_int_distribution<> dis_piece(0, new_radii_segments[i].size() - 1);
@@ -748,17 +613,9 @@ for(int i = 0; i < outliers_indices.size()-1; i++){
                         idx = dis_piece(gen);
                     }
                     piece_indices.push_back(idx);
-                    // std::cout << "idx: " << idx << std::endl;
-                    // std::cout << "new_radii_segments[i].size: " << new_radii_segments[i].size() << std::endl;
                   samples_piece.emplace_back(new_radii_segments[i][idx], new_focal_lengths_segments[i][idx]);
               }
               std::sort(samples_piece.begin(), samples_piece.end());
-              for (int k = 0; k < piece_indices.size(); k++) {
-                  // std::cout << "new_radii_segments[i].size: " << new_radii_segments[i].size() << std::endl;
-                  // std::cout << "piece_indices: " << piece_indices[k] << std::endl;
-                  // std::cout << "samples_piece: " << samples_piece[k].first << std::endl;
-
-              }
               std::vector<double> sample_x_piece, sample_y_piece;
               for (const auto& pair : samples_piece) {
                   sample_x_piece.push_back(pair.first);
@@ -767,7 +624,6 @@ for(int i = 0; i < outliers_indices.size()-1; i++){
               tk::spline<double> s_piece;
 
               s_piece.set_points(sample_x_piece, sample_y_piece);
-              // std::cout << "s_piece fitted" << std::endl;
               int piece_inliers_count = 0;
               for (size_t j = 0; j < new_radii_segments[i].size(); ++j) {
                   double y_est_piece = s_piece(new_radii_segments[i][j]);
@@ -824,236 +680,6 @@ inline double Camera::EvalPieceFocalLength(double radius) const {
 
 }
 
-inline void Camera::FitGridSpline(std::vector<double>& radii, std::vector<double>& focal_lengths) const{
-// Convert std::vector to Eigen vectors
-  assert(radii.size() == focal_lengths.size());
-
-  std::vector<int> increasing_indices;
-  for (int i = 0; i < radii.size() - 1; i++) {
-    if(radii[i+1] > radii[i]) {
-      increasing_indices.push_back(i);
-    }
-  }
-  std::vector<double> new_radii;
-  std::vector<double> new_focal_lengths;
-  if (!increasing_indices.empty() && increasing_indices.back() != radii.size() - 1) {
-        increasing_indices.push_back(radii.size() - 1);
-    }
-
-  for (int i = 0; i < increasing_indices.size(); i++) {
-    new_radii.push_back(radii[increasing_indices[i]]);
-    new_focal_lengths.push_back(focal_lengths[increasing_indices[i]]);
-  }
-  // std::cout << "new_radii size: " << new_radii.size() << std::endl;
-//   for (int i = 0; i < new_radii.size(); i++) {
-//     std::cout << "new_radii: " << new_radii[i] << std::endl;
-//   }
-  // std::cout << "new_focal_lengths size: " << new_focal_lengths.size() << std::endl;
-  
-  
-  // use ransac technique to fit the spline
-  int best_inliers_count = 0;
-  std::vector<double> best_coeffs;
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  std::uniform_int_distribution<> dis(0, new_radii.size() - 1);
-  tk::spline<double> best_spline;
-  const int max_iterations = 40;
-  const double threshold = 20.0;
-  int degree = 10;
-  std::vector<int> indices;
-  
-  for (int i = 0; i < max_iterations; ++i){
-    std::vector<std::pair<double, double>> samples;
-    indices.clear();
-    for (int j = 0; j < degree; ++j) {
-      int idx = dis(gen);
-    //   ensure that the samples are unique
-        while(std::find(indices.begin(), indices.end(), idx) != indices.end()){
-            idx = dis(gen);
-        }
-        indices.push_back(idx);
-      samples.emplace_back(new_radii[idx], new_focal_lengths[idx]);
-    }
-    std::sort(samples.begin(), samples.end());
-    std::vector<double> sample_x, sample_y;
-        for (const auto& pair : samples) {
-            sample_x.push_back(pair.first);
-            // std::cout << "sample_x: " << pair.first << std::endl;
-            sample_y.push_back(pair.second);
-        }
-    tk::spline<double> s;
-    s.set_points(sample_x, sample_y);
-    // std::cout << "s fitted" << std::endl;
-    int inliers_count = 0;
-    for (size_t j = 0; j < new_radii.size(); ++j) {
-    
-      auto min_max_x = std::minmax_element(sample_x.begin(), sample_x.end());
-      auto x = s.get_x();
-      auto min_max_x_s = std::minmax_element(x.begin(), x.end());
-     
-        double y_est;
-        try{
-         y_est = s(new_radii[j]);
-        }catch(const std::exception& e){
-          std::cout << "Exception caught: " << e.what() << std::endl;
-          // y_est = new_focal_lengths[j];
-          continue;
-        }
-        
-        if (fabs(y_est - new_focal_lengths[j]) < threshold) {
-            ++inliers_count;
-        }
-    }
-    if (inliers_count >= best_inliers_count) {
-            best_inliers_count = inliers_count;
-            best_spline = s;
-        }
-  }
-
-  std::vector<double> inliers_x, inliers_y;
-    for (size_t j = 0; j < new_radii.size(); ++j) {
-      
-        double y_est = best_spline(new_radii[j]);
- 
-        if (fabs(y_est - new_focal_lengths[j]) < threshold) {
-            inliers_x.push_back(new_radii[j]);
-            inliers_y.push_back(new_focal_lengths[j]);
-        }
-    }
-
-  std::vector<double> grid_points;
-  grid_points.clear();
-  // grid_points.push_back(new_radii[0]);
-  double interval = (new_radii.back() - new_radii[0])/4;
-  double mean_count = new_radii.size()/4; 
-  double radial_threshold = 0.3*mean_count;
-  int grid_max_it = 10;
-  int grid_degree = 10;
-  int grid_threshold = 2;
-  std::vector<double> gird_count = {0, 0, 0, 0};
-  for (size_t i = 0; i < new_radii.size(); ++i) {
-    if(new_radii[i] < new_radii[0] + interval){
-      gird_count[0] += 1;
-    }else if(new_radii[i] < new_radii[0] + 2*interval){
-      gird_count[1] += 1;
-    }else if(new_radii[i] < new_radii[0] + 3*interval){
-      gird_count[2] += 1;
-    }else{
-      gird_count[3] += 1;
-    }
-  }
-  // std::cout << "grid_count: " << gird_count[0] << " " << gird_count[1] << " " << gird_count[2] << " " << gird_count[3] << std::endl;
-  // std::cout << "grid points:"<< new_radii[0] << " " << new_radii[0] + interval << " " << new_radii[0] + 2*interval << " " << new_radii[0] + 3*interval << " " << new_radii[0] + 4*interval << std::endl;
-  std::vector<bool> calibrated = {true, true, true, true};
-  for (int i = 0; i < gird_count.size(); ++i) {
-    if(gird_count[i] < radial_threshold || gird_count[i] < 3){
-      calibrated[i] = false;
-    }
-  }
-  for (int i = 0; i < calibrated.size(); ++i) {
-    if(i == 0 && calibrated[i]){
-      grid_points.push_back(new_radii[0]);
-    }
-    if(calibrated[i]){
-      grid_points.push_back(new_radii[0] + (i+1)*interval);
-    }
-  }
-  grids_ = grid_points;
-  // fit a separate spline for each grid point
-  if (grid_points.size() > 1) {
-    std::vector<tk::spline<double>> grid_splines;
-    for (size_t i = 0; i < grid_points.size() - 1; ++i) {
-      std::vector<double> grid_radii;
-      std::vector<double> grid_focal_lengths;
-      for (size_t j = 0; j < new_radii.size(); ++j) {
-        if (new_radii[j] >= grid_points[i] && new_radii[j] < grid_points[i+1]) {
-          grid_radii.push_back(new_radii[j]);
-          grid_focal_lengths.push_back(new_focal_lengths[j]);
-        }
-      }
-      if(grid_radii.size() >= grid_degree){
-      // using ransac technique to fit the spline
-      std::uniform_int_distribution<> dis_grid(0, grid_radii.size() - 1);
-      int best_grid_inliers_count = 0;
-      tk::spline<double> best_grid_spline;
-      std::vector<int> grid_indices;
-      for (int j = 0; j < grid_max_it; ++j) {
-        std::vector<std::pair<double, double>> samples_grid;
-        grid_indices.clear();
-        std::cout<<"sample begains" << std::endl;
-        for (int k = 0; k < grid_degree; ++k) {
-          int idx = dis_grid(gen);
-          while(std::find(grid_indices.begin(), grid_indices.end(), idx) != grid_indices.end()){
-            idx = dis_grid(gen);
-          }
-          // std::cout << "k: " << k<<" idx: "<<idx << std::endl;
-          grid_indices.push_back(idx);
-          samples_grid.emplace_back(grid_radii[idx], grid_focal_lengths[idx]);
-        }
-        std::sort(samples_grid.begin(), samples_grid.end());
-        std::vector<double> sample_x_grid, sample_y_grid;
-        for (const auto& pair : samples_grid) {
-          sample_x_grid.push_back(pair.first);
-          sample_y_grid.push_back(pair.second);
-        }
-        tk::spline<double> s_grid;
-        s_grid.set_points(sample_x_grid, sample_y_grid);
-        int grid_inliers_count = 0;
-        for (size_t k = 0; k < grid_radii.size(); ++k) {
-          double y_est_grid = s_grid(grid_radii[k]);
-          if (fabs(y_est_grid - grid_focal_lengths[k]) < grid_threshold) {
-            ++grid_inliers_count;
-          }
-        }
-        if (grid_inliers_count >= best_grid_inliers_count) {
-          best_grid_inliers_count = grid_inliers_count;
-          best_grid_spline = s_grid;
-        }
-      }grid_splines.push_back(best_grid_spline);
-      }else{
-        tk::spline<double> best_grid_spline;
-        best_grid_spline.set_points(grid_radii, grid_focal_lengths);
-        grid_splines.push_back(best_grid_spline);  
-      }
-      
-    }
-    grid_splines_ = grid_splines;
-  }else{
-    grid_splines_.push_back(best_spline); 
-  }
-  // std::cout << "grid_splines_ size: " << grid_splines_.size() << std::endl;  
-}
-
-// TODO: THIS FUNCTION IS INCORRECT
-inline double Camera::EvalGridFocalLength(double radius) const{
-  if(grids_.empty() ){
-    return spline_(radius);
-  }else{
-    if(radius <= grids_.front()){
-        return grid_splines_.front()(radius);
-    }else if (radius >= grids_.back())
-    {
-        return grid_splines_.back()(radius);
-    }else{
-    
-    for (size_t i = 0; i < grids_.size(); ++i) {
-        if (radius >= grids_[i] && radius <= grids_[i+1]) {
-            if (grid_splines_.size() > (i+1)) {
-                return grid_splines_[i](radius);
-              }else{
-                return grid_splines_.back()(radius);
-              }
-              }
-    }
-    }
-    return spline_(radius);
-  
-  }
-}
-
-
-// double Camera::EvalFocalLength(double radius) const {return spline_(radius);}
 double Camera::EvalFocalLength(double radius) const {
   if (model_id_ == Radial1DCameraModel::model_id)
     return 1.;
@@ -1132,7 +758,7 @@ void Camera::SetCalibrated(bool calibrated) {
 
 bool Camera::IsCalibrated() const {
   return (model_id_ != ImplicitDistortionModel::model_id && model_id_ != Radial1DCameraModel::model_id) 
-   || is_fully_calibrated_ ;
+   | is_fully_calibrated_ ;
 }
 
 bool Camera::SetSplineFromParams() {

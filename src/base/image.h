@@ -119,16 +119,6 @@ class Image {
   // uniform distribution of observations results in more robust registration.
   inline size_t Point3DVisibilityScore() const;
 
-  // Parameters for retrieving point-wise focal length from implicit_distortion.
-  inline std::vector<double> GetFocalLengthParams() const;
-  inline void SetFocalLengthParams(const std::vector<double>& focal_length_params) const;
-  inline std::vector<double> GetRawRadii() const; 
-  inline void SetRawRadii(const std::vector<double>& raw_radii) const;
-  inline std::vector<double> GetTheta() const;
-  inline void SetTheta(const std::vector<double>& theta) const;
-  // inline boost::math::interpolators::cubic_hermite<std::vector<double>> GetSpline() const;
-  // inline void SetSpline(const boost::math::interpolators::cubic_hermite<std::vector<double>>& spline) const;
-
   // Access quaternion vector as (qw, qx, qy, qz) specifying the rotation of the
   // pose which is defined as the transformation from world to image space.
   inline const Eigen::Vector4d& Qvec() const;
@@ -186,11 +176,6 @@ class Image {
   // a correspondence to this image point. Note that this must only be called
   // after calling `SetUp`.
   void IncrementCorrespondenceHasPoint3D(const point2D_t point2D_idx);
-
-  // Fitting the spline model for the focal length - radii mapping
-  // inline void FitSpline(std::vector<double>& radii,  std::vector<double>& focal_lengths) const;
-
-  // inline double EvalFocalLength(double radius) const;
 
   // Indicate that another image has a point that is not triangulated any more
   // and has a correspondence to this image point. This assumes that
@@ -261,12 +246,6 @@ class Image {
   Eigen::Vector4d qvec_prior_;
   Eigen::Vector3d tvec_prior_;
 
-  // Parameters for retrieving point-wise focal length from implicit_distortion.
-  mutable std::vector<double> focal_length_params_;
-  mutable std::vector<double> raw_radii_;
-  mutable std::vector<double> theta_;
-  // mutable boost::math::interpolators::cubic_hermite<std::vector<double>> spline_;
-
   // All image points, including points that are not part of a 3D point track.
   std::vector<class Point2D> points2D_;
   
@@ -276,10 +255,6 @@ class Image {
   // Data structure to compute the distribution of triangulated correspondences
   // in the image. Note that this structure is only usable after `SetUp`.
   VisibilityPyramid point3D_visibility_pyramid_;
-
-  // The 1D spline for the focal length
-  // mutable Spline1D spline_;
-  // mutable tk::spline spline_;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -342,142 +317,6 @@ inline double Image::Qvec(const size_t idx) const { return qvec_(idx); }
 
 inline double& Image::Qvec(const size_t idx) { return qvec_(idx); }
 
-inline std::vector<double> Image::GetFocalLengthParams() const {
-  return focal_length_params_;
-}
-
-inline void Image::SetFocalLengthParams(const std::vector<double>& focal_length_params) const {
-  focal_length_params_ = focal_length_params;
-}
-
-// inline void Image::FitSpline(std::vector<double>& radii, std::vector<double>& focal_lengths) const{
-//   // Convert std::vector to Eigen vectors
-//   assert(radii.size() == focal_lengths.size());
-
-//   std::vector<int> increasing_indices;
-//   for (int i = 0; i < radii.size() - 1; i++) {
-//     if(radii[i+1] > radii[i]) {
-//       increasing_indices.push_back(i);
-//     }
-//   }
-//   std::vector<double> new_radii;
-//   std::vector<double> new_focal_lengths;
-//   if (!increasing_indices.empty() && increasing_indices.back() != radii.size() - 1) {
-//         increasing_indices.push_back(radii.size() - 1);
-//     }
-
-//   for (int i = 0; i < increasing_indices.size(); i++) {
-//     new_radii.push_back(radii[increasing_indices[i]]);
-//     new_focal_lengths.push_back(focal_lengths[increasing_indices[i]]);
-//   }
-//   std::cout << "new_radii size: " << new_radii.size() << std::endl;
-//   std::cout << "new_focal_lengths size: " << new_focal_lengths.size() << std::endl;
-
-//   // use ransac technique to fit the spline
-//   int best_inliers_count = 0;
-//   std::vector<double> best_coeffs;
-//   std::random_device rd;
-//   std::mt19937 gen(rd());
-//   std::uniform_int_distribution<> dis(0, new_radii.size() - 1);
-//   tk::spline best_spline;
-//   const int max_iterations = 20;
-//   const double threshold = 5.0;
-//   int degree = 9;
-//   for (int i = 0; i < max_iterations; ++i){
-//     std::vector<std::pair<double, double>> samples;
-//     for (int j = 0; j < degree; ++j) {
-//       int idx = dis(gen);
-//       samples.emplace_back(new_radii[idx], new_focal_lengths[idx]);
-//     }
-//     std::sort(samples.begin(), samples.end());
-//     std::vector<double> sample_x, sample_y;
-//         for (const auto& pair : samples) {
-//             sample_x.push_back(pair.first);
-//             sample_y.push_back(pair.second);
-//         }
-//     tk::spline s;
-//     s.set_points(sample_x, sample_y);
-//     int inliers_count = 0;
-//     for (size_t j = 0; j < new_radii.size(); ++j) {
-//       // std::cout << "new_radii[j]: " << new_radii[j] << std::endl;
-//       // check if s is empty
-//       // check the range of sample_x
-//       auto min_max_x = std::minmax_element(sample_x.begin(), sample_x.end());
-//       auto x = s.get_x();
-//       auto min_max_x_s = std::minmax_element(x.begin(), x.end());
-//       std::cout << "Min x value: " << *min_max_x.first << ", Max x value: " << *min_max_x.second << std::endl;
-//       std::cout << "Min x value for s: " << *min_max_x_s.first << ", Max x value for s: " << *min_max_x_s.second << std::endl;
-//         // if (s.get_x().empty()) {
-//         //     continue;
-//         // }
-//         double y_est;
-//         try{
-//          y_est = s(new_radii[j]);
-//         }catch(const std::exception& e){
-//           std::cout << "Exception caught: " << e.what() << std::endl;
-//           // y_est = new_focal_lengths[j];
-//           continue;
-//         }
-        
-//         // double y_est = s(new_radii[j]);
-//         std::cout << "j: " << j << "new_radii[j]" << new_radii[j]<< std::endl;
-//         std::cout << "y_est for s: " << y_est << std::endl;
-//         if (fabs(y_est - new_focal_lengths[j]) < threshold) {
-//             ++inliers_count;
-//         }
-//     }
-//     if (inliers_count >= best_inliers_count) {
-//             best_inliers_count = inliers_count;
-//             best_spline = s;
-//         }
-//   }
-
-//   std::vector<double> inliers_x, inliers_y;
-//     for (size_t j = 0; j < new_radii.size(); ++j) {
-      
-//         double y_est = best_spline(new_radii[j]);
-//         std::cout << "y_est for best_spline: " << y_est << std::endl;
-//         if (fabs(y_est - new_focal_lengths[j]) < threshold) {
-//             inliers_x.push_back(new_radii[j]);
-//             inliers_y.push_back(new_focal_lengths[j]);
-//         }
-//     }
-//   // if(inliers_x.size() >= 4){
-//   //  spline_.set_points(inliers_x, inliers_y);
-//   // }else{
-//   //   spline_.set_points(new_radii, new_focal_lengths);
-//   // }
-//   spline_ = best_spline;
-// }
-
-// double Image::EvalFocalLength(double radius) const {
-//   return spline_(radius);
-  
-// }
-
-inline std::vector<double> Image::GetRawRadii() const {
-  return raw_radii_;
-}
-
-inline void Image::SetRawRadii(const std::vector<double>& raw_radii) const {
-  raw_radii_ = raw_radii;
-}
-
-inline std::vector<double> Image::GetTheta() const {
-  return theta_;
-}
-
-inline void Image::SetTheta(const std::vector<double>& theta) const {
-  theta_ = theta;
-}
-
-// inline boost::math::interpolators::cubic_hermite<std::vector<double>> Image::GetSpline() const {
-//   return spline_;
-// }
-
-// inline void Image::SetSpline(const boost::math::interpolators::cubic_hermite<std::vector<double>>& spline) const {
-//   spline_ = spline;
-// }
 void Image::SetQvec(const Eigen::Vector4d& qvec) { qvec_ = qvec; }
 
 const Eigen::Vector4d& Image::QvecPrior() const { return qvec_prior_; }
