@@ -648,14 +648,10 @@ size_t IncrementalMapper::TriangulateImage(
     const IncrementalTriangulator::Options& tri_options,
     const image_t image_id, bool initial) {
   CHECK_NOTNULL(reconstruction_);
-  std::cout<<"entered TiangulateImage"<<std::endl;
+
   // Commented out for point_triangulator
   size_t num_images_having_point3D = 0;
-  std::cout <<"image_id before iterating: " << image_id << std::endl;
-
-  std::cout <<"image_id after iterating: " << image_id << std::endl;
   size_t num_registrations = reconstruction_->NumRegImages();
-  std::cout << "num_registrations: " << num_registrations << std::endl;
   
   // check the number of registered images for each camera in num_reg_images_per_camera_;
   bool standard_triangulation = true;
@@ -825,8 +821,6 @@ bool IncrementalMapper::AdjustGlobalBundle(
                                        "registered for global "
                                        "bundle-adjustment";
 
-
-  std::cout << "before AdjustGlobalBundle" << std::endl;
   for (const auto&[camera_id, camera_const] : reconstruction_->Cameras()) {
     Camera& camera = reconstruction_->Camera(camera_id);
     std::cout << "camera_id: " << camera_id;
@@ -894,7 +888,7 @@ bool IncrementalMapper::AdjustGlobalPoints(const Options& options) {
   ba_options_ptonly.refine_extra_params = false;
   ba_options_ptonly.refine_extrinsics = false;
   ba_options_ptonly.solver_options.max_num_iterations = 200;
-  ba_options_ptonly.solver_options.minimizer_progress_to_stdout = true;
+  ba_options_ptonly.solver_options.minimizer_progress_to_stdout = false;
   ba_options_ptonly.solver_options.function_tolerance = 1e-6;
   ba_options_ptonly.solver_options.gradient_tolerance = 1.0;
   ba_options_ptonly.loss_function_scale = 1.0;
@@ -1051,7 +1045,7 @@ bool IncrementalMapper::AdjustParallelGlobalBundle(
     const BundleAdjustmentOptions& ba_options,
     const ParallelBundleAdjuster::Options& parallel_ba_options, bool initial ) {
   CHECK_NOTNULL(reconstruction_);
-  std::cout<<"================= attention!! entered pba !!==========="<<std::endl;
+ 
 
   const std::vector<image_t>& reg_image_ids = reconstruction_->RegImageIds();
 

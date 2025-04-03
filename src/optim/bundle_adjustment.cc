@@ -262,7 +262,6 @@ BundleAdjuster::BundleAdjuster(const BundleAdjustmentOptions& options,
 
 bool BundleAdjuster::Solve(Reconstruction* reconstruction, bool initial) {
   CHECK_NOTNULL(reconstruction);
-  std::cout<<"reconstruction not null check successful"<<std::endl;
   CHECK(!problem_) << "Cannot use the same BundleAdjuster multiple times";
   problem_.reset(new ceres::Problem());
 
@@ -308,17 +307,16 @@ bool BundleAdjuster::Solve(Reconstruction* reconstruction, bool initial) {
   CHECK(solver_options.IsValid(&solver_error)) << solver_error;
   solver_options.minimizer_progress_to_stdout = false;  
   ceres::Solve(solver_options, problem_.get(), &summary_);
-  std::cout << summary_.FullReport() << std::endl;
+  // std::cout << summary_.FullReport() << std::endl;
 
   if (solver_options.minimizer_progress_to_stdout) {
   }
 
-  std::cout << "problem_->NumResiduals(): " << problem_->NumResiduals() << std::endl;
+  // std::cout << "problem_->NumResiduals(): " << problem_->NumResiduals() << std::endl;
 
   // For implicit camera model, update the spline parameters
   if (options_.refine_extra_params) {
     for (auto& [camera_id, camera_const] : reconstruction->Cameras()) {
-      std::cout << "CAMERA ID: " << camera_id << std::endl;
       Camera& camera = reconstruction->Camera(camera_id);
       if (camera.ModelId() == ImplicitDistortionModel::model_id) {
         camera.SetSplineFromParams();

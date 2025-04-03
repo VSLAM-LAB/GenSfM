@@ -273,7 +273,7 @@ IntrinsicCalib calibrate_multi(const std::vector<std::vector<Eigen::Vector2d>> &
         }
     }
     rms_rad = std::sqrt(rms_rad / num_pts);
-    std::cout << "Initial RMS = " << rms_rad << "\n";
+    // std::cout << "Initial RMS = " << rms_rad << "\n";
 
     const double tol_rms_diff = 0.1;
     const double min_mu = 1e-6;
@@ -320,7 +320,7 @@ IntrinsicCalib calibrate_multi(const std::vector<std::vector<Eigen::Vector2d>> &
         double rms_tan = compute_tangential_error(points2D, points3D_cam, poses, calib.pp, fvec, threshold);
 
         double res = std::abs(rms_rad - rms_tan);
-        std::cout << "iter=" << iter << ", mu = " << mu << ", rms_rad=" << rms_rad << ", rms_tan=" << rms_tan << ", res=" << res <<  "\n";
+        // std::cout << "iter=" << iter << ", mu = " << mu << ", rms_rad=" << rms_rad << ", rms_tan=" << rms_tan << ", res=" << res <<  "\n";
 
         if (res < best_score) {
             best_calib = calib;
@@ -333,19 +333,19 @@ IntrinsicCalib calibrate_multi(const std::vector<std::vector<Eigen::Vector2d>> &
         if (rms_tan < rms_rad) {
             mu *= 5.0;
             if (mu > max_mu) {
-                std::cout << "mu > " << max_mu << "\n";
+                // std::cout << "mu > " << max_mu << "\n";
                 break;
             }
         } else {
             mu /= 2.0;
             if (mu < min_mu) {
-                std::cout << "mu < " << min_mu << "\n";
+                // std::cout << "mu < " << min_mu << "\n";
                 break;
             }
         }
         
         if (res < tol_rms_diff) {
-            std::cout << "res < " << tol_rms_diff << "\n";
+            // std::cout << "res < " << tol_rms_diff << "\n";
             break;
         }
     }

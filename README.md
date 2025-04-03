@@ -1,10 +1,14 @@
 
 Structure-from-Motion with a Non-Parametric Camera Model
 ======
-<!-- This is an extension of the incremental Structure-from-Motion framework [COLMAP](https://github.com/colmap/colmap) which allows for using the 1D Radial camera model. This is a cleaned up re-implementation of the original code used in the paper
+ This is the code release for the paper:
 
-`Larsson et al., Calibration-Free Structure-from-Motion with Calibrated Radial Trifocal Tensors, ECCV 2020`
-
+```
+Structure-from-Motion with a Non-Parametric Camera Model
+Yihan Wang*, Linfei Pan*, Marc Pollefeys, Viktor Larsson
+IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR) 2025
+```
+<!-- 
 and there might be some minor differences in the results. If you have any problems or find any bugs, please create an issue.
 The implementation should work with a mix of camera models (where some are 1D Radial cameras) but this has not been tested thoroughly.
 

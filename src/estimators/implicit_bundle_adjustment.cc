@@ -32,7 +32,6 @@ void bundle_adjustment(std::vector<std::vector<Eigen::Vector2d>> &points2D,
                                 ImplicitBundleAdjustmentOptions ba_opt) {
 
     if (ba_opt.upgrade_result) {
-        std::cout << "pose upgrade for " << points2D.size() << " images" << std::endl;
         // First, upgrade the pose estimation
         int num_cams = points2D.size();
         // convert to suitable data structure for pose refinement
@@ -44,16 +43,13 @@ void bundle_adjustment(std::vector<std::vector<Eigen::Vector2d>> &points2D,
             }
         }
         // print points3D dimensions before the pose refinement
-        std::cout << "before pose refinement points3D_sep size: " << points3D_sep.size() << std::endl;
 
         poses = pose_refinement_multi(points2D, points3D_sep, cost_matrix, pp, poses, ba_opt);
-        std::cout << "after pose refinement points3D_sep size: " << points3D_sep.size() << std::endl;
     }
     // print points2D dimensions after the pose refinement
 
 
     if (ba_opt.filter_result) {
-        std::cout << "ba_opt.filter_result" << std::endl;
         filter_result_ba(points2D, points3D, pointsInd, poses, pp, ba_opt);
     }
 
@@ -110,15 +106,8 @@ void bundle_adjustment(std::vector<std::vector<Eigen::Vector2d>> &points2D,
     int ite = 0;
     while (ite < ba_opt.max_ite_num) {
         
-        std::cout << "ite number: " << ite << std::endl;
         double ratio = bundle_adjustment_inner(points2D_center, points3D, pointsInd, cost_matrix, qs, ts, ba_opt);
         ite++;
-
-        std::cout << "optimize_projection done, decrease ratio: " << ratio << std::endl;
-        if (ratio < ba_opt.stop_ratio) {
-            std::cout << "ratio < " << ba_opt.stop_ratio << ", BA terminated" << std::endl;
-            break;
-        }
     }
     
     for (size_t k = 0; k < n_img; ++k) {
@@ -217,7 +206,6 @@ void filter_result_ba(std::vector<std::vector<Eigen::Vector2d>> &points2D,
     for (int i = 0; i < points3D_sep.size(); i++) {
         total_num += points3D_sep[i].size();
     }
-    std::cout << "points3D_sep number before calculating fmed_diff: " << total_num << std::endl;
 
 
     int counter = 0;    
@@ -226,7 +214,7 @@ void filter_result_ba(std::vector<std::vector<Eigen::Vector2d>> &points2D,
         exclude_outliers(fs_diff[i], points2D[i], pointsInd[i], true, ba_opt.filter_thres);
         counter += ori_size - points2D[i].size();
     }
-    std::cout << "filtering number: " << counter << std::endl;
+
 }
 
 }

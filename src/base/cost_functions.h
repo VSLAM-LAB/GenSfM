@@ -355,7 +355,6 @@ class BundleAdjustmentConstantPoseCostFunction<Radial1DCameraModel> {
     // Re-projection error.
     residuals[0] = alpha * projection[0] - x_c;
     residuals[1] = alpha * projection[1] - y_c;
-    // std::cout<<"using radial1D cost function, residuals[0]: "<< residuals[0]<< std::endl;
 
     return true;
   }

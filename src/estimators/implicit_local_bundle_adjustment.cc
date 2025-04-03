@@ -287,16 +287,13 @@ double local_bundle_adjustment_inner(const std::vector<std::vector<Eigen::Vector
         if (!is_constant_pose) {
             
             // check if has parameter block
-            // std::cout<<"has parameter block q?"<<problem.HasParameterBlock(q)<<std::endl;
-            // std::cout<<"has parameter block ts?"<<problem.HasParameterBlock(ts[k].data())<<std::endl;
+
         
             SetEigenQuaternionManifold(&problem, q);
             if(ba_config.HasConstantTvec(img_id)){
                 problem.SetParameterBlockConstant(ts[k].data());
             }
         } else {
-            // std::cout << "has parameter block q? "<<problem.HasParameterBlock(q) << std::endl;
-            // std::cout << "has parameter block ts? "<<problem.HasParameterBlock(ts[k].data()) << std::endl;
             problem.SetParameterBlockConstant(q);
             problem.SetParameterBlockConstant(ts[k].data());
         }

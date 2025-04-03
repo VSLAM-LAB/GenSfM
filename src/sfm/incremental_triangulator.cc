@@ -89,7 +89,7 @@ size_t IncrementalTriangulator::TriangulateImage(const Options& options,
   if (!image.IsRegistered()) {
     return num_tris;
   }
-  // std::cout<<"Image is registered"<<std::endl;
+
 
   const Camera& camera = reconstruction_->Camera(image.CameraId());
   CorrData ref_corr_data;
@@ -744,7 +744,6 @@ int IncrementalTriangulator::CalibrateCamera(const Options& options) {
 
     CostMatrix costMatrix = build_cost_matrix_multi(points2D_subsampled, cm_options, principal_point);
     IntrinsicCalib intrinsic_calib = calibrate_multi(points2D_subsampled, points3D_subsampled, costMatrix, principal_point, poses);
-    std::cout << "!!! points2D.size(): " << points2D.size() << std::endl;
     std::vector<double> radii;
     std::vector<double> theta;
     std::vector<double> focal_lengths;

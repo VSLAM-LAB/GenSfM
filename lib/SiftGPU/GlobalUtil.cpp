@@ -37,7 +37,7 @@ using std::cout;
 #include "LiteWindow.h"
 
 //
-int GlobalParam::		_verbose =  1;
+int GlobalParam::		_verbose =  0;
 int	GlobalParam::       _timingS = 1;  //print out information of each step
 int	GlobalParam::       _timingO = 0;  //print out information of each octave
 int	GlobalParam::       _timingL = 0;	//print out information of each level

@@ -79,7 +79,7 @@ void AdjustGlobalBundle(const IncrementalMapperOptions& options,
 void IterativeLocalRefinement(const IncrementalMapperOptions& options,
                               const image_t image_id,
                               IncrementalMapper* mapper) {
-  std::cout << "  =>Entered Colmap Local bundle adjustment" << std::endl;
+  // std::cout << "  =>Entered Colmap Local bundle adjustment" << std::endl;
   auto ba_options = options.LocalBundleAdjustment();
   size_t num_reg_images = mapper->GetReconstruction().NumRegImages();
   for (int i = 0; i < options.ba_local_max_refinements; ++i) {
@@ -238,7 +238,7 @@ BundleAdjustmentOptions IncrementalMapperOptions::LocalBundleAdjustment()
 #if CERES_VERSION_MAJOR < 2
   options.solver_options.num_linear_solver_threads = num_threads;
 #endif  // CERES_VERSION_MAJOR
-  options.print_summary = true;
+  options.print_summary = false;
   options.refine_focal_length = ba_refine_focal_length;
   options.refine_principal_point = ba_refine_principal_point;
   options.refine_extra_params = ba_refine_extra_params;
@@ -265,7 +265,7 @@ BundleAdjustmentOptions IncrementalMapperOptions::GlobalBundleAdjustment()
 #if CERES_VERSION_MAJOR < 2
   options.solver_options.num_linear_solver_threads = num_threads;
 #endif  // CERES_VERSION_MAJOR
-  options.print_summary = true;
+  options.print_summary = false;
   options.refine_focal_length = ba_refine_focal_length;
   options.refine_principal_point = ba_refine_principal_point;
   options.refine_extra_params = ba_refine_extra_params;
@@ -284,7 +284,7 @@ ParallelBundleAdjuster::Options
 IncrementalMapperOptions::ParallelGlobalBundleAdjustment() const {
   ParallelBundleAdjuster::Options options;
   options.max_num_iterations = ba_global_max_num_iterations;
-  options.print_summary = true;
+  options.print_summary = false;
   options.gpu_index = ba_global_pba_gpu_index;
   options.num_threads = num_threads;
   options.min_num_residuals_for_multi_threading =
@@ -536,8 +536,7 @@ void IncrementalMapperController::Reconstruct(
             mapper.RegisterNextImage(options_->Mapper(), next_image_id);
 
         if (reg_next_success) {
-          std::cout << "Qvec: " << reconstruction.Image(next_image_id).Qvec().transpose() << std::endl;
-          std::cout << "Tvec: " << reconstruction.Image(next_image_id).Tvec().transpose() << std::endl;
+          
           TriangulateImage(*options_, next_image, &mapper);
           for (const auto &[camera_id, camera_const] : reconstruction.Cameras()) {
             Camera& camera = reconstruction.Camera(camera_id);

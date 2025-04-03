@@ -37,7 +37,7 @@ output_dir = '/home/yihan/cvg/datasets/cata_mainbuilding/1120_radial/upgraded/'
 
 cm_opt = pyimplicitdist.CostMatrixOptions()
 refinement_opt = pyimplicitdist.PoseRefinementOptions()
-refinement_opt.verbose = True
+refinement_opt.verbose = False
 
 ba_opt = pyimplicitdist.BundleAdjustmentOptions()
 ba_opt.upgrade_result = True

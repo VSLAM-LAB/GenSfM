@@ -92,7 +92,7 @@ int main(int argc, char*argv[]){
             colmap::Camera &camera = reconstruction.Camera(camera_id);
             camera.SetCalibrated(true);
         }
-        ba_options.solver_options.minimizer_progress_to_stdout=true;
+        ba_options.solver_options.minimizer_progress_to_stdout=false;
         ba_options.print_summary=true;
 
         std::cout << "points added" << std::endl;

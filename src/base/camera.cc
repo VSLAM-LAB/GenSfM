@@ -303,32 +303,22 @@ bool Camera::FitPIeceWiseSpline_binary(std::vector<double>& radii, std::vector<d
   std::vector<std::vector<double>> focal_lengths_segments = {};
   double threshold = mean_interval + std_interval;
   double std_threshold = 0.5*std_interval;
-  std::cout << "!!! Original threshold: " << threshold;
   threshold = std::max(threshold, DegToRad(0.1));
-  std::cout << ", New threshold: " << threshold << std::endl;
+
   recursiveSplit(new_radii, new_focal_lengths, radii_segments, focal_lengths_segments, threshold, std_threshold);
 
   if (radii_segments.size() == 0) {
     return false;
   }
-  // print the beginning and end of the longest segment
   // find the longest segment
   int longest_segment = 0;
   double longest_segment_size = 0;
-  std::cout << "radii_segments[i].size():" << std::endl;
   for(int i = 0; i < radii_segments.size(); i++){
-    std::cout << radii_segments[i].size() << std::endl;
-    std::cout << radii_segments[i].front() << " " << radii_segments[i].back() << std::endl;
-    std::cout << focal_lengths_segments[i].front() << " " << focal_lengths_segments[i].back() << std::endl;
-    // if(radii_segments[i].size() > longest_segment_size){
     if(radii_segments[i].back() - radii_segments[i].front() > longest_segment_size){
       longest_segment = i;
-      // longest_segment_size = radii_segments[i].size();
       longest_segment_size = radii_segments[i].back() - radii_segments[i].front();
     }
   }
-  std::cout << "longest_segment: " << longest_segment << std::endl;
-  std::cout << "longest_segment_size: " << longest_segment_size << std::endl;
   
   std::vector<double> calibrated_range = {focal_lengths_segments[longest_segment].front(), focal_lengths_segments[longest_segment].back()};
   std::vector<double> radii_calibrated = radii_segments[longest_segment];
@@ -349,13 +339,13 @@ bool Camera::FitPIeceWiseSpline_binary(std::vector<double>& radii, std::vector<d
     }
   }
 
-  std::ofstream out("radii_vs_focal.txt");
-  for (size_t j = 0; j < radii_calibrated.size(); ++j) {
-    out << radii_calibrated[j] << " " << focal_lengths_calibrated[j] << std::endl;
-  }
-  out.close();
+  // std::ofstream out("radii_vs_focal.txt");
+  // for (size_t j = 0; j < radii_calibrated.size(); ++j) {
+  //   out << radii_calibrated[j] << " " << focal_lengths_calibrated[j] << std::endl;
+  // }
+  // out.close();
 
-  std::cout << "inliers_count / total count " << inliers_count << " / " << radii_calibrated.size() << std::endl;
+  // std::cout << "inliers_count / total count " << inliers_count << " / " << radii_calibrated.size() << std::endl;
 
   // If only a few points are inliers, then the calibration is not good
   if (inliers_count < 0.9 * radii_calibrated.size()) {

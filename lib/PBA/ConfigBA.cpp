@@ -73,7 +73,7 @@ ConfigBA::ConfigBA() {
   __reset_initial_distortion = false;
 
   //////////////////////////////
-  __verbose_level = 2;
+  __verbose_level = 0;
   __verbose_cg_iteration = false;
   __verbose_function_time = false;
   __verbose_allocation = false;

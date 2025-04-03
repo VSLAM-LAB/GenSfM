@@ -163,14 +163,7 @@ bool EstimateRadialAbsolutePose(const AbsolutePoseEstimationOptions& options,
   *qvec = implicit_pose.q_vec;
   *tvec = implicit_pose.t;
   }
-  // print out report.model
-  std::cout << "Report: " << report.model << std::endl;
-  //print out qvec and tvec
-  std::cout << "qvec: " << *qvec << std::endl;
-  std::cout << "tvec: " << *tvec << std::endl;
-  // (*tvec)(2) += tz;
-  // use implicit distortion model
-  // (*tvec)(2) += tz_imp;
+
 
   if (IsNaN(*qvec) || IsNaN(*tvec)) {
     return false;

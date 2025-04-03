@@ -650,7 +650,6 @@ for(int i = 0; i < outliers_indices.size()-1; i++){
   if(!splines.empty()){
     piece_splines_ = splines;
 }
-  std::cout << "piece_splines_ size: " << piece_splines_.size() << std::endl;
  
 }
 

@@ -70,7 +70,7 @@ struct BundleAdjustmentOptions {
   bool refine_extrinsics = true;
 
   // Whether to print a final summary.
-  bool print_summary = true;
+  bool print_summary = false;
 
   // Minimum number of residuals to enable multi-threading. Note that
   // single-threaded is typically better for small bundle adjustment problems
@@ -215,7 +215,7 @@ class ParallelBundleAdjuster {
  public:
   struct Options {
     // Whether to print a final summary.
-    bool print_summary = true;
+    bool print_summary = false;
 
     // Maximum number of iterations.
     int max_num_iterations = 50;
