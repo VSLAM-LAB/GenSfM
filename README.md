@@ -1,16 +1,71 @@
 
-Structure-from-Motion with a Non-Parametric Camera Model
+Structure-from-Motion with a Non-Parametric Camera Model (CVPR 2025 Highlight)
 ======
- This is the code release for the paper:
+This is an extension of the incremental Structure-from-Motion framework [COLMAP](https://github.com/colmap/colmap), allowing for the usage of Implicit Distortion camera model, which features a non-parametric generic representation of the calibration map and an adaptive partial calibration procedure. This is a cleaned up re-implementation of the original code used in the paper
 
 ```
 Structure-from-Motion with a Non-Parametric Camera Model
 Yihan Wang*, Linfei Pan*, Marc Pollefeys, Viktor Larsson
 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR) 2025
 ```
+and if you have any problems running the code or find any bugs, please create an issue.
+
+## Getting Started
+Please build GenSfM using the following commands:
+```shell
+mkdir build
+cd build
+cmake .. -GNinja
+ninja
+```
+## End-to-End Example
+We provide a mixed dataset of 83 catadioptric images and 74 fisheye images. The database, images and reconstructions could be obtained from [here](https://drive.google.com/drive/folders/15vyUyWFN572NM8OU_FIfwuaBSysvyp5j?usp=sharing). Please download the dataset and put it under `data` folder. Navigate to `./build/src/exe` to run GenSfM.
+### Run from database
+If a COLMAP database already exists, GenSfM can directly use it to perform incremental mapping by: 
+
+```shell
+./gen_colmap mapper \
+            --database_path  ./data/CAB_facade_mixed/full_mix_centered.db \
+            --image_path  ./data/CAB_facade_mixed/images \
+            --output_path ./data/CAB_facade_mixed/sparse \
+# Add the following commands if you wish to monitor the middle stages of the reconstruction
+            --Mapper.snapshot_path ./data/CAB_facade_mixed/sparse/snapshot \
+            --Mapper.snapshot_images_freq 1
+```
+### Run from images
+If there is not a COLMAP database yet, you need to establish it first. 
+
+```shell
+./gen_colmap feature_extractor \
+            --image_path ./data/Fisheye_grossmunster/images \
+            --database_path ./data/Fisheye_grossmunster/database.db \ 
+# GenSFM could be ran by choosing IMPLICIT_DISTORTION camera model            
+            --ImageReader.camera_model IMPLICIT_DISTORTION \
+# Set the following argument if images are captured by the same camera per folder
+            --ImageReader.single_camera_per_folder 1
+
+
+./gen_colmap exhaustive_matcher \
+            --database_path ./data/Fisheye_grossmunster/database.db \ 
+            --SiftMatching.multiple_models=1
+
+./gen_colmap mapper \
+            --database_path  ./data/Fisheye_grossmunster/database.db \
+            --image_path  ./data/Fisheye_grossmunster/images \
+            --output_path ./data/Fisheye_grossmunster/sparse \
+            --Mapper.snapshot_path ./data/Fisheye_grossmunster/sparse/snapshot \
+            --Mapper.snapshot_images_freq 1
+```
+### Visualize the results
+The reconstruction can be visualized using the GUI, for example:
+```bash
+./gen_colmap gui \
+        --database_path ./data/Fisheye_grossmunster/database.db    \
+        --image_path ./data/Fisheye_grossmunster/images     \
+        --import_path ./data/Fisheye_grossmunster/sparse/0
+``` 
 <!-- 
-and there might be some minor differences in the results. If you have any problems or find any bugs, please create an issue.
-The implementation should work with a mix of camera models (where some are 1D Radial cameras) but this has not been tested thoroughly.
+
 
 Example datasets
 -----
