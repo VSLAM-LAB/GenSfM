@@ -19,7 +19,7 @@ cmake .. -GNinja
 ninja
 ```
 ## End-to-End Example
-We provide a mixed dataset of 83 catadioptric images and 74 fisheye images. The database, images and reconstructions could be obtained from [here](https://drive.google.com/drive/folders/15vyUyWFN572NM8OU_FIfwuaBSysvyp5j?usp=sharing). Please download the dataset and put it under `data` folder. Navigate to `./build/src/exe` to run GenSfM.
+We provide two example datasets that could be downloaded from [here](https://drive.google.com/drive/folders/1ut-anuoDhFHkG3e54uN05fR_g_l20NFb?usp=sharing). Please download them and put them under `data` folder. Navigate to `./build/src/exe` to run GenSfM.
 ### Run from database
 If a COLMAP database already exists, GenSfM can directly use it to perform incremental mapping by: 
 
@@ -57,7 +57,7 @@ If there is not a COLMAP database yet, you need to establish it first.
             --Mapper.snapshot_images_freq 1
 ```
 ### Visualize the results
-The reconstruction can be visualized using the GUI, for example:
+The results are written out in the COLMAP sparse reconstruction format. Please refer to [COLMAP](https://github.com/colmap/colmap) for more details. The reconstruction can be visualized using the GUI, for example:
 ```bash
 ./gen_colmap gui \
         --database_path ./data/Fisheye_grossmunster/database.db    \
