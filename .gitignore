@@ -12,6 +12,10 @@ install-release/
 data/
 doc/_build
 focal_lengths/
+experimental_scripts/babelcalib/
+scripts/evaluate/
+scripts/babelcalib/
+centering_cata.py
 
 
 # Compiled Object files

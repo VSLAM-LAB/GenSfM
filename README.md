@@ -56,14 +56,28 @@ If there is not a COLMAP database yet, you need to establish it first.
             --Mapper.snapshot_path ./data/Fisheye_grossmunster/sparse/snapshot \
             --Mapper.snapshot_images_freq 1
 ```
-### Visualize the results
+### Catadioptric feature matching
+We provide experimental scripts under experimental_scripts/cata_feature_matching to facilitate the feature matching for catadioptric images. To perform this, first run `split_images.m` to psuedo-undistort the catadioptric images into 8 rectangular views, and then use the following steps to perform feature merging and matching:
+```bash
+./gen_colmap feature_extractor --database_path database_split.db --image_path images_split/
+
+./gen_colmap database_creator --database_path database.db
+
+python merge_features.py database_split.db database.db 4288,2848,2190,1463,350,1250,796 # Change to the parameters obtained from `split_images.m`
+
+./gen_colmap exhaustive_matcher --database_path database.db --SiftMatching.multiple_models=1
+
+```
+### Visualize the reconstructions
 The results are written out in the COLMAP sparse reconstruction format. Please refer to [COLMAP](https://github.com/colmap/colmap) for more details. The reconstruction can be visualized using the GUI, for example:
 ```bash
 ./gen_colmap gui \
         --database_path ./data/Fisheye_grossmunster/database.db    \
         --image_path ./data/Fisheye_grossmunster/images     \
         --import_path ./data/Fisheye_grossmunster/sparse/0
-``` 
+```
+
+
 <!-- 
 
 
