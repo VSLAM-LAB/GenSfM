@@ -81,3 +81,4 @@ We also provide scripts for undistorting fisheye or catadioptric images using th
 
 Then, store the calibration spline control points {$\theta_i$, $r_i$} estimated during reconstruction to a txt file as the examples in `./experimental_scripts/undistortion/test_data`. Then see the notebook `./experimental_scripts/undistortion/test_undistortion.ipynb` to run the undistortion.
 
+## Citing
