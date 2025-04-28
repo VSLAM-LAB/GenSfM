@@ -81,4 +81,35 @@ We also provide scripts for undistorting fisheye or catadioptric images using th
 
 Then, store the calibration spline control points {$\theta_i$, $r_i$} estimated during reconstruction to a txt file as the examples in `./experimental_scripts/undistortion/test_data`. Then see the notebook `./experimental_scripts/undistortion/test_undistortion.ipynb` to run the undistortion.
 
-## Citing
+## Acknowledgement
+This pipeline builds on COLMAP, RadialSfM, and Implicit_dst, for which you should cite:
+
+    @inproceedings{schoenberger2016sfm,
+        author={Sch\"{o}nberger, Johannes Lutz and Frahm, Jan-Michael},
+        title={Structure-from-Motion Revisited},
+        booktitle={Conference on Computer Vision and Pattern Recognition (CVPR)},
+        year={2016},
+    }
+```
+@inproceedings{schoenberger2016mvs,
+        author={Sch\"{o}nberger, Johannes Lutz and Zheng, Enliang and Pollefeys, Marc and Frahm, Jan-Michael},
+        title={Pixelwise View Selection for Unstructured Multi-View Stereo},
+        booktitle={European Conference on Computer Vision (ECCV)},
+        year={2016},
+}
+```
+```
+@inproceedings{larsson2020calibration,
+        title={Calibration-free structure-from-motion with calibrated radial trifocal tensors},
+        author={Larsson, Viktor and Zobernig, Nicolas and Taskin, Kasim and Pollefeys, Marc},
+        booktitle={European Conference on Computer Vision (ECCV)},
+        year={2020},
+}
+```
+```
+@inproceedings{pan2022camera,
+        title={Camera pose estimation using implicit distortion models},
+        author={Pan, Linfei and Pollefeys, Marc and Larsson, Viktor},
+        booktitle={Conference on Computer Vision and Pattern Recognition (CVPR)}, 
+        year={2022}
+}
