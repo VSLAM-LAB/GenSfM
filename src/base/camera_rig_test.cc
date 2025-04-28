@@ -52,7 +52,7 @@ BOOST_AUTO_TEST_CASE(TestAddCamera) {
   BOOST_CHECK_EQUAL(camera_rig.HasCamera(0), false);
 
   camera_rig.AddCamera(0, ComposeIdentityQuaternion(),
-                       Eigen::Vector3d(0, 1, 2));
+    Eigen::Vector3d(0, 1, 2));
   BOOST_CHECK_EQUAL(camera_rig.NumCameras(), 1);
   BOOST_CHECK_EQUAL(camera_rig.NumSnapshots(), 0);
   BOOST_CHECK_EQUAL(camera_rig.GetCameraIds().size(), 1);
@@ -62,7 +62,7 @@ BOOST_AUTO_TEST_CASE(TestAddCamera) {
   BOOST_CHECK_EQUAL(camera_rig.RelativeTvec(0), Eigen::Vector3d(0, 1, 2));
 
   camera_rig.AddCamera(1, ComposeIdentityQuaternion(),
-                       Eigen::Vector3d(3, 4, 5));
+    Eigen::Vector3d(3, 4, 5));
   BOOST_CHECK_EQUAL(camera_rig.NumCameras(), 2);
   BOOST_CHECK_EQUAL(camera_rig.NumSnapshots(), 0);
   BOOST_CHECK_EQUAL(camera_rig.GetCameraIds().size(), 2);
@@ -80,14 +80,14 @@ BOOST_AUTO_TEST_CASE(TestAddSnapshot) {
   BOOST_CHECK_EQUAL(camera_rig.Snapshots().size(), 0);
 
   camera_rig.AddCamera(0, ComposeIdentityQuaternion(),
-                       Eigen::Vector3d(0, 1, 2));
+    Eigen::Vector3d(0, 1, 2));
   camera_rig.AddCamera(1, ComposeIdentityQuaternion(),
-                       Eigen::Vector3d(3, 4, 5));
+    Eigen::Vector3d(3, 4, 5));
   BOOST_CHECK_EQUAL(camera_rig.NumCameras(), 2);
   BOOST_CHECK_EQUAL(camera_rig.NumSnapshots(), 0);
   BOOST_CHECK_EQUAL(camera_rig.Snapshots().size(), 0);
 
-  const std::vector<image_t> image_ids1 = {0, 1};
+  const std::vector<image_t> image_ids1 = { 0, 1 };
   camera_rig.AddSnapshot(image_ids1);
   BOOST_CHECK_EQUAL(camera_rig.NumCameras(), 2);
   BOOST_CHECK_EQUAL(camera_rig.NumSnapshots(), 1);
@@ -96,7 +96,7 @@ BOOST_AUTO_TEST_CASE(TestAddSnapshot) {
   BOOST_CHECK_EQUAL(camera_rig.Snapshots()[0][0], 0);
   BOOST_CHECK_EQUAL(camera_rig.Snapshots()[0][1], 1);
 
-  const std::vector<image_t> image_ids2 = {2, 3};
+  const std::vector<image_t> image_ids2 = { 2, 3 };
   camera_rig.AddSnapshot(image_ids2);
   BOOST_CHECK_EQUAL(camera_rig.NumCameras(), 2);
   BOOST_CHECK_EQUAL(camera_rig.NumSnapshots(), 2);
@@ -112,12 +112,12 @@ BOOST_AUTO_TEST_CASE(TestAddSnapshot) {
 BOOST_AUTO_TEST_CASE(TestCheck) {
   CameraRig camera_rig;
   camera_rig.AddCamera(0, ComposeIdentityQuaternion(),
-                       Eigen::Vector3d(0, 1, 2));
+    Eigen::Vector3d(0, 1, 2));
   camera_rig.AddCamera(1, ComposeIdentityQuaternion(),
-                       Eigen::Vector3d(3, 4, 5));
-  const std::vector<image_t> image_ids1 = {0, 1};
+    Eigen::Vector3d(3, 4, 5));
+  const std::vector<image_t> image_ids1 = { 0, 1 };
   camera_rig.AddSnapshot(image_ids1);
-  const std::vector<image_t> image_ids2 = {2, 3};
+  const std::vector<image_t> image_ids2 = { 2, 3 };
   camera_rig.AddSnapshot(image_ids2);
 
   Reconstruction reconstruction;
@@ -159,10 +159,10 @@ BOOST_AUTO_TEST_CASE(TestCheck) {
 BOOST_AUTO_TEST_CASE(TestComputeScale) {
   CameraRig camera_rig;
   camera_rig.AddCamera(0, ComposeIdentityQuaternion(),
-                       Eigen::Vector3d(0, 0, 0));
+    Eigen::Vector3d(0, 0, 0));
   camera_rig.AddCamera(1, ComposeIdentityQuaternion(),
-                       Eigen::Vector3d(2, 4, 6));
-  const std::vector<image_t> image_ids1 = {0, 1};
+    Eigen::Vector3d(2, 4, 6));
+  const std::vector<image_t> image_ids1 = { 0, 1 };
   camera_rig.AddSnapshot(image_ids1);
 
   Reconstruction reconstruction;
@@ -203,10 +203,10 @@ BOOST_AUTO_TEST_CASE(TestComputeScale) {
 BOOST_AUTO_TEST_CASE(TestComputeRelativePoses) {
   CameraRig camera_rig;
   camera_rig.AddCamera(0, ComposeIdentityQuaternion(),
-                       Eigen::Vector3d(0, 0, 0));
+    Eigen::Vector3d(0, 0, 0));
   camera_rig.AddCamera(1, ComposeIdentityQuaternion(),
-                       Eigen::Vector3d(0, 0, 0));
-  const std::vector<image_t> image_ids1 = {0, 1};
+    Eigen::Vector3d(0, 0, 0));
+  const std::vector<image_t> image_ids1 = { 0, 1 };
   camera_rig.AddSnapshot(image_ids1);
 
   Reconstruction reconstruction;
@@ -243,7 +243,7 @@ BOOST_AUTO_TEST_CASE(TestComputeRelativePoses) {
   BOOST_CHECK_EQUAL(camera_rig.RelativeQvec(1), ComposeIdentityQuaternion());
   BOOST_CHECK_EQUAL(camera_rig.RelativeTvec(1), Eigen::Vector3d(1, 2, 3));
 
-  const std::vector<image_t> image_ids2 = {2, 3};
+  const std::vector<image_t> image_ids2 = { 2, 3 };
   camera_rig.AddSnapshot(image_ids2);
 
   Image image3;
@@ -267,7 +267,7 @@ BOOST_AUTO_TEST_CASE(TestComputeRelativePoses) {
   BOOST_CHECK_EQUAL(camera_rig.RelativeQvec(1), ComposeIdentityQuaternion());
   BOOST_CHECK_EQUAL(camera_rig.RelativeTvec(1), Eigen::Vector3d(1.5, 3, 4.5));
 
-  const std::vector<image_t> image_ids3 = {4};
+  const std::vector<image_t> image_ids3 = { 4 };
   camera_rig.AddSnapshot(image_ids3);
 
   Image image5;
@@ -288,10 +288,10 @@ BOOST_AUTO_TEST_CASE(TestComputeRelativePoses) {
 BOOST_AUTO_TEST_CASE(TestComputeAbsolutePose) {
   CameraRig camera_rig;
   camera_rig.AddCamera(0, ComposeIdentityQuaternion(),
-                       Eigen::Vector3d(0, 1, 2));
+    Eigen::Vector3d(0, 1, 2));
   camera_rig.AddCamera(1, ComposeIdentityQuaternion(),
-                       Eigen::Vector3d(3, 4, 5));
-  const std::vector<image_t> image_ids1 = {0, 1};
+    Eigen::Vector3d(3, 4, 5));
+  const std::vector<image_t> image_ids1 = { 0, 1 };
   camera_rig.AddSnapshot(image_ids1);
 
   Reconstruction reconstruction;

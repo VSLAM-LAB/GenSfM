@@ -38,18 +38,18 @@
 
 namespace colmap {
 
-// Class that controls the global bundle adjustment procedure.
-class BundleAdjustmentController : public Thread {
- public:
-  BundleAdjustmentController(const OptionManager& options,
-                             Reconstruction* reconstruction);
+  // Class that controls the global bundle adjustment procedure.
+  class BundleAdjustmentController : public Thread {
+  public:
+    BundleAdjustmentController(const OptionManager& options,
+      Reconstruction* reconstruction);
 
- private:
-  void Run();
+  private:
+    void Run();
 
-  const OptionManager options_;
-  Reconstruction* reconstruction_;
-};
+    const OptionManager options_;
+    Reconstruction* reconstruction_;
+  };
 
 }  // namespace colmap
 

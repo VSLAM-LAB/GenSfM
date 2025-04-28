@@ -12,24 +12,6 @@
 
 
 namespace colmap {
-
-    // struct ImplicitBundleAdjustmentOptions : PoseRefinementOptions {
-    //     int max_ite_num = 10;
-    //     int min_curr_num = 5;
-    //     double stop_ratio = 1e-3;
-    //     double filter_thres = 10;
-        
-    //     bool upgrade_result = false;
-    //     bool filter_result = true; // filter before BA starts
-
-    //     ImplicitBundleAdjustmentOptions clone() const {
-    //         ImplicitBundleAdjustmentOptions copy = *this;
-    //         return copy;
-    //     }
-    // };
-    
-    
-
     void local_bundle_adjustment(std::vector<std::vector<Eigen::Vector2d>> &points2D,
                             std::vector<Eigen::Vector3d> &points3D,
                             std::vector<std::vector<int>> &pointsInd,

@@ -6,7 +6,7 @@
 #include <tuple>
 #include <Eigen/Dense>
 namespace colmap {
-struct CostMatrixOptions {
+    struct CostMatrixOptions {
         double min_delta_r = 1.0;
         double max_delta_r = 100.0;
 
@@ -22,9 +22,9 @@ struct CostMatrixOptions {
             return copy;
         }
     };
-    
-class CostMatrix {
-    public:        
+
+    class CostMatrix {
+    public:
         // pt_index:    index of the keypoint
         // cam_index:   contains the index of the camera
         // values:      concrete values stored in C (at the position index)
@@ -33,14 +33,14 @@ class CostMatrix {
         std::vector<std::vector<double>> values;
     };
 
-    CostMatrix build_cost_matrix(const std::vector<Eigen::Vector2d> &pts,
-                                 const CostMatrixOptions &options,
-                                 const Eigen::Vector2d &pp = Eigen::Vector2d(0.0,0.0));
+    CostMatrix build_cost_matrix(const std::vector<Eigen::Vector2d>& pts,
+        const CostMatrixOptions& options,
+        const Eigen::Vector2d& pp = Eigen::Vector2d(0.0, 0.0));
 
-    CostMatrix build_cost_matrix_multi(const std::vector<std::vector<Eigen::Vector2d>> &pts,
-                                      const CostMatrixOptions &options,
-                                      const Eigen::Vector2d &pp = Eigen::Vector2d(0.0,0.0));
-        
+    CostMatrix build_cost_matrix_multi(const std::vector<std::vector<Eigen::Vector2d>>& pts,
+        const CostMatrixOptions& options,
+        const Eigen::Vector2d& pp = Eigen::Vector2d(0.0, 0.0));
+
 
 }  // namespace colmap
 #endif

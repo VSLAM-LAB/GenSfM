@@ -274,7 +274,7 @@ void handleUncalibratedAreas(std::vector<double>& radii, double uncalib_threshol
         radii.clear();
     }
 }
-void recursiveSplit(const std::vector<double>& radii, const std::vector<double>& focal_lengths,
+void RecursiveSplit(const std::vector<double>& radii, const std::vector<double>& focal_lengths,
                         std::vector<std::vector<double>>& radii_segments,
                         std::vector<std::vector<double>>& focal_lengths_segments, 
                         double threshold = 0.05, double stddev_threshold = 0.01) {
@@ -311,8 +311,8 @@ void recursiveSplit(const std::vector<double>& radii, const std::vector<double>&
         std::vector<double> right_radii(radii.begin() + index_of_max_gap + 1, radii.end());
         std::vector<double> right_focal_lengths(focal_lengths.begin() + index_of_max_gap + 1, focal_lengths.end());
 
-        recursiveSplit(left_radii, left_focal_lengths, radii_segments, focal_lengths_segments, threshold, stddev_threshold);
-        recursiveSplit(right_radii, right_focal_lengths, radii_segments, focal_lengths_segments, threshold, stddev_threshold);
+        RecursiveSplit(left_radii, left_focal_lengths, radii_segments, focal_lengths_segments, threshold, stddev_threshold);
+        RecursiveSplit(right_radii, right_focal_lengths, radii_segments, focal_lengths_segments, threshold, stddev_threshold);
     }
 
 class Camera {
@@ -1145,7 +1145,7 @@ inline void Camera::FitPieceWiseSpline_binary(std::vector<double>& radii, std::v
   double threshold = mean_interval + 0.3*std_interval;
 
   double std_threshold = 0.5*std_interval;  
-  recursiveSplit(new_radii, new_focal_lengths, radii_segments, focal_lengths_segments, threshold, std_threshold);
+  RecursiveSplit(new_radii, new_focal_lengths, radii_segments, focal_lengths_segments, threshold, std_threshold);
   std::cout << "num_segment: " << radii_segments.size() << std::endl;
   for(int i = 0; i < radii_segments.size(); i++){
     std::cout << "segment_size: " << radii_segments[i].size() << std::endl;
