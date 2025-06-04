@@ -1,26 +1,32 @@
 
-Structure-from-Motion with a Non-Parametric Camera Model (CVPR 2025 Highlight)
-======
-This is an extension of the incremental Structure-from-Motion framework [COLMAP](https://github.com/colmap/colmap), allowing for the usage of Implicit Distortion camera model, which features a non-parametric generic representation of the calibration map and an adaptive partial calibration procedure. This is a cleaned up re-implementation of the original code used in the paper
+# Structure-from-Motion with a Non-Parametric Camera Model (CVPR 2025 Highlight)
 
+[Project Page](https://ivonne320.github.io/yihan.home/GenSfM.html) | [Paper](https://openaccess.thecvf.com//content/CVPR2025/papers/Wang_Structure-from-Motion_with_a_Non-Parametric_Camera_Model_CVPR_2025_paper.pdf)
+======
+This is an extension of the incremental Structure-from-Motion framework [COLMAP](https://github.com/colmap/colmap), allowing for the usage of the Implicit Distortion camera model, which features a non-parametric generic representation of the calibration map and an adaptive partial calibration procedure. 
+
+If you use this project for your research, please cite
 ```
-Structure-from-Motion with a Non-Parametric Camera Model
-Yihan Wang*, Linfei Pan*, Marc Pollefeys, Viktor Larsson
-IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR) 2025
+@inproceedings{wang2024gensfm,
+    author={Wang, Yihan and Pan, Linfei and and Pollefeys, Marc and Viktor Larsson},
+    title={{Structure-from-Motion with a Non-Parametric Camera Model}},
+    booktitle={Computer Vision and Pattern Recognition Conference (CVPR)},
+    year={2025},
+}
 ```
-and if you have any problems running the code or find any bugs, please create an issue.
+If you have any problems running the code or find any bugs, please create an issue.
 
 ## Getting Started
 Please build GenSfM using the following commands:
-```shell
+``` shell
 mkdir build
 cd build
 cmake .. -GNinja
 ninja
 ```
 ## End-to-End Example
-We provide two example datasets that could be downloaded from [here](https://drive.google.com/drive/folders/1ut-anuoDhFHkG3e54uN05fR_g_l20NFb?usp=sharing). Please download them and put them under `data` folder. Navigate to `./build/src/exe` to run GenSfM.
-### Run from database
+We provide two example datasets that could be downloaded from [here](https://drive.google.com/drive/folders/1ut-anuoDhFHkG3e54uN05fR_g_l20NFb?usp=sharing). Please download them and put them under the `data` folder. Navigate to `./build/src/exe` to run GenSfM.
+### Run from the database
 If a COLMAP database already exists, GenSfM can directly use it to perform incremental mapping by: 
 
 ```shell
@@ -33,13 +39,13 @@ If a COLMAP database already exists, GenSfM can directly use it to perform incre
             --Mapper.snapshot_images_freq 1
 ```
 ### Run from images
-If there is not a COLMAP database yet, you need to establish it first. 
+If there is no COLMAP database yet, you need to establish it first. 
 
 ```shell
 ./gen_colmap feature_extractor \
             --image_path ./data/Fisheye_grossmunster/images \
             --database_path ./data/Fisheye_grossmunster/database.db \ 
-# GenSFM could be ran by choosing IMPLICIT_DISTORTION camera model            
+# GenSFM could be run by choosing IMPLICIT_DISTORTION camera model            
             --ImageReader.camera_model IMPLICIT_DISTORTION \
 # Set the following argument if images are captured by the same camera per folder
             --ImageReader.single_camera_per_folder 1
@@ -57,7 +63,7 @@ If there is not a COLMAP database yet, you need to establish it first.
             --Mapper.snapshot_images_freq 1
 ```
 ### Catadioptric feature matching
-We provide experimental scripts under experimental_scripts/cata_feature_matching to facilitate the feature matching for catadioptric images. To perform this, first run `split_images.m` to psuedo-undistort the catadioptric images into 8 rectangular views, and then use the following steps to perform feature merging and matching:
+We provide experimental scripts under experimental_scripts/cata_feature_matching to facilitate the feature matching for catadioptric images. To perform this, first run `split_images.m` to pseudo-undistort the catadioptric images into 8 rectangular views, and then use the following steps to perform feature merging and matching:
 ```bash
 ./gen_colmap feature_extractor --database_path database_split.db --image_path images_split/
 
@@ -79,10 +85,10 @@ The results are written out in the COLMAP sparse reconstruction format. Please r
 ### Undistorting images using estimated calibration
 We also provide scripts for undistorting fisheye or catadioptric images using the estimated calibration. Please first follow [Implicit Distortion](https://github.com/cvg/implicit_dist.git) to install the dependencies. 
 
-Then, store the calibration spline control points {$\theta_i$, $r_i$} estimated during reconstruction to a txt file as the examples in `./experimental_scripts/undistortion/test_data`. Then see the notebook `./experimental_scripts/undistortion/test_undistortion.ipynb` to run the undistortion.
+Then, store the calibration spline control points { $\theta_i$, $r_i$ } estimated during reconstruction to a `txt` file as the examples in `./experimental_scripts/undistortion/test_data`. Then see the notebook `./experimental_scripts/undistortion/test_undistortion.ipynb` to run the undistortion.
 
 ## Acknowledgement
-This pipeline builds on COLMAP, RadialSfM, and Implicit_dst, for which you should cite:
+This pipeline builds heavily on [COLMAP](https://github.com/colmap/colmap), [RadialSfM](https://github.com/vlarsson/radialsfm.git), and [implicit_dist](https://github.com/cvg/implicit_dist.git), for which you should cite:
 
     @inproceedings{schoenberger2016sfm,
         author={Sch\"{o}nberger, Johannes Lutz and Frahm, Jan-Michael},
