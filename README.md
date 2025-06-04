@@ -1,9 +1,8 @@
-
 # Structure-from-Motion with a Non-Parametric Camera Model (CVPR 2025 Highlight)
 
 [Project Page](https://ivonne320.github.io/yihan.home/GenSfM.html) | [Paper](https://openaccess.thecvf.com//content/CVPR2025/papers/Wang_Structure-from-Motion_with_a_Non-Parametric_Camera_Model_CVPR_2025_paper.pdf)
 ======
-This is an extension of the incremental Structure-from-Motion framework [COLMAP](https://github.com/colmap/colmap), allowing for the usage of the Implicit Distortion camera model, which features a non-parametric generic representation of the calibration map and an adaptive partial calibration procedure. 
+GenSfM (Generic Structure-from-Motion) extends the incremental Structure-from-Motion framework of [COLMAP](https://github.com/colmap/colmap). It introduces a spline-based generic representation of the calibration map along with an adaptive partial calibration procedure. These components enable **smooth**, **invertible**, **universal** modeling of a wide range of image distortions, allowing robust reconstruction from images captured by cameras ranging from standard pinhole models to highly distorted catadioptric systems.
 
 If you use this project for your research, please cite
 ```
